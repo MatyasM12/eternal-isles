@@ -1402,206 +1402,206 @@
 			id: 'fire', name: 'Fire', icon: '🔥', color: '#ff6b35', borderColor: 'border-orange-400/40', bgColor: 'bg-orange-400/10',
 			talents: [
 				{ id: 'fire_active', name: 'Flame Strike', type: 'active', icon: '🔥', maxRank: 8,
-				  cooldowns: [0, 14, 13, 12, 11, 10, 9, 8, 7],
-				  rankDescs: ['',
-					'Next attack +12 fire damage.',
-					'Next attack +24 fire damage.',
-					'Next attack +42 fire damage.',
-					'Next attack +63 fire damage — weapon glows white-hot.',
-					'Next attack +90 fire damage — a column of fire erupts.',
-					'Next attack +123 fire damage — the ground scorches.',
-					'Next attack +162 fire damage — incandescent inferno.',
-					'Next attack +210 fire damage — LEGENDARY: the sky itself ignites!'] },
+					cooldowns: [0, 14, 13, 12, 11, 10, 9, 8, 7],
+					rankDescs: ['',
+						'Next attack +12 fire damage.',
+						'Next attack +24 fire damage.',
+						'Next attack +42 fire damage.',
+						'Next attack +63 fire damage — weapon glows white-hot.',
+						'Next attack +90 fire damage — a column of fire erupts.',
+						'Next attack +123 fire damage — the ground scorches.',
+						'Next attack +162 fire damage — incandescent inferno.',
+						'Next attack +210 fire damage — LEGENDARY: the sky itself ignites!'] },
 				{ id: 'fire_passive', name: 'Ember Touch', type: 'passive', icon: '✨', maxRank: 8,
-				  rankDescs: ['',
-					'20% chance to Burn (4 dmg/s for 4s).',
-					'30% chance to Burn (7 dmg/s for 5s).',
-					'40% chance to Burn (11 dmg/s for 5s).',
-					'50% chance to Burn (16 dmg/s for 6s).',
-					'60% chance to Burn (22 dmg/s for 6s).',
-					'70% chance to Burn (30 dmg/s for 7s).',
-					'80% chance to Burn (40 dmg/s for 7s).',
-					'90% chance to Burn (55 dmg/s for 8s) — LEGENDARY: everything you touch ignites!'] },
+					rankDescs: ['',
+						'20% chance to Burn (4 dmg/s for 4s).',
+						'30% chance to Burn (7 dmg/s for 5s).',
+						'40% chance to Burn (11 dmg/s for 5s).',
+						'50% chance to Burn (16 dmg/s for 6s).',
+						'60% chance to Burn (22 dmg/s for 6s).',
+						'70% chance to Burn (30 dmg/s for 7s).',
+						'80% chance to Burn (40 dmg/s for 7s).',
+						'90% chance to Burn (55 dmg/s for 8s) — LEGENDARY: everything you touch ignites!'] },
 				{ id: 'fire_backdraft', name: 'Backdraft', type: 'passive', icon: '🌪️', maxRank: 5,
-				  rankDescs: ['',
-					'Each burn tick has 10% chance to add 1 extra tick.',
-					'Each burn tick has 15% chance to add 1 extra tick.',
-					'Each burn tick has 20% chance to add 1 extra tick.',
-					'Each burn tick has 25% chance to add 1 extra tick.',
-					'Each burn tick has 30% chance to add 1 extra tick — flames feed themselves!'] },
+					rankDescs: ['',
+						'Each burn tick has 10% chance to add 1 extra tick.',
+						'Each burn tick has 15% chance to add 1 extra tick.',
+						'Each burn tick has 20% chance to add 1 extra tick.',
+						'Each burn tick has 25% chance to add 1 extra tick.',
+						'Each burn tick has 30% chance to add 1 extra tick — flames feed themselves!'] },
 				{ id: 'fire_wildfire', name: 'Wildfire', type: 'passive', icon: '🔥', maxRank: 5,
-				  rankDescs: ['',
-					'Burn spreads to 1 nearby enemy within 5 units on proc (20% chance).',
-					'Spread chance 30%.',
-					'Spread chance 45%.',
-					'Spread chance 60%.',
-					'Spread chance 80% — wildfire cannot be contained!'] },
+					rankDescs: ['',
+						'Burn spreads to 1 nearby enemy within 5 units on proc (20% chance).',
+						'Spread chance 30%.',
+						'Spread chance 45%.',
+						'Spread chance 60%.',
+						'Spread chance 80% — wildfire cannot be contained!'] },
 				{ id: 'fire_cremation', name: 'Cremation', type: 'passive', icon: '💀', maxRank: 5,
-				  rankDescs: ['',
-					'Enemies that die while burning explode for 15 fire damage in 4-unit radius.',
-					'Explosion deals 25 fire damage.',
-					'Explosion deals 35 fire damage.',
-					'Explosion deals 50 fire damage.',
-					'Explosion deals 70 fire damage — ashes to ashes!'] },
+					rankDescs: ['',
+						'Enemies that die while burning explode for 15 fire damage in 4-unit radius.',
+						'Explosion deals 25 fire damage.',
+						'Explosion deals 35 fire damage.',
+						'Explosion deals 50 fire damage.',
+						'Explosion deals 70 fire damage — ashes to ashes!'] },
 				{ id: 'fire_fireball', name: 'Fireball', type: 'active', icon: '🔮', maxRank: 5,
-				  cooldowns: [0, 20, 18, 16, 14, 12],
-				  rankDescs: ['',
-					'Hurl a fireball at a creature for 40 fire damage. Click a creature to aim.',
-					'Fireball deals 70 fire damage.',
-					'Fireball deals 110 fire damage.',
-					'Fireball deals 160 fire damage — scorching projectile.',
-					'Fireball deals 220 fire damage — LEGENDARY: a star falls to earth!'] },
+					cooldowns: [0, 20, 18, 16, 14, 12],
+					rankDescs: ['',
+						'Hurl a fireball at a creature for 40 fire damage. Click a creature to aim.',
+						'Fireball deals 70 fire damage.',
+						'Fireball deals 110 fire damage.',
+						'Fireball deals 160 fire damage — scorching projectile.',
+						'Fireball deals 220 fire damage — LEGENDARY: a star falls to earth!'] },
 			]
 		},
 		{
 			id: 'lightning', name: 'Lightning', icon: '⚡', color: '#facc15', borderColor: 'border-yellow-400/40', bgColor: 'bg-yellow-400/10',
 			talents: [
 				{ id: 'lightning_active', name: 'Static Charge', type: 'active', icon: '⚡', maxRank: 8,
-				  cooldowns: [0, 14, 13, 12, 11, 10, 9, 8, 7],
-				  rankDescs: ['',
-					'Next attack +10 lightning damage.',
-					'Next attack +20 lightning damage.',
-					'Next attack +34 lightning damage.',
-					'Next attack +52 lightning damage — thunder booms.',
-					'Next attack +74 lightning damage — lightning arc leaps.',
-					'Next attack +100 lightning damage — storm answers your call.',
-					'Next attack +132 lightning damage — sky-shattering bolt.',
-					'Next attack +170 lightning damage — LEGENDARY: a storm god strikes through you!'] },
+					cooldowns: [0, 14, 13, 12, 11, 10, 9, 8, 7],
+					rankDescs: ['',
+						'Next attack +10 lightning damage.',
+						'Next attack +20 lightning damage.',
+						'Next attack +34 lightning damage.',
+						'Next attack +52 lightning damage — thunder booms.',
+						'Next attack +74 lightning damage — lightning arc leaps.',
+						'Next attack +100 lightning damage — storm answers your call.',
+						'Next attack +132 lightning damage — sky-shattering bolt.',
+						'Next attack +170 lightning damage — LEGENDARY: a storm god strikes through you!'] },
 				{ id: 'lightning_passive', name: 'Shock', type: 'passive', icon: '💫', maxRank: 8,
-				  rankDescs: ['',
-					'1% chance on hit: +6 bonus dmg, stun 1 cycle.',
-					'2% chance on hit: +10 bonus dmg, stun 1 cycle.',
-					'3% chance on hit: +16 bonus dmg, stun 1 cycle.',
-					'4% chance on hit: +24 bonus dmg, stun 2 cycles.',
-					'5% chance on hit: +34 bonus dmg, stun 2 cycles.',
-					'6% chance on hit: +46 bonus dmg, stun 2 cycles.',
-					'7% chance on hit: +62 bonus dmg, stun 3 cycles.',
-					'9% chance on hit: +80 bonus dmg, stun 3 cycles — LEGENDARY: a divine bolt of judgment!'] },
+					rankDescs: ['',
+						'1% chance on hit: +6 bonus dmg, stun 1 cycle.',
+						'2% chance on hit: +10 bonus dmg, stun 1 cycle.',
+						'3% chance on hit: +16 bonus dmg, stun 1 cycle.',
+						'4% chance on hit: +24 bonus dmg, stun 2 cycles.',
+						'5% chance on hit: +34 bonus dmg, stun 2 cycles.',
+						'6% chance on hit: +46 bonus dmg, stun 2 cycles.',
+						'7% chance on hit: +62 bonus dmg, stun 3 cycles.',
+						'9% chance on hit: +80 bonus dmg, stun 3 cycles — LEGENDARY: a divine bolt of judgment!'] },
 				{ id: 'lightning_conductor', name: 'Conductor', type: 'passive', icon: '⚡', maxRank: 5,
-				  rankDescs: ['',
-					'Shocked enemies take 10% increased damage from all sources.',
-					'Shocked enemies take 17% increased damage.',
-					'Shocked enemies take 24% increased damage.',
-					'Shocked enemies take 30% increased damage.',
-					'Shocked enemies take 35% increased damage — the charge amplifies everything!'] },
+					rankDescs: ['',
+						'Shocked enemies take 10% increased damage from all sources.',
+						'Shocked enemies take 17% increased damage.',
+						'Shocked enemies take 24% increased damage.',
+						'Shocked enemies take 30% increased damage.',
+						'Shocked enemies take 35% increased damage — the charge amplifies everything!'] },
 				{ id: 'lightning_aftershock', name: 'Aftershock', type: 'passive', icon: '💥', maxRank: 5,
-				  rankDescs: ['',
-					'When a stun expires, deal 10 lightning damage to the creature.',
-					'Aftershock deals 20 lightning damage.',
-					'Aftershock deals 35 lightning damage.',
-					'Aftershock deals 50 lightning damage.',
-					'Aftershock deals 70 lightning damage — thunder clap finale!'] },
+					rankDescs: ['',
+						'When a stun expires, deal 10 lightning damage to the creature.',
+						'Aftershock deals 20 lightning damage.',
+						'Aftershock deals 35 lightning damage.',
+						'Aftershock deals 50 lightning damage.',
+						'Aftershock deals 70 lightning damage — thunder clap finale!'] },
 				{ id: 'lightning_static_aura', name: 'Static Aura', type: 'active', icon: '🌩️', maxRank: 5,
-				  cooldowns: [0, 30, 27, 24, 21, 18],
-				  rankDescs: ['',
-					'Activate a 10s aura dealing 5 lightning dmg/s to enemies within 6 units.',
-					'Aura deals 9 dmg/s.',
-					'Aura deals 13 dmg/s.',
-					'Aura deals 17 dmg/s.',
-					'Aura deals 22 dmg/s — crackling storm encircles you!'] },
+					cooldowns: [0, 30, 27, 24, 21, 18],
+					rankDescs: ['',
+						'Activate a 10s aura dealing 5 lightning dmg/s to enemies within 6 units.',
+						'Aura deals 9 dmg/s.',
+						'Aura deals 13 dmg/s.',
+						'Aura deals 17 dmg/s.',
+						'Aura deals 22 dmg/s — crackling storm encircles you!'] },
 			]
 		},
 		{
 			id: 'ice', name: 'Ice', icon: '❄️', color: '#7dd3fc', borderColor: 'border-sky-400/40', bgColor: 'bg-sky-400/10',
 			talents: [
 				{ id: 'ice_active', name: 'Frost Edge', type: 'active', icon: '❄️', maxRank: 8,
-				  cooldowns: [0, 14, 13, 12, 11, 10, 9, 8, 7],
-				  rankDescs: ['',
-					'Next attack +10 ice damage.',
-					'Next attack +20 ice damage.',
-					'Next attack +34 ice damage.',
-					'Next attack +52 ice damage — weapon radiates cold.',
-					'Next attack +74 ice damage — frost shards explode.',
-					'Next attack +100 ice damage — glacial devastation.',
-					'Next attack +132 ice damage — absolute zero strike.',
-					'Next attack +170 ice damage — LEGENDARY: an ice age in a single blow!'] },
+					cooldowns: [0, 14, 13, 12, 11, 10, 9, 8, 7],
+					rankDescs: ['',
+						'Next attack +10 ice damage.',
+						'Next attack +20 ice damage.',
+						'Next attack +34 ice damage.',
+						'Next attack +52 ice damage — weapon radiates cold.',
+						'Next attack +74 ice damage — frost shards explode.',
+						'Next attack +100 ice damage — glacial devastation.',
+						'Next attack +132 ice damage — absolute zero strike.',
+						'Next attack +170 ice damage — LEGENDARY: an ice age in a single blow!'] },
 				{ id: 'ice_passive', name: 'Chill', type: 'passive', icon: '🌨️', maxRank: 8,
-				  rankDescs: ['',
-					'1% chance on hit: Freeze for 1 turn.',
-					'2% chance on hit: Freeze for 1 turn.',
-					'3% chance on hit: Freeze for 2 turns.',
-					'4% chance on hit: Freeze for 2 turns.',
-					'5% chance on hit: Freeze for 2 turns.',
-					'6% chance on hit: Freeze for 3 turns.',
-					'7% chance on hit: Freeze for 3 turns.',
-					'9% chance on hit: Freeze for 4 turns — LEGENDARY: cold seeps into their very soul!'] },
+					rankDescs: ['',
+						'1% chance on hit: Freeze for 1 turn.',
+						'2% chance on hit: Freeze for 1 turn.',
+						'3% chance on hit: Freeze for 2 turns.',
+						'4% chance on hit: Freeze for 2 turns.',
+						'5% chance on hit: Freeze for 2 turns.',
+						'6% chance on hit: Freeze for 3 turns.',
+						'7% chance on hit: Freeze for 3 turns.',
+						'9% chance on hit: Freeze for 4 turns — LEGENDARY: cold seeps into their very soul!'] },
 				{ id: 'ice_shield', name: 'Frost Ward', type: 'active', icon: '🧊', maxRank: 8,
-				  cooldowns: [0, 30, 28, 25, 22, 20, 17, 14, 11],
-				  rankDescs: ['',
-					'+6 armor for 8s.',
-					'+10 armor for 10s.',
-					'+15 armor for 12s.',
-					'+22 armor for 14s.',
-					'+30 armor for 16s.',
-					'+40 armor for 18s.',
-					'+52 armor for 20s.',
-					'+70 armor for 25s — LEGENDARY: impenetrable glacial shell!'] },
+					cooldowns: [0, 30, 28, 25, 22, 20, 17, 14, 11],
+					rankDescs: ['',
+						'+6 armor for 8s.',
+						'+10 armor for 10s.',
+						'+15 armor for 12s.',
+						'+22 armor for 14s.',
+						'+30 armor for 16s.',
+						'+40 armor for 18s.',
+						'+52 armor for 20s.',
+						'+70 armor for 25s — LEGENDARY: impenetrable glacial shell!'] },
 				{ id: 'ice_brittle', name: 'Brittle', type: 'passive', icon: '🧊', maxRank: 5,
-				  rankDescs: ['',
-					'Frozen enemies take 15% increased physical damage.',
-					'Frozen enemies take 25% increased physical damage.',
-					'Frozen enemies take 35% increased physical damage.',
-					'Frozen enemies take 42% increased physical damage.',
-					'Frozen enemies take 50% increased physical damage — shattered by the cold!'] },
+					rankDescs: ['',
+						'Frozen enemies take 15% increased physical damage.',
+						'Frozen enemies take 25% increased physical damage.',
+						'Frozen enemies take 35% increased physical damage.',
+						'Frozen enemies take 42% increased physical damage.',
+						'Frozen enemies take 50% increased physical damage — shattered by the cold!'] },
 				{ id: 'ice_shatter', name: 'Shatter', type: 'active', icon: '💎', maxRank: 5,
-				  cooldowns: [0, 25, 22, 19, 16, 14],
-				  rankDescs: ['',
-					'Shatter all frozen enemies for 30 damage each, ending the freeze.',
-					'Shatter deals 60 damage.',
-					'Shatter deals 95 damage.',
-					'Shatter deals 130 damage.',
-					'Shatter deals 170 damage — LEGENDARY: enemies burst like glass!'] },
+					cooldowns: [0, 25, 22, 19, 16, 14],
+					rankDescs: ['',
+						'Shatter all frozen enemies for 30 damage each, ending the freeze.',
+						'Shatter deals 60 damage.',
+						'Shatter deals 95 damage.',
+						'Shatter deals 130 damage.',
+						'Shatter deals 170 damage — LEGENDARY: enemies burst like glass!'] },
 			]
 		},
 		{
 			id: 'spirit', name: 'Spirit', icon: '💚', color: '#86efac', borderColor: 'border-green-400/40', bgColor: 'bg-green-400/10',
 			talents: [
 				{ id: 'spirit_active', name: 'Mend', type: 'active', icon: '💚', maxRank: 8,
-				  cooldowns: [0, 18, 16, 15, 13, 12, 10, 9, 8],
-				  rankDescs: ['',
-					'Instantly heal 25 HP.',
-					'Instantly heal 45 HP.',
-					'Instantly heal 70 HP.',
-					'Instantly heal 100 HP.',
-					'Instantly heal 140 HP — a burst of radiant light.',
-					'Instantly heal 190 HP — spirit floods your body.',
-					'Instantly heal 250 HP — divine restoration.',
-					'Instantly heal 325 HP — LEGENDARY: mortality itself retreats!'] },
+					cooldowns: [0, 18, 16, 15, 13, 12, 10, 9, 8],
+					rankDescs: ['',
+						'Instantly heal 25 HP.',
+						'Instantly heal 45 HP.',
+						'Instantly heal 70 HP.',
+						'Instantly heal 100 HP.',
+						'Instantly heal 140 HP — a burst of radiant light.',
+						'Instantly heal 190 HP — spirit floods your body.',
+						'Instantly heal 250 HP — divine restoration.',
+						'Instantly heal 325 HP — LEGENDARY: mortality itself retreats!'] },
 				{ id: 'spirit_passive', name: 'Vital Flow', type: 'passive', icon: '🌿', maxRank: 8,
-				  rankDescs: ['',
-					'Out-of-combat regen: +1 HP/tick every 0.8s.',
-					'Regen: +2 HP/tick every 0.7s.',
-					'Regen: +3 HP/tick every 0.6s.',
-					'Regen: +4 HP/tick every 0.5s.',
-					'Regen: +5 HP/tick every 0.45s.',
-					'Regen: +7 HP/tick every 0.4s.',
-					'Regen: +9 HP/tick every 0.35s.',
-					'Regen: +12 HP/tick every 0.25s — LEGENDARY: wounds close themselves!'] },
+					rankDescs: ['',
+						'Out-of-combat regen: +1 HP/tick every 0.8s.',
+						'Regen: +2 HP/tick every 0.7s.',
+						'Regen: +3 HP/tick every 0.6s.',
+						'Regen: +4 HP/tick every 0.5s.',
+						'Regen: +5 HP/tick every 0.45s.',
+						'Regen: +7 HP/tick every 0.4s.',
+						'Regen: +9 HP/tick every 0.35s.',
+						'Regen: +12 HP/tick every 0.25s — LEGENDARY: wounds close themselves!'] },
 				{ id: 'spirit_hot', name: 'Renewal', type: 'active', icon: '✨', maxRank: 8,
-				  cooldowns: [0, 28, 26, 23, 20, 18, 15, 12, 10],
-				  rankDescs: ['',
-					'Healing aura — 20 HP over 10s.',
-					'Healing aura — 40 HP over 12s.',
-					'Healing aura — 65 HP over 14s.',
-					'Healing aura — 100 HP over 16s.',
-					'Healing aura — 145 HP over 18s.',
-					'Healing aura — 200 HP over 20s.',
-					'Healing aura — 270 HP over 22s.',
-					'Healing aura — 360 HP over 25s — LEGENDARY: the isle itself heals you!'] },
+					cooldowns: [0, 28, 26, 23, 20, 18, 15, 12, 10],
+					rankDescs: ['',
+						'Healing aura — 20 HP over 10s.',
+						'Healing aura — 40 HP over 12s.',
+						'Healing aura — 65 HP over 14s.',
+						'Healing aura — 100 HP over 16s.',
+						'Healing aura — 145 HP over 18s.',
+						'Healing aura — 200 HP over 20s.',
+						'Healing aura — 270 HP over 22s.',
+						'Healing aura — 360 HP over 25s — LEGENDARY: the isle itself heals you!'] },
 				{ id: 'spirit_siphon', name: 'Siphon', type: 'passive', icon: '🩸', maxRank: 5,
-				  rankDescs: ['',
-					'20% chance on attack to leech 3 HP.',
-					'30% chance to leech 7 HP.',
-					'40% chance to leech 12 HP.',
-					'50% chance to leech 16 HP.',
-					'65% chance to leech 22 HP — vital essence flows into you!'] },
+					rankDescs: ['',
+						'20% chance on attack to leech 3 HP.',
+						'30% chance to leech 7 HP.',
+						'40% chance to leech 12 HP.',
+						'50% chance to leech 16 HP.',
+						'65% chance to leech 22 HP — vital essence flows into you!'] },
 				{ id: 'spirit_fortitude', name: 'Fortitude', type: 'passive', icon: '🛡️', maxRank: 5,
-				  rankDescs: ['',
-					'+10 max HP. Incoming damage reduced by 2%.',
-					'+18 max HP. Damage reduced by 4%.',
-					'+25 max HP. Damage reduced by 5%.',
-					'+32 max HP. Damage reduced by 6%.',
-					'+40 max HP. Damage reduced by 8% — unbreakable resolve!'] },
+					rankDescs: ['',
+						'+10 max HP. Incoming damage reduced by 2%.',
+						'+18 max HP. Damage reduced by 4%.',
+						'+25 max HP. Damage reduced by 5%.',
+						'+32 max HP. Damage reduced by 6%.',
+						'+40 max HP. Damage reduced by 8% — unbreakable resolve!'] },
 			]
 		},
 	];
@@ -1925,7 +1925,7 @@
 				'<div class="text-xl">' + (def ? def.icon : '▫️') + '</div>' +
 				'<div class="text-[9px] font-bold text-zinc-400">[' + (i + 1) + ']' + (rank > 0 ? ' R' + rank : '') + '</div>' +
 				(frostActive ? '<div class="absolute inset-0 flex items-center justify-center rounded-xl bg-sky-400/30 text-[10px] font-bold text-sky-200">' + Math.ceil(player.frostWardTimer) + 's</div>' :
-				 cd > 0 ? '<div class="absolute inset-0 flex items-center justify-center rounded-xl bg-black/60 text-[11px] font-bold text-white">' + Math.ceil(cd) + 's</div>' : '');
+					cd > 0 ? '<div class="absolute inset-0 flex items-center justify-center rounded-xl bg-black/60 text-[11px] font-bold text-white">' + Math.ceil(cd) + 's</div>' : '');
 			btn.addEventListener('click', () => activateSkill(i));
 			container.appendChild(btn);
 		}
@@ -3211,1120 +3211,1120 @@
 		return new THREE.Vector3(isle.x, terrainHeight(isle.x, isle.z), isle.z);
 	};
 	function spawnCreature(name) {
-	const def = CREATURE_DEFS[name];
-	// pick a random island that matches this creature's tier list
-	const validIsles = ISLES.filter(isle => def.tiers.includes(isle.tier));
-	const homeIsle = validIsles[Math.floor(Math.random() * validIsles.length)] || ISLES[0];
-	const p = findSpotIsleForced(homeIsle, def.spawnInset !== undefined ? def.spawnInset : (def.nearWater ? 2 : 6));
-	const g = def.build();
-	g.position.set(p.x, terrainHeight(p.x, p.z), p.z);
-	const bar = makeHealthBar(g, def.barW, def.barY + 0.8, true);
-	const label = makeLabel(g, name, def.barY + 1.35, '#fca5a5', 'Lv ' + def.level);
-	const c = {
-		name, def, group: g, bar, label,
-		hp: def.hp, maxhp: def.hp,
-		home: g.position.clone(),
-		homeIsle,
-		state: 'wander', // wander | combat | dead
-		wTarget: null, wTimer: rand(0.5, 3),
-		attackTimer: rand(0, 1), respawn: 0, phase: rand(0, Math.PI * 2),
-		moving: false,
-	};
-	g.userData.interact = { kind: 'creature', creature: c };
-	scene.add(g);
-	clickables.push(g);
-	creatures.push(c);
-}
-for (const name of Object.keys(CREATURE_DEFS))
-	for (let i = 0; i < CREATURE_DEFS[name].count; i++) spawnCreature(name);
+		const def = CREATURE_DEFS[name];
+		// pick a random island that matches this creature's tier list
+		const validIsles = ISLES.filter(isle => def.tiers.includes(isle.tier));
+		const homeIsle = validIsles[Math.floor(Math.random() * validIsles.length)] || ISLES[0];
+		const p = findSpotIsleForced(homeIsle, def.spawnInset !== undefined ? def.spawnInset : (def.nearWater ? 2 : 6));
+		const g = def.build();
+		g.position.set(p.x, terrainHeight(p.x, p.z), p.z);
+		const bar = makeHealthBar(g, def.barW, def.barY + 0.8, true);
+		const label = makeLabel(g, name, def.barY + 1.35, '#fca5a5', 'Lv ' + def.level);
+		const c = {
+			name, def, group: g, bar, label,
+			hp: def.hp, maxhp: def.hp,
+			home: g.position.clone(),
+			homeIsle,
+			state: 'wander', // wander | combat | dead
+			wTarget: null, wTimer: rand(0.5, 3),
+			attackTimer: rand(0, 1), respawn: 0, phase: rand(0, Math.PI * 2),
+			moving: false,
+		};
+		g.userData.interact = { kind: 'creature', creature: c };
+		scene.add(g);
+		clickables.push(g);
+		creatures.push(c);
+	}
+	for (const name of Object.keys(CREATURE_DEFS))
+		for (let i = 0; i < CREATURE_DEFS[name].count; i++) spawnCreature(name);
 
-function creatureTakeDamage(c, dmg) {
-	// Conductor: shocked enemies take increased damage
-	const condRank = talentRank('lightning_conductor');
-	if (condRank > 0 && player.lightningStuns.some(s => s.creature === c)) {
-		const condBonus = [0, 0.10, 0.17, 0.24, 0.30, 0.35][condRank];
-		dmg = Math.ceil(dmg * (1 + condBonus));
-	}
-	// Brittle: frozen enemies take more physical damage
-	const brittleRank = talentRank('ice_brittle');
-	if (brittleRank > 0 && player.iceFreeze.some(f => f.creature === c)) {
-		const brittleBonus = [0, 0.15, 0.25, 0.35, 0.42, 0.50][brittleRank];
-		dmg = Math.ceil(dmg * (1 + brittleBonus));
-	}
-	c.hp -= dmg;
-	setBar(c.bar, c.hp / c.maxhp);
-	floatText('-' + dmg, c.group.position.clone().add(new THREE.Vector3(0, c.def.barY + 0.9, 0)), '#f87171');
-	if (c.hp <= 0) killCreature(c);
-	else if (c.state !== 'combat') { c.state = 'combat'; }
-}
-function killCreature(c) {
-	c.state = 'dead';
-	c.respawn = 5;
-	log('You killed the ' + c.name + '!', 'dmgOut');
-	for (const d of c.def.drops) {
-		if (Math.random() < d.p) {
-			if (addItem(d.item, 1)) {
-				log('You got 1 ' + d.item + '.', 'loot');
-				floatText('+1 ' + ITEMS[d.item].icon, headPos(), '#fbbf24', 0.85);
-			} else log('Your inventory is full — the ' + d.item + ' is lost.', 'warn');
+	function creatureTakeDamage(c, dmg) {
+		// Conductor: shocked enemies take increased damage
+		const condRank = talentRank('lightning_conductor');
+		if (condRank > 0 && player.lightningStuns.some(s => s.creature === c)) {
+			const condBonus = [0, 0.10, 0.17, 0.24, 0.30, 0.35][condRank];
+			dmg = Math.ceil(dmg * (1 + condBonus));
 		}
+		// Brittle: frozen enemies take more physical damage
+		const brittleRank = talentRank('ice_brittle');
+		if (brittleRank > 0 && player.iceFreeze.some(f => f.creature === c)) {
+			const brittleBonus = [0, 0.15, 0.25, 0.35, 0.42, 0.50][brittleRank];
+			dmg = Math.ceil(dmg * (1 + brittleBonus));
+		}
+		c.hp -= dmg;
+		setBar(c.bar, c.hp / c.maxhp);
+		floatText('-' + dmg, c.group.position.clone().add(new THREE.Vector3(0, c.def.barY + 0.9, 0)), '#f87171');
+		if (c.hp <= 0) killCreature(c);
+		else if (c.state !== 'combat') { c.state = 'combat'; }
 	}
-	// ---- experience: scaled down hard when you badly outmatch the foe ----
-	const f = challengeFactor(c.def.level);
-	const atkGain = Math.max(1, Math.round(c.def.xp * 0.6 * f));
-	const defGain = Math.max(1, Math.round(c.def.xp * 0.4 * f));
-	const hp0 = headPos();
-	floatText('+' + atkGain + ' ATK', hp0.clone().add(new THREE.Vector3(-0.6, 0.2, 0)), '#ff8f8f', 0.85);
-	floatText('+' + defGain + ' DEF', hp0.clone().add(new THREE.Vector3(0.6, 0.5, 0)), '#8fbcff', 0.85);
-	log('You gained ' + atkGain + ' Attack and ' + defGain + ' Defense experience.', 'sys');
-	grantXp('atk', atkGain);
-	grantXp('def', defGain);
-	if (c.name === 'Dragon') { player.dragonKilled = true; saveGame(); }
-	if (player.action && player.action.type === 'attack' && player.action.creature === c) player.action = null;
-}
+	function killCreature(c) {
+		c.state = 'dead';
+		c.respawn = 5;
+		log('You killed the ' + c.name + '!', 'dmgOut');
+		for (const d of c.def.drops) {
+			if (Math.random() < d.p) {
+				if (addItem(d.item, 1)) {
+					log('You got 1 ' + d.item + '.', 'loot');
+					floatText('+1 ' + ITEMS[d.item].icon, headPos(), '#fbbf24', 0.85);
+				} else log('Your inventory is full — the ' + d.item + ' is lost.', 'warn');
+			}
+		}
+		// ---- experience: scaled down hard when you badly outmatch the foe ----
+		const f = challengeFactor(c.def.level);
+		const atkGain = Math.max(1, Math.round(c.def.xp * 0.6 * f));
+		const defGain = Math.max(1, Math.round(c.def.xp * 0.4 * f));
+		const hp0 = headPos();
+		floatText('+' + atkGain + ' ATK', hp0.clone().add(new THREE.Vector3(-0.6, 0.2, 0)), '#ff8f8f', 0.85);
+		floatText('+' + defGain + ' DEF', hp0.clone().add(new THREE.Vector3(0.6, 0.5, 0)), '#8fbcff', 0.85);
+		log('You gained ' + atkGain + ' Attack and ' + defGain + ' Defense experience.', 'sys');
+		grantXp('atk', atkGain);
+		grantXp('def', defGain);
+		if (c.name === 'Dragon') { player.dragonKilled = true; saveGame(); }
+		if (player.action && player.action.type === 'attack' && player.action.creature === c) player.action = null;
+	}
 
 // ------------------------------------------------------------------ combat helpers
-function playerHit(c) {
-	let dmg = Math.max(1, playerAtk() + randInt(0, 2) - 1);
-	if (player.nextAttackFireBonus) {
-		dmg += player.nextAttackFireBonus;
-		floatText('🔥 +' + player.nextAttackFireBonus, headPos().add(new THREE.Vector3(-0.5, 0.4, 0)), '#fb923c', 0.9);
-		player.nextAttackFireBonus = 0;
+	function playerHit(c) {
+		let dmg = Math.max(1, playerAtk() + randInt(0, 2) - 1);
+		if (player.nextAttackFireBonus) {
+			dmg += player.nextAttackFireBonus;
+			floatText('🔥 +' + player.nextAttackFireBonus, headPos().add(new THREE.Vector3(-0.5, 0.4, 0)), '#fb923c', 0.9);
+			player.nextAttackFireBonus = 0;
+		}
+		if (player.nextAttackLightningBonus) {
+			dmg += player.nextAttackLightningBonus;
+			floatText('⚡ +' + player.nextAttackLightningBonus, headPos().add(new THREE.Vector3(0, 0.4, 0)), '#facc15', 0.9);
+			player.nextAttackLightningBonus = 0;
+		}
+		if (player.nextAttackIceBonus) {
+			dmg += player.nextAttackIceBonus;
+			floatText('❄️ +' + player.nextAttackIceBonus, headPos().add(new THREE.Vector3(0.5, 0.4, 0)), '#7dd3fc', 0.9);
+			player.nextAttackIceBonus = 0;
+		}
+		creatureTakeDamage(c, dmg);
+		log('You hit the ' + c.name + ' for ' + dmg + '.', 'dmgOut');
+		if (c.state !== 'dead') grantXp('atk', Math.max(1, dmg * 0.4 * challengeFactor(c.def.level)));
+		if (c.state !== 'dead') applyPassiveOnHit(c);
+		player.parts.armR.rotation.x = -1.9;
 	}
-	if (player.nextAttackLightningBonus) {
-		dmg += player.nextAttackLightningBonus;
-		floatText('⚡ +' + player.nextAttackLightningBonus, headPos().add(new THREE.Vector3(0, 0.4, 0)), '#facc15', 0.9);
-		player.nextAttackLightningBonus = 0;
+	function creatureHit(c) {
+		const raw = c.def.dmg + randInt(0, 2);
+		let dmg = Math.max(1, raw - playerDef());
+		// Fortitude: reduce incoming damage
+		const fortRank = talentRank('spirit_fortitude');
+		if (fortRank > 0) {
+			const reduction = [0, 0.02, 0.04, 0.05, 0.06, 0.08][fortRank];
+			dmg = Math.max(1, Math.floor(dmg * (1 - reduction)));
+		}
+		player.hp -= dmg;
+		player.lastHurt = elapsed;
+		setBar(player.bar, player.hp / player.maxhp);
+		refreshHpUI();
+		floatText('-' + dmg, headPos(), '#fb923c');
+		log('The ' + c.name + ' hits you for ' + dmg + '.', 'dmgIn');
+		if (player.hp <= 0) { playerDeath(); return; }
+		// taking hits trains defense — must check death BEFORE granting XP, because
+		// a Defense level-up in onLevelUp restores HP to full, masking a lethal blow
+		grantXp('def', Math.max(1, dmg * 0.5 * challengeFactor(c.def.level)));
+		if (player.harvesting) { stopHarvest('You were attacked — harvesting interrupted!'); }
+		if (player.action && player.action.type === 'fish') { stopHarvest('You were attacked — fishing interrupted!'); player.action = null; }
+		// auto-defend, like the old lands
+		if (!player.action && !player.dead) player.action = { type: 'attack', creature: c };
 	}
-	if (player.nextAttackIceBonus) {
-		dmg += player.nextAttackIceBonus;
-		floatText('❄️ +' + player.nextAttackIceBonus, headPos().add(new THREE.Vector3(0.5, 0.4, 0)), '#7dd3fc', 0.9);
-		player.nextAttackIceBonus = 0;
+	function playerDeath() {
+		if (player.dead) return;
+		player.dead = true;
+		player.action = null; player.moveTarget = null; player.harvesting = null;
+		hideProgress();
+		log('You died! You awaken back at the beach…', 'warn');
+		for (const c of creatures) if (c.state === 'combat') { c.state = 'wander'; c.hp = c.maxhp; setBar(c.bar, 1); }
+		setTimeout(() => {
+			player.group.position.set(0, terrainHeight(0, 4), 4);
+			player.hp = player.maxhp;
+			setBar(player.bar, 1); refreshHpUI();
+			player.dead = false;
+			log('You feel restored.', 'sys');
+		}, 1200);
 	}
-	creatureTakeDamage(c, dmg);
-	log('You hit the ' + c.name + ' for ' + dmg + '.', 'dmgOut');
-	if (c.state !== 'dead') grantXp('atk', Math.max(1, dmg * 0.4 * challengeFactor(c.def.level)));
-	if (c.state !== 'dead') applyPassiveOnHit(c);
-	player.parts.armR.rotation.x = -1.9;
-}
-function creatureHit(c) {
-	const raw = c.def.dmg + randInt(0, 2);
-	let dmg = Math.max(1, raw - playerDef());
-	// Fortitude: reduce incoming damage
-	const fortRank = talentRank('spirit_fortitude');
-	if (fortRank > 0) {
-		const reduction = [0, 0.02, 0.04, 0.05, 0.06, 0.08][fortRank];
-		dmg = Math.max(1, Math.floor(dmg * (1 - reduction)));
+	function refreshHpUI() {
+		ui.hpBar.style.width = clamp((player.hp / player.maxhp) * 100, 0, 100) + '%';
+		ui.hpText.textContent = Math.max(0, Math.ceil(player.hp)) + ' / ' + player.maxhp;
 	}
-	player.hp -= dmg;
-	player.lastHurt = elapsed;
-	setBar(player.bar, player.hp / player.maxhp);
-	refreshHpUI();
-	floatText('-' + dmg, headPos(), '#fb923c');
-	log('The ' + c.name + ' hits you for ' + dmg + '.', 'dmgIn');
-	if (player.hp <= 0) { playerDeath(); return; }
-	// taking hits trains defense — must check death BEFORE granting XP, because
-	// a Defense level-up in onLevelUp restores HP to full, masking a lethal blow
-	grantXp('def', Math.max(1, dmg * 0.5 * challengeFactor(c.def.level)));
-	if (player.harvesting) { stopHarvest('You were attacked — harvesting interrupted!'); }
-	if (player.action && player.action.type === 'fish') { stopHarvest('You were attacked — fishing interrupted!'); player.action = null; }
-	// auto-defend, like the old lands
-	if (!player.action && !player.dead) player.action = { type: 'attack', creature: c };
-}
-function playerDeath() {
-	if (player.dead) return;
-	player.dead = true;
-	player.action = null; player.moveTarget = null; player.harvesting = null;
-	hideProgress();
-	log('You died! You awaken back at the beach…', 'warn');
-	for (const c of creatures) if (c.state === 'combat') { c.state = 'wander'; c.hp = c.maxhp; setBar(c.bar, 1); }
-	setTimeout(() => {
-		player.group.position.set(0, terrainHeight(0, 4), 4);
-		player.hp = player.maxhp;
-		setBar(player.bar, 1); refreshHpUI();
-		player.dead = false;
-		log('You feel restored.', 'sys');
-	}, 1200);
-}
-function refreshHpUI() {
-	ui.hpBar.style.width = clamp((player.hp / player.maxhp) * 100, 0, 100) + '%';
-	ui.hpText.textContent = Math.max(0, Math.ceil(player.hp)) + ' / ' + player.maxhp;
-}
 
 // ------------------------------------------------------------------ harvesting
-function startHarvest(node) {
-	player.harvesting = { node, t: 0 };
-	player.moveTarget = null;
-	ui.progressWrap.classList.remove('hidden');
-	ui.progressWrap.classList.add('flex');
-	ui.progressLabel.textContent =
-		node.verb[0].toUpperCase() + node.verb.slice(1) + ' ' + node.item + '…';
-	ui.progressIcon.textContent = ITEMS[node.item].icon;
-	log('You started ' + node.verb + ' ' + node.item + '.', 'harvest');
-	// face the node
-	const d = node.group.position.clone().sub(player.group.position);
-	player.targetAngle = Math.atan2(d.x, d.z);
-}
-function hideProgress() {
-	ui.progressWrap.classList.add('hidden');
-	ui.progressWrap.classList.remove('flex');
-}
-function stopHarvest(msg) {
-	if (!player.harvesting) return;
-	player.harvesting = null;
-	hideProgress();
-	if (msg) log(msg, 'warn');
-}
-function updateHarvest(dt) {
-	const h = player.harvesting;
-	if (!h) return;
-	h.t += dt;
-	const pct = clamp(h.t / h.node.duration, 0, 1) * 100;
-	ui.progressRing.style.background =
-		'conic-gradient(#7fe0ff ' + pct + '%, rgba(255,255,255,0.08) 0)';
-	if (h.t >= h.node.duration) {
-		if (addItem(h.node.item, 1)) {
-			log('You got 1 ' + h.node.item + '.', 'harvest');
-			floatText('+1 ' + ITEMS[h.node.item].icon, headPos(), '#34d399');
-			// fishing sometimes also nets iridescent scales
-			if (h.node.water && Math.random() < 0.4) {
-				if (addItem('Fish Scales', 1)) { log('You also got 1 Fish Scales.', 'loot'); }
+	function startHarvest(node) {
+		player.harvesting = { node, t: 0 };
+		player.moveTarget = null;
+		ui.progressWrap.classList.remove('hidden');
+		ui.progressWrap.classList.add('flex');
+		ui.progressLabel.textContent =
+			node.verb[0].toUpperCase() + node.verb.slice(1) + ' ' + node.item + '…';
+		ui.progressIcon.textContent = ITEMS[node.item].icon;
+		log('You started ' + node.verb + ' ' + node.item + '.', 'harvest');
+		// face the node
+		const d = node.group.position.clone().sub(player.group.position);
+		player.targetAngle = Math.atan2(d.x, d.z);
+	}
+	function hideProgress() {
+		ui.progressWrap.classList.add('hidden');
+		ui.progressWrap.classList.remove('flex');
+	}
+	function stopHarvest(msg) {
+		if (!player.harvesting) return;
+		player.harvesting = null;
+		hideProgress();
+		if (msg) log(msg, 'warn');
+	}
+	function updateHarvest(dt) {
+		const h = player.harvesting;
+		if (!h) return;
+		h.t += dt;
+		const pct = clamp(h.t / h.node.duration, 0, 1) * 100;
+		ui.progressRing.style.background =
+			'conic-gradient(#7fe0ff ' + pct + '%, rgba(255,255,255,0.08) 0)';
+		if (h.t >= h.node.duration) {
+			if (addItem(h.node.item, 1)) {
+				log('You got 1 ' + h.node.item + '.', 'harvest');
+				floatText('+1 ' + ITEMS[h.node.item].icon, headPos(), '#34d399');
+				// fishing sometimes also nets iridescent scales
+				if (h.node.water && Math.random() < 0.4) {
+					if (addItem('Fish Scales', 1)) { log('You also got 1 Fish Scales.', 'loot'); }
+				}
+				h.t = 0; // keep going, EL style
+			} else {
+				stopHarvest('Your inventory is full.');
 			}
-			h.t = 0; // keep going, EL style
-		} else {
-			stopHarvest('Your inventory is full.');
 		}
 	}
-}
 
 // ------------------------------------------------------------------ input
-const raycaster = new THREE.Raycaster();
-const pointer = new THREE.Vector2();
-let started = false;
+	const raycaster = new THREE.Raycaster();
+	const pointer = new THREE.Vector2();
+	let started = false;
 
-renderer.domElement.addEventListener('pointerdown', (e) => {
-	if (!started || player.dead || e.button !== 0) return;
-	pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
-	pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
-	raycaster.setFromCamera(pointer, camera);
+	renderer.domElement.addEventListener('pointerdown', (e) => {
+		if (!started || player.dead || e.button !== 0) return;
+		pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+		pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+		raycaster.setFromCamera(pointer, camera);
 
-	// interactive objects first
-	const hits = raycaster.intersectObjects(clickables, true);
-	if (hits.length) {
-		let o = hits[0].object;
-		while (o && !o.userData.interact) o = o.parent;
-		if (o) {
-			const it = o.userData.interact;
-			if (it.kind === 'creature' && it.creature.state !== 'dead') {
-				// Fireball targeting mode
-				if (player.fireballMode) {
-					player.fireballMode = false;
-					const rank = talentRank('fire_fireball');
-					const dmg = Math.ceil(playerAtk() * ([0, 1.8, 2.8, 4.0, 5.5, 7.2][rank]));
-					const geo = new THREE.SphereGeometry(0.18, 8, 8);
-					const mat = new THREE.MeshBasicMaterial({ color: 0xff4400 });
-					const mesh = new THREE.Mesh(geo, mat);
-					const light = new THREE.PointLight(0xff4400, 1, 4);
-					mesh.add(light);
-					const startPos = headPos();
-					const endPos = it.creature.group.position.clone().add(new THREE.Vector3(0, 1, 0));
-					mesh.position.copy(startPos);
-					scene.add(mesh);
-					player.fireballs.push({ mesh, target: it.creature, startPos, endPos, t: 0, damage: dmg });
-					log('🔮 Fireball launched at ' + it.creature.name + '!', 'craft');
+		// interactive objects first
+		const hits = raycaster.intersectObjects(clickables, true);
+		if (hits.length) {
+			let o = hits[0].object;
+			while (o && !o.userData.interact) o = o.parent;
+			if (o) {
+				const it = o.userData.interact;
+				if (it.kind === 'creature' && it.creature.state !== 'dead') {
+					// Fireball targeting mode
+					if (player.fireballMode) {
+						player.fireballMode = false;
+						const rank = talentRank('fire_fireball');
+						const dmg = Math.ceil(playerAtk() * ([0, 1.8, 2.8, 4.0, 5.5, 7.2][rank]));
+						const geo = new THREE.SphereGeometry(0.18, 8, 8);
+						const mat = new THREE.MeshBasicMaterial({ color: 0xff4400 });
+						const mesh = new THREE.Mesh(geo, mat);
+						const light = new THREE.PointLight(0xff4400, 1, 4);
+						mesh.add(light);
+						const startPos = headPos();
+						const endPos = it.creature.group.position.clone().add(new THREE.Vector3(0, 1, 0));
+						mesh.position.copy(startPos);
+						scene.add(mesh);
+						player.fireballs.push({ mesh, target: it.creature, startPos, endPos, t: 0, damage: dmg });
+						log('🔮 Fireball launched at ' + it.creature.name + '!', 'craft');
+						return;
+					}
+					stopHarvest();
+					player.action = { type: 'attack', creature: it.creature };
+					player.moveTarget = null;
+					log('You attack the ' + it.creature.name + '!', 'sys');
 					return;
 				}
-				stopHarvest();
-				player.action = { type: 'attack', creature: it.creature };
-				player.moveTarget = null;
-				log('You attack the ' + it.creature.name + '!', 'sys');
-				return;
-			}
-			if (it.kind === 'harvest') {
-				stopHarvest();
-				player.action = { type: 'harvest', node: it.node };
-				player.moveTarget = null;
-				return;
-			}
-			if (it.kind === 'npc') {
-				stopHarvest(); player.action = null;
-				if (it.npc === 'herald') {
-					if (player.dragonKilled) {
-						log('Herald: "Hail, ' + player.name + '! You passed through Dragon\'s Lair and slew the beast — Eldenmere salutes you, champion!"', 'craft');
-					} else {
-						log('Herald: "Welcome to Eldenmere, traveller. You\'ve come far — through Dragon\'s Lair no less. The great beast still prowls those southern crags…"', 'sys');
-					}
+				if (it.kind === 'harvest') {
+					stopHarvest();
+					player.action = { type: 'harvest', node: it.node };
+					player.moveTarget = null;
+					return;
 				}
-				return;
+				if (it.kind === 'npc') {
+					stopHarvest(); player.action = null;
+					if (it.npc === 'herald') {
+						if (player.dragonKilled) {
+							log('Herald: "Hail, ' + player.name + '! You passed through Dragon\'s Lair and slew the beast — Eldenmere salutes you, champion!"', 'craft');
+						} else {
+							log('Herald: "Welcome to Eldenmere, traveller. You\'ve come far — through Dragon\'s Lair no less. The great beast still prowls those southern crags…"', 'sys');
+						}
+					}
+					return;
+				}
 			}
 		}
-	}
-	// then the ground
-	const gHit = raycaster.intersectObject(ground);
-	if (gHit.length) {
-		const p = gHit[0].point;
-		if (tooDeep(p.x, p.z)) { log('The water is too deep and cold out there.', 'warn'); return; }
-		stopHarvest();
-		player.action = null;
-		player.moveTarget = new THREE.Vector3(p.x, 0, p.z);
-		const ry = Math.max(terrainHeight(p.x, p.z), WATER_Y);
-		showRing(new THREE.Vector3(p.x, ry, p.z));
-		if (inWater(p.x, p.z)) log('You wade into the water…', 'sys');
-	}
-});
+		// then the ground
+		const gHit = raycaster.intersectObject(ground);
+		if (gHit.length) {
+			const p = gHit[0].point;
+			if (tooDeep(p.x, p.z)) { log('The water is too deep and cold out there.', 'warn'); return; }
+			stopHarvest();
+			player.action = null;
+			player.moveTarget = new THREE.Vector3(p.x, 0, p.z);
+			const ry = Math.max(terrainHeight(p.x, p.z), WATER_Y);
+			showRing(new THREE.Vector3(p.x, ry, p.z));
+			if (inWater(p.x, p.z)) log('You wade into the water…', 'sys');
+		}
+	});
 
-renderer.domElement.addEventListener('wheel', (e) => {
-	camZoom = clamp(camZoom + (e.deltaY > 0 ? 0.08 : -0.08), 0.55, 1.7);
-	e.preventDefault();
-}, { passive: false });
+	renderer.domElement.addEventListener('wheel', (e) => {
+		camZoom = clamp(camZoom + (e.deltaY > 0 ? 0.08 : -0.08), 0.55, 1.7);
+		e.preventDefault();
+	}, { passive: false });
 
 // ------------------------------------------------------------------ map overlay (M key)
-let mapOpen = false;
-const mapCanvas = document.createElement('canvas');
-mapCanvas.style.cssText = 'position:fixed;inset:0;z-index:9999;display:none;cursor:pointer;';
-document.body.appendChild(mapCanvas);
-mapCanvas.addEventListener('click', closeMap);
+	let mapOpen = false;
+	const mapCanvas = document.createElement('canvas');
+	mapCanvas.style.cssText = 'position:fixed;inset:0;z-index:9999;display:none;cursor:pointer;';
+	document.body.appendChild(mapCanvas);
+	mapCanvas.addEventListener('click', closeMap);
 
-const BIOME_COLORS = {
-	temperate: '#4a9e5c',
-	volcanic:  '#c0533a',
-	frost:     '#7ab8d4',
-	arcane:    '#6a2a9e',
-};
+	const BIOME_COLORS = {
+		temperate: '#4a9e5c',
+		volcanic:  '#c0533a',
+		frost:     '#7ab8d4',
+		arcane:    '#6a2a9e',
+	};
 
-function drawMap() {
-	const W = window.innerWidth, H = window.innerHeight;
-	mapCanvas.width = W; mapCanvas.height = H;
-	const ctx = mapCanvas.getContext('2d');
+	function drawMap() {
+		const W = window.innerWidth, H = window.innerHeight;
+		mapCanvas.width = W; mapCanvas.height = H;
+		const ctx = mapCanvas.getContext('2d');
 
-	// dark semi-transparent background
-	ctx.fillStyle = 'rgba(10,18,30,0.88)';
-	ctx.fillRect(0, 0, W, H);
+		// dark semi-transparent background
+		ctx.fillStyle = 'rgba(10,18,30,0.88)';
+		ctx.fillRect(0, 0, W, H);
 
-	// title
-	ctx.fillStyle = '#e8d5a0';
-	ctx.font = 'bold 22px Georgia, serif';
-	ctx.textAlign = 'center';
-	ctx.fillText('ETERNAL ISLES — Archipelago Map', W / 2, 36);
-	ctx.font = '13px Georgia, serif';
-	ctx.fillStyle = '#a0b4c8';
-	ctx.fillText('Press M or Esc to close', W / 2, 58);
+		// title
+		ctx.fillStyle = '#e8d5a0';
+		ctx.font = 'bold 22px Georgia, serif';
+		ctx.textAlign = 'center';
+		ctx.fillText('ETERNAL ISLES — Archipelago Map', W / 2, 36);
+		ctx.font = '13px Georgia, serif';
+		ctx.fillStyle = '#a0b4c8';
+		ctx.fillText('Press M or Esc to close', W / 2, 58);
 
-	// scale: fit the cluster (OUTER_R = 210 world units) into the canvas with padding
-	const PAD = 90;
-	const scale = Math.min((W - PAD * 2) / (OUTER_R * 2), (H - PAD * 2) / (OUTER_R * 2));
-	const cx = W / 2, cy = H / 2 + 20; // shift down a bit to leave room for title
+		// scale: fit the cluster (OUTER_R = 210 world units) into the canvas with padding
+		const PAD = 90;
+		const scale = Math.min((W - PAD * 2) / (OUTER_R * 2), (H - PAD * 2) / (OUTER_R * 2));
+		const cx = W / 2, cy = H / 2 + 20; // shift down a bit to leave room for title
 
-	// outer sea boundary circle
-	ctx.beginPath();
-	ctx.arc(cx, cy, OUTER_R * scale, 0, Math.PI * 2);
-	ctx.strokeStyle = 'rgba(80,130,180,0.35)';
-	ctx.lineWidth = 2;
-	ctx.setLineDash([8, 6]);
-	ctx.stroke();
-	ctx.setLineDash([]);
-
-	// water fill inside boundary
-	ctx.beginPath();
-	ctx.arc(cx, cy, OUTER_R * scale, 0, Math.PI * 2);
-	ctx.fillStyle = 'rgba(30,70,120,0.55)';
-	ctx.fill();
-
-	// draw each island
-	for (const isle of ISLES) {
-		const ix = cx + isle.x * scale;
-		const iy = cy + isle.z * scale; // z maps to Y on the 2-D canvas
-		const ir = isle.r * scale;
-		const col = BIOME_COLORS[isle.biome] || '#888';
-
-		// island body
+		// outer sea boundary circle
 		ctx.beginPath();
-		ctx.arc(ix, iy, ir, 0, Math.PI * 2);
-		ctx.fillStyle = col;
-		ctx.fill();
-		ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-		ctx.lineWidth = 1.5;
+		ctx.arc(cx, cy, OUTER_R * scale, 0, Math.PI * 2);
+		ctx.strokeStyle = 'rgba(80,130,180,0.35)';
+		ctx.lineWidth = 2;
+		ctx.setLineDash([8, 6]);
 		ctx.stroke();
+		ctx.setLineDash([]);
 
-		// shore glow
-		const grad = ctx.createRadialGradient(ix, iy, ir * 0.6, ix, iy, ir);
-		grad.addColorStop(0, 'rgba(255,255,255,0)');
-		grad.addColorStop(1, 'rgba(255,255,255,0.12)');
+		// water fill inside boundary
 		ctx.beginPath();
-		ctx.arc(ix, iy, ir, 0, Math.PI * 2);
-		ctx.fillStyle = grad;
+		ctx.arc(cx, cy, OUTER_R * scale, 0, Math.PI * 2);
+		ctx.fillStyle = 'rgba(30,70,120,0.55)';
 		ctx.fill();
 
-		// tier badge
-		ctx.beginPath();
-		ctx.arc(ix, iy - ir * 0.55, 10, 0, Math.PI * 2);
-		ctx.fillStyle = 'rgba(0,0,0,0.55)';
-		ctx.fill();
-		ctx.fillStyle = '#ffe680';
-		ctx.font = 'bold 11px monospace';
-		ctx.textAlign = 'center';
-		ctx.textBaseline = 'middle';
-		ctx.fillText('T' + isle.tier, ix, iy - ir * 0.55);
+		// draw each island
+		for (const isle of ISLES) {
+			const ix = cx + isle.x * scale;
+			const iy = cy + isle.z * scale; // z maps to Y on the 2-D canvas
+			const ir = isle.r * scale;
+			const col = BIOME_COLORS[isle.biome] || '#888';
 
-		// island name label
-		ctx.fillStyle = '#ffffff';
-		ctx.font = 'bold 13px Georgia, serif';
-		ctx.textAlign = 'center';
-		ctx.textBaseline = 'top';
-		ctx.fillText(isle.name, ix, iy + ir + 5);
+			// island body
+			ctx.beginPath();
+			ctx.arc(ix, iy, ir, 0, Math.PI * 2);
+			ctx.fillStyle = col;
+			ctx.fill();
+			ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+			ctx.lineWidth = 1.5;
+			ctx.stroke();
 
-		// biome label in smaller text
-		ctx.fillStyle = '#c0d8e0';
-		ctx.font = '11px Georgia, serif';
-		ctx.fillText(isle.biome, ix, iy + ir + 21);
-	}
+			// shore glow
+			const grad = ctx.createRadialGradient(ix, iy, ir * 0.6, ix, iy, ir);
+			grad.addColorStop(0, 'rgba(255,255,255,0)');
+			grad.addColorStop(1, 'rgba(255,255,255,0.12)');
+			ctx.beginPath();
+			ctx.arc(ix, iy, ir, 0, Math.PI * 2);
+			ctx.fillStyle = grad;
+			ctx.fill();
 
-	// player dot
-	if (player && player.group) {
-		const px = player.group.position.x, pz = player.group.position.z;
-		const sx = cx + px * scale, sy = cy + pz * scale;
-		ctx.beginPath();
-		ctx.arc(sx, sy, 6, 0, Math.PI * 2);
-		ctx.fillStyle = '#ffffff';
-		ctx.fill();
-		ctx.beginPath();
-		ctx.arc(sx, sy, 4, 0, Math.PI * 2);
-		ctx.fillStyle = '#ffdd44';
-		ctx.fill();
-		ctx.fillStyle = '#ffffff';
-		ctx.font = 'bold 12px Georgia, serif';
-		ctx.textAlign = 'left';
-		ctx.textBaseline = 'middle';
-		ctx.fillText(' You', sx + 7, sy);
-	}
+			// tier badge
+			ctx.beginPath();
+			ctx.arc(ix, iy - ir * 0.55, 10, 0, Math.PI * 2);
+			ctx.fillStyle = 'rgba(0,0,0,0.55)';
+			ctx.fill();
+			ctx.fillStyle = '#ffe680';
+			ctx.font = 'bold 11px monospace';
+			ctx.textAlign = 'center';
+			ctx.textBaseline = 'middle';
+			ctx.fillText('T' + isle.tier, ix, iy - ir * 0.55);
 
-	// compass rose (bottom-right)
-	const crx = W - 56, cry = H - 56, crr = 28;
-	ctx.strokeStyle = '#a0b4c8'; ctx.lineWidth = 1;
-	const dirs = [['N', 0], ['E', Math.PI / 2], ['S', Math.PI], ['W', -Math.PI / 2]];
-	for (const [label, angle] of dirs) {
-		const ex = crx + Math.sin(angle) * crr, ey = cry - Math.cos(angle) * crr;
-		ctx.beginPath(); ctx.moveTo(crx, cry); ctx.lineTo(ex, ey); ctx.stroke();
-		ctx.fillStyle = label === 'N' ? '#ff6666' : '#c0d8e0';
-		ctx.font = 'bold 12px monospace';
-		ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-		ctx.fillText(label, crx + Math.sin(angle) * (crr + 12), cry - Math.cos(angle) * (crr + 12));
-	}
-	ctx.beginPath(); ctx.arc(crx, cry, 4, 0, Math.PI * 2);
-	ctx.fillStyle = '#c0d8e0'; ctx.fill();
+			// island name label
+			ctx.fillStyle = '#ffffff';
+			ctx.font = 'bold 13px Georgia, serif';
+			ctx.textAlign = 'center';
+			ctx.textBaseline = 'top';
+			ctx.fillText(isle.name, ix, iy + ir + 5);
 
-	// legend
-	ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-	let ly = H - 50;
-	ctx.fillStyle = '#a0b4c8'; ctx.font = '12px Georgia, serif';
-	ctx.fillText('Biomes:', 14, ly);
-	let lx = 14;
-	for (const [biome, col] of Object.entries(BIOME_COLORS)) {
-		ctx.beginPath(); ctx.rect(lx, ly + 16, 12, 12);
-		ctx.fillStyle = col; ctx.fill();
-		ctx.fillStyle = '#c0d8e0'; ctx.font = '11px Georgia, serif';
-		ctx.fillText(biome, lx + 16, ly + 16);
-		lx += 90;
-	}
-}
+			// biome label in smaller text
+			ctx.fillStyle = '#c0d8e0';
+			ctx.font = '11px Georgia, serif';
+			ctx.fillText(isle.biome, ix, iy + ir + 21);
+		}
 
-function openMap() {
-	mapOpen = true;
-	mapCanvas.style.display = 'block';
-	drawMap();
-}
-function closeMap() {
-	mapOpen = false;
-	mapCanvas.style.display = 'none';
-}
+		// player dot
+		if (player && player.group) {
+			const px = player.group.position.x, pz = player.group.position.z;
+			const sx = cx + px * scale, sy = cy + pz * scale;
+			ctx.beginPath();
+			ctx.arc(sx, sy, 6, 0, Math.PI * 2);
+			ctx.fillStyle = '#ffffff';
+			ctx.fill();
+			ctx.beginPath();
+			ctx.arc(sx, sy, 4, 0, Math.PI * 2);
+			ctx.fillStyle = '#ffdd44';
+			ctx.fill();
+			ctx.fillStyle = '#ffffff';
+			ctx.font = 'bold 12px Georgia, serif';
+			ctx.textAlign = 'left';
+			ctx.textBaseline = 'middle';
+			ctx.fillText(' You', sx + 7, sy);
+		}
 
-window.addEventListener('keydown', (e) => {
-	if (e.key === 'm' || e.key === 'M') {
-		if (mapOpen) closeMap(); else openMap();
-	} else if (e.key === 'n' || e.key === 'N') {
-		if (!started) return;
-		const tm = document.getElementById('talentModal');
-		if (tm && tm.classList.contains('hidden')) openTalentTree(); else closeTalentTree();
-	} else if (e.key === 'Escape') {
-		if (mapOpen) closeMap();
-		closeTalentTree();
-	} else if (['1','2','3','4','5'].includes(e.key) && started) {
-		activateSkill(parseInt(e.key) - 1);
-	}
-});
+		// compass rose (bottom-right)
+		const crx = W - 56, cry = H - 56, crr = 28;
+		ctx.strokeStyle = '#a0b4c8'; ctx.lineWidth = 1;
+		const dirs = [['N', 0], ['E', Math.PI / 2], ['S', Math.PI], ['W', -Math.PI / 2]];
+		for (const [label, angle] of dirs) {
+			const ex = crx + Math.sin(angle) * crr, ey = cry - Math.cos(angle) * crr;
+			ctx.beginPath(); ctx.moveTo(crx, cry); ctx.lineTo(ex, ey); ctx.stroke();
+			ctx.fillStyle = label === 'N' ? '#ff6666' : '#c0d8e0';
+			ctx.font = 'bold 12px monospace';
+			ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+			ctx.fillText(label, crx + Math.sin(angle) * (crr + 12), cry - Math.cos(angle) * (crr + 12));
+		}
+		ctx.beginPath(); ctx.arc(crx, cry, 4, 0, Math.PI * 2);
+		ctx.fillStyle = '#c0d8e0'; ctx.fill();
 
-// contextual cursors ---------------------------------------------------------
-function makeCursor(emoji, hot) {
-	const cv = document.createElement('canvas'); cv.width = cv.height = 40;
-	const cx = cv.getContext('2d');
-	cx.font = '30px system-ui, "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
-	cx.textAlign = 'center'; cx.textBaseline = 'middle';
-	cx.fillText(emoji, 20, 22);
-	return 'url(' + cv.toDataURL('image/png') + ') ' + hot[0] + ' ' + hot[1] + ', pointer';
-}
-const CURSORS = {
-	sword: makeCursor('⚔️', [20, 20]),
-	axe:   makeCursor('🪓', [10, 30]),
-	pick:  makeCursor('⛏️', [10, 30]),
-	gather:makeCursor('🌿', [20, 20]),
-	fish:  makeCursor('🎣', [8, 30]),
-	walk:  'default',
-};
-const hoverRay = new THREE.Raycaster();
-const hoverPtr = new THREE.Vector2();
-let hoverHave = false, hoverTick = 0;
-renderer.domElement.addEventListener('pointermove', (e) => {
-	hoverPtr.x = (e.clientX / window.innerWidth) * 2 - 1;
-	hoverPtr.y = -(e.clientY / window.innerHeight) * 2 + 1;
-	hoverHave = true;
-});
-function cursorForVerb(v) {
-	return v === 'chopping' ? CURSORS.axe : v === 'mining' ? CURSORS.pick :
-		v === 'fishing' ? CURSORS.fish : CURSORS.gather;
-}
-function updateHoverCursor(dt) {
-	hoverTick -= dt;
-	if (!started || !hoverHave || hoverTick > 0) return;
-	hoverTick = 0.07;
-	hoverRay.setFromCamera(hoverPtr, camera);
-	const hits = hoverRay.intersectObjects(clickables, true);
-	let cur = CURSORS.walk;
-	if (hits.length) {
-		let o = hits[0].object;
-		while (o && !o.userData.interact) o = o.parent;
-		if (o) {
-			const it = o.userData.interact;
-			if (it.kind === 'creature' && it.creature.state !== 'dead') cur = CURSORS.sword;
-			else if (it.kind === 'harvest') cur = cursorForVerb(it.node.verb);
+		// legend
+		ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+		let ly = H - 50;
+		ctx.fillStyle = '#a0b4c8'; ctx.font = '12px Georgia, serif';
+		ctx.fillText('Biomes:', 14, ly);
+		let lx = 14;
+		for (const [biome, col] of Object.entries(BIOME_COLORS)) {
+			ctx.beginPath(); ctx.rect(lx, ly + 16, 12, 12);
+			ctx.fillStyle = col; ctx.fill();
+			ctx.fillStyle = '#c0d8e0'; ctx.font = '11px Georgia, serif';
+			ctx.fillText(biome, lx + 16, ly + 16);
+			lx += 90;
 		}
 	}
-	renderer.domElement.style.cursor = cur;
-}
+
+	function openMap() {
+		mapOpen = true;
+		mapCanvas.style.display = 'block';
+		drawMap();
+	}
+	function closeMap() {
+		mapOpen = false;
+		mapCanvas.style.display = 'none';
+	}
+
+	window.addEventListener('keydown', (e) => {
+		if (e.key === 'm' || e.key === 'M') {
+			if (mapOpen) closeMap(); else openMap();
+		} else if (e.key === 'n' || e.key === 'N') {
+			if (!started) return;
+			const tm = document.getElementById('talentModal');
+			if (tm && tm.classList.contains('hidden')) openTalentTree(); else closeTalentTree();
+		} else if (e.key === 'Escape') {
+			if (mapOpen) closeMap();
+			closeTalentTree();
+		} else if (['1','2','3','4','5'].includes(e.key) && started) {
+			activateSkill(parseInt(e.key) - 1);
+		}
+	});
+
+// contextual cursors ---------------------------------------------------------
+	function makeCursor(emoji, hot) {
+		const cv = document.createElement('canvas'); cv.width = cv.height = 40;
+		const cx = cv.getContext('2d');
+		cx.font = '30px system-ui, "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
+		cx.textAlign = 'center'; cx.textBaseline = 'middle';
+		cx.fillText(emoji, 20, 22);
+		return 'url(' + cv.toDataURL('image/png') + ') ' + hot[0] + ' ' + hot[1] + ', pointer';
+	}
+	const CURSORS = {
+		sword: makeCursor('⚔️', [20, 20]),
+		axe:   makeCursor('🪓', [10, 30]),
+		pick:  makeCursor('⛏️', [10, 30]),
+		gather:makeCursor('🌿', [20, 20]),
+		fish:  makeCursor('🎣', [8, 30]),
+		walk:  'default',
+	};
+	const hoverRay = new THREE.Raycaster();
+	const hoverPtr = new THREE.Vector2();
+	let hoverHave = false, hoverTick = 0;
+	renderer.domElement.addEventListener('pointermove', (e) => {
+		hoverPtr.x = (e.clientX / window.innerWidth) * 2 - 1;
+		hoverPtr.y = -(e.clientY / window.innerHeight) * 2 + 1;
+		hoverHave = true;
+	});
+	function cursorForVerb(v) {
+		return v === 'chopping' ? CURSORS.axe : v === 'mining' ? CURSORS.pick :
+			v === 'fishing' ? CURSORS.fish : CURSORS.gather;
+	}
+	function updateHoverCursor(dt) {
+		hoverTick -= dt;
+		if (!started || !hoverHave || hoverTick > 0) return;
+		hoverTick = 0.07;
+		hoverRay.setFromCamera(hoverPtr, camera);
+		const hits = hoverRay.intersectObjects(clickables, true);
+		let cur = CURSORS.walk;
+		if (hits.length) {
+			let o = hits[0].object;
+			while (o && !o.userData.interact) o = o.parent;
+			if (o) {
+				const it = o.userData.interact;
+				if (it.kind === 'creature' && it.creature.state !== 'dead') cur = CURSORS.sword;
+				else if (it.kind === 'harvest') cur = cursorForVerb(it.node.verb);
+			}
+		}
+		renderer.domElement.style.cursor = cur;
+	}
 
 // ------------------------------------------------------------------ player update
-function moveEntityTowards(g, target, speed, dt) {
-	const dx = target.x - g.position.x, dz = target.z - g.position.z;
-	const dist = Math.sqrt(dx * dx + dz * dz);
-	if (dist < 0.12) return true;
-	const step = Math.min(speed * dt, dist);
-	const nx = g.position.x + (dx / dist) * step;
-	const nz = g.position.z + (dz / dist) * step;
-	if (canStep(nx, nz) && !isSolidBlocked(nx, nz)) { g.position.x = nx; g.position.z = nz; }
-	g.userData._angle = Math.atan2(dx, dz);
-	return dist - step < 0.12;
-}
-function turnTowards(g, angle, dt, rate) {
-	if (angle === undefined || Number.isNaN(angle)) return;
-	let a = angle - g.rotation.y;
-	while (a > Math.PI) a -= Math.PI * 2;
-	while (a < -Math.PI) a += Math.PI * 2;
-	g.rotation.y += a * Math.min(1, (rate || 12) * dt);
-}
+	function moveEntityTowards(g, target, speed, dt) {
+		const dx = target.x - g.position.x, dz = target.z - g.position.z;
+		const dist = Math.sqrt(dx * dx + dz * dz);
+		if (dist < 0.12) return true;
+		const step = Math.min(speed * dt, dist);
+		const nx = g.position.x + (dx / dist) * step;
+		const nz = g.position.z + (dz / dist) * step;
+		if (canStep(nx, nz) && !isSolidBlocked(nx, nz)) { g.position.x = nx; g.position.z = nz; }
+		g.userData._angle = Math.atan2(dx, dz);
+		return dist - step < 0.12;
+	}
+	function turnTowards(g, angle, dt, rate) {
+		if (angle === undefined || Number.isNaN(angle)) return;
+		let a = angle - g.rotation.y;
+		while (a > Math.PI) a -= Math.PI * 2;
+		while (a < -Math.PI) a += Math.PI * 2;
+		g.rotation.y += a * Math.min(1, (rate || 12) * dt);
+	}
 
-function updatePlayer(dt) {
-	const g = player.group;
-	player.moving = false;
-	if (player.dead) return;
+	function updatePlayer(dt) {
+		const g = player.group;
+		player.moving = false;
+		if (player.dead) return;
 
-	const swimming = inWater(g.position.x, g.position.z);
-	player.swimming = swimming;
-	const spd = swimming ? player.speed * 0.55 : player.speed;
+		const swimming = inWater(g.position.x, g.position.z);
+		player.swimming = swimming;
+		const spd = swimming ? player.speed * 0.55 : player.speed;
 
-	// resolve current action
-	if (player.action) {
-		const a = player.action;
-		if (a.type === 'attack') {
-			const c = a.creature;
-			if (c.state === 'dead') { player.action = null; }
-			else {
-				const d = g.position.distanceTo(c.group.position);
-				if (d > 1.9) {
+		// resolve current action
+		if (player.action) {
+			const a = player.action;
+			if (a.type === 'attack') {
+				const c = a.creature;
+				if (c.state === 'dead') { player.action = null; }
+				else {
+					const d = g.position.distanceTo(c.group.position);
+					if (d > 1.9) {
+						player.moving = true;
+						moveEntityTowards(g, c.group.position, spd, dt);
+						player.targetAngle = g.userData._angle;
+					} else {
+						const dv = c.group.position.clone().sub(g.position);
+						player.targetAngle = Math.atan2(dv.x, dv.z);
+						player.attackTimer -= dt;
+						if (player.attackTimer <= 0) {
+							player.attackTimer = 1.15;
+							playerHit(c);
+							if (c.state !== 'dead') c.state = 'combat';
+						}
+					}
+				}
+			} else if (a.type === 'harvest') {
+				const n = a.node;
+				const d = g.position.distanceTo(n.group.position);
+				if (d > n.range) {
 					player.moving = true;
-					moveEntityTowards(g, c.group.position, spd, dt);
+					moveEntityTowards(g, n.group.position, spd, dt);
 					player.targetAngle = g.userData._angle;
 				} else {
-					const dv = c.group.position.clone().sub(g.position);
-					player.targetAngle = Math.atan2(dv.x, dv.z);
-					player.attackTimer -= dt;
-					if (player.attackTimer <= 0) {
-						player.attackTimer = 1.15;
-						playerHit(c);
-						if (c.state !== 'dead') c.state = 'combat';
+					player.action = null;
+					startHarvest(n);
+				}
+			}
+		} else if (player.moveTarget) {
+			player.moving = true;
+			if (moveEntityTowards(g, player.moveTarget, spd, dt)) player.moveTarget = null;
+			player.targetAngle = g.userData._angle;
+		}
+
+		if (player.targetAngle !== undefined) turnTowards(g, player.targetAngle, dt);
+
+		// vertical placement — float at the surface when swimming
+		const groundY = terrainHeight(g.position.x, g.position.z);
+		if (swimming) {
+			g.position.y = WATER_Y - 0.35 + Math.sin(player.animT) * 0.05;
+		} else {
+			g.position.y = groundY + (player.moving ? Math.abs(Math.sin(player.animT)) * 0.06 : 0);
+		}
+
+		// animation ------------------------------------------------------------
+		if (player.castT > 0) {
+			player.castT -= dt;
+			player.parts.armL.rotation.x = -2.5 + Math.sin(elapsed * 9) * 0.12;
+			player.parts.armR.rotation.x = -2.5 - Math.sin(elapsed * 9) * 0.12;
+			player.parts.legL.rotation.x = 0; player.parts.legR.rotation.x = 0;
+			g.rotation.x = lerp(g.rotation.x, 0, 0.2);
+		} else if (swimming) {
+			player.animT += dt * (player.moving ? 8 : 3);
+			const paddle = Math.sin(player.animT);
+			player.parts.armL.rotation.x = -0.9 + paddle * 0.6;
+			player.parts.armR.rotation.x = -0.9 - paddle * 0.6;
+			player.parts.legL.rotation.x = paddle * 0.4;
+			player.parts.legR.rotation.x = -paddle * 0.4;
+			g.rotation.x = lerp(g.rotation.x, 0.5, 0.15); // lean forward into the water
+		} else {
+			player.animT += dt * (player.moving ? 10 : 2.4);
+			const swing = player.moving ? Math.sin(player.animT) * 0.55 : Math.sin(player.animT) * 0.05;
+			player.parts.armL.rotation.x = swing;
+			player.parts.armR.rotation.x = lerp(player.parts.armR.rotation.x, -swing, 0.25);
+			player.parts.legL.rotation.x = -swing;
+			player.parts.legR.rotation.x = swing;
+			g.rotation.x = lerp(g.rotation.x, 0, 0.15);
+		}
+
+		// regen out of combat (spirit_passive rank scales rate and tick speed)
+		if (elapsed - player.lastHurt > 5 && player.hp < player.maxhp) {
+			const spRank = talentRank('spirit_passive');
+			const spiritTick = [0.8, 0.8, 0.7, 0.6, 0.5, 0.45, 0.4, 0.35, 0.25][spRank] || 0.8;
+			const spiritHeal = [1, 1, 2, 3, 4, 5, 7, 9, 12][spRank] || 1;
+			player.regenTimer -= dt;
+			if (player.regenTimer <= 0) {
+				player.regenTimer = spiritTick;
+				player.hp = Math.min(player.maxhp, player.hp + spiritHeal);
+				setBar(player.bar, player.hp / player.maxhp);
+				refreshHpUI();
+			}
+		}
+		updateHarvest(dt);
+		updateTalentEffects(dt);
+	}
+
+// ------------------------------------------------------------------ creature update
+	function updateCreature(c, dt) {
+		const g = c.group;
+		if (c.state === 'dead') {
+			g.scale.y = Math.max(0.01, g.scale.y - dt * 2.2);
+			g.position.y = terrainHeight(g.position.x, g.position.z);
+			if (g.scale.y <= 0.02) g.visible = false;
+			c.respawn -= dt;
+			if (c.respawn <= 0) {
+				const p = findSpotIsleForced(c.homeIsle, c.def.spawnInset !== undefined ? c.def.spawnInset : (c.def.nearWater ? 2 : 6));
+				g.position.set(p.x, terrainHeight(p.x, p.z), p.z);
+				c.home.copy(g.position);
+				c.hp = c.maxhp; setBar(c.bar, 1);
+				g.scale.y = 1; g.visible = true;
+				c.state = 'wander'; c.wTarget = null; c.wTimer = rand(1, 3);
+			}
+			return;
+		}
+
+		const distToPlayer = g.position.distanceTo(player.group.position);
+		c.moving = false;
+
+		if (c.state === 'wander') {
+			// wolves are territorial
+			if (c.def.aggro > 0 && !player.dead && distToPlayer < c.def.aggro) {
+				c.state = 'combat';
+				log('A ' + c.name + ' lunges at you!', 'warn');
+			} else {
+				c.wTimer -= dt;
+				if (c.wTimer <= 0 && !c.wTarget) {
+					for (let t = 0; t < 10; t++) {
+						const nx = c.home.x + rand(-6, 6), nz = c.home.z + rand(-6, 6);
+						if (walkable(nx, nz)) { c.wTarget = new THREE.Vector3(nx, 0, nz); break; }
+					}
+					c.wTimer = rand(2, 5.5);
+				}
+				if (c.wTarget) {
+					c.moving = true;
+					if (moveEntityTowards(g, c.wTarget, c.def.speed * 0.55, dt)) c.wTarget = null;
+					turnTowards(g, g.userData._angle, dt, 8);
+				}
+			}
+		}
+
+		if (c.state === 'combat') {
+			if (player.dead || distToPlayer > 15) {
+				c.state = 'wander';
+				c.hp = c.maxhp; setBar(c.bar, 1);
+			} else if (distToPlayer > 1.8) {
+				c.moving = true;
+				moveEntityTowards(g, player.group.position, c.def.speed, dt);
+				turnTowards(g, g.userData._angle, dt, 10);
+			} else {
+				const dv = player.group.position.clone().sub(g.position);
+				turnTowards(g, Math.atan2(dv.x, dv.z), dt, 10);
+				// check freeze/stun — creature cannot attack while frozen or stunned
+				const isFrozen = player.iceFreeze.some(f => f.creature === c);
+				const isStunned = player.lightningStuns.some(s => s.creature === c);
+				if (!isFrozen && !isStunned) {
+					c.attackTimer -= dt;
+					if (c.attackTimer <= 0) {
+						c.attackTimer = 1.6;
+						creatureHit(c);
+						// tick down ice freeze turns on each would-be attack
+						const freeze = player.iceFreeze.find(f => f.creature === c);
+						if (freeze) { freeze.turnsLeft--; }
 					}
 				}
 			}
-		} else if (a.type === 'harvest') {
-			const n = a.node;
-			const d = g.position.distanceTo(n.group.position);
-			if (d > n.range) {
-				player.moving = true;
-				moveEntityTowards(g, n.group.position, spd, dt);
-				player.targetAngle = g.userData._angle;
-			} else {
-				player.action = null;
-				startHarvest(n);
-			}
 		}
-	} else if (player.moveTarget) {
-		player.moving = true;
-		if (moveEntityTowards(g, player.moveTarget, spd, dt)) player.moveTarget = null;
-		player.targetAngle = g.userData._angle;
+
+		// hop / bob animation
+		c.phase += dt * (c.moving ? (c.def.hopper ? 9 : 7) : 2);
+		const baseY = terrainHeight(g.position.x, g.position.z);
+		if (c.def.hopper) g.position.y = baseY + (c.moving ? Math.abs(Math.sin(c.phase)) * 0.28 : Math.abs(Math.sin(c.phase * 0.6)) * 0.05);
+		else g.position.y = baseY + (c.moving ? Math.abs(Math.sin(c.phase)) * 0.08 : Math.sin(c.phase * 0.5) * 0.02);
 	}
-
-	if (player.targetAngle !== undefined) turnTowards(g, player.targetAngle, dt);
-
-	// vertical placement — float at the surface when swimming
-	const groundY = terrainHeight(g.position.x, g.position.z);
-	if (swimming) {
-		g.position.y = WATER_Y - 0.35 + Math.sin(player.animT) * 0.05;
-	} else {
-		g.position.y = groundY + (player.moving ? Math.abs(Math.sin(player.animT)) * 0.06 : 0);
-	}
-
-	// animation ------------------------------------------------------------
-	if (player.castT > 0) {
-		player.castT -= dt;
-		player.parts.armL.rotation.x = -2.5 + Math.sin(elapsed * 9) * 0.12;
-		player.parts.armR.rotation.x = -2.5 - Math.sin(elapsed * 9) * 0.12;
-		player.parts.legL.rotation.x = 0; player.parts.legR.rotation.x = 0;
-		g.rotation.x = lerp(g.rotation.x, 0, 0.2);
-	} else if (swimming) {
-		player.animT += dt * (player.moving ? 8 : 3);
-		const paddle = Math.sin(player.animT);
-		player.parts.armL.rotation.x = -0.9 + paddle * 0.6;
-		player.parts.armR.rotation.x = -0.9 - paddle * 0.6;
-		player.parts.legL.rotation.x = paddle * 0.4;
-		player.parts.legR.rotation.x = -paddle * 0.4;
-		g.rotation.x = lerp(g.rotation.x, 0.5, 0.15); // lean forward into the water
-	} else {
-		player.animT += dt * (player.moving ? 10 : 2.4);
-		const swing = player.moving ? Math.sin(player.animT) * 0.55 : Math.sin(player.animT) * 0.05;
-		player.parts.armL.rotation.x = swing;
-		player.parts.armR.rotation.x = lerp(player.parts.armR.rotation.x, -swing, 0.25);
-		player.parts.legL.rotation.x = -swing;
-		player.parts.legR.rotation.x = swing;
-		g.rotation.x = lerp(g.rotation.x, 0, 0.15);
-	}
-
-	// regen out of combat (spirit_passive rank scales rate and tick speed)
-	if (elapsed - player.lastHurt > 5 && player.hp < player.maxhp) {
-		const spRank = talentRank('spirit_passive');
-		const spiritTick = [0.8, 0.8, 0.7, 0.6, 0.5, 0.45, 0.4, 0.35, 0.25][spRank] || 0.8;
-		const spiritHeal = [1, 1, 2, 3, 4, 5, 7, 9, 12][spRank] || 1;
-		player.regenTimer -= dt;
-		if (player.regenTimer <= 0) {
-			player.regenTimer = spiritTick;
-			player.hp = Math.min(player.maxhp, player.hp + spiritHeal);
-			setBar(player.bar, player.hp / player.maxhp);
-			refreshHpUI();
-		}
-	}
-	updateHarvest(dt);
-	updateTalentEffects(dt);
-}
-
-// ------------------------------------------------------------------ creature update
-function updateCreature(c, dt) {
-	const g = c.group;
-	if (c.state === 'dead') {
-		g.scale.y = Math.max(0.01, g.scale.y - dt * 2.2);
-		g.position.y = terrainHeight(g.position.x, g.position.z);
-		if (g.scale.y <= 0.02) g.visible = false;
-		c.respawn -= dt;
-		if (c.respawn <= 0) {
-			const p = findSpotIsleForced(c.homeIsle, c.def.spawnInset !== undefined ? c.def.spawnInset : (c.def.nearWater ? 2 : 6));
-			g.position.set(p.x, terrainHeight(p.x, p.z), p.z);
-			c.home.copy(g.position);
-			c.hp = c.maxhp; setBar(c.bar, 1);
-			g.scale.y = 1; g.visible = true;
-			c.state = 'wander'; c.wTarget = null; c.wTimer = rand(1, 3);
-		}
-		return;
-	}
-
-	const distToPlayer = g.position.distanceTo(player.group.position);
-	c.moving = false;
-
-	if (c.state === 'wander') {
-		// wolves are territorial
-		if (c.def.aggro > 0 && !player.dead && distToPlayer < c.def.aggro) {
-			c.state = 'combat';
-			log('A ' + c.name + ' lunges at you!', 'warn');
-		} else {
-			c.wTimer -= dt;
-			if (c.wTimer <= 0 && !c.wTarget) {
-				for (let t = 0; t < 10; t++) {
-					const nx = c.home.x + rand(-6, 6), nz = c.home.z + rand(-6, 6);
-					if (walkable(nx, nz)) { c.wTarget = new THREE.Vector3(nx, 0, nz); break; }
-				}
-				c.wTimer = rand(2, 5.5);
-			}
-			if (c.wTarget) {
-				c.moving = true;
-				if (moveEntityTowards(g, c.wTarget, c.def.speed * 0.55, dt)) c.wTarget = null;
-				turnTowards(g, g.userData._angle, dt, 8);
-			}
-		}
-	}
-
-	if (c.state === 'combat') {
-		if (player.dead || distToPlayer > 15) {
-			c.state = 'wander';
-			c.hp = c.maxhp; setBar(c.bar, 1);
-		} else if (distToPlayer > 1.8) {
-			c.moving = true;
-			moveEntityTowards(g, player.group.position, c.def.speed, dt);
-			turnTowards(g, g.userData._angle, dt, 10);
-		} else {
-			const dv = player.group.position.clone().sub(g.position);
-			turnTowards(g, Math.atan2(dv.x, dv.z), dt, 10);
-			// check freeze/stun — creature cannot attack while frozen or stunned
-			const isFrozen = player.iceFreeze.some(f => f.creature === c);
-			const isStunned = player.lightningStuns.some(s => s.creature === c);
-			if (!isFrozen && !isStunned) {
-				c.attackTimer -= dt;
-				if (c.attackTimer <= 0) {
-					c.attackTimer = 1.6;
-					creatureHit(c);
-					// tick down ice freeze turns on each would-be attack
-					const freeze = player.iceFreeze.find(f => f.creature === c);
-					if (freeze) { freeze.turnsLeft--; }
-				}
-			}
-		}
-	}
-
-	// hop / bob animation
-	c.phase += dt * (c.moving ? (c.def.hopper ? 9 : 7) : 2);
-	const baseY = terrainHeight(g.position.x, g.position.z);
-	if (c.def.hopper) g.position.y = baseY + (c.moving ? Math.abs(Math.sin(c.phase)) * 0.28 : Math.abs(Math.sin(c.phase * 0.6)) * 0.05);
-	else g.position.y = baseY + (c.moving ? Math.abs(Math.sin(c.phase)) * 0.08 : Math.sin(c.phase * 0.5) * 0.02);
-}
 
 // ------------------------------------------------------------------ craft window
-const MIX_SLOTS = 6;
-const mix = new Array(MIX_SLOTS).fill(null); // {item, count}
-function mixAggregate() {
-	const m = {};
-	for (const e of mix) if (e) m[e.item] = (m[e.item] || 0) + e.count;
-	return m;
-}
-function moveToMix(item) {
-	let slot = mix.find((e) => e && e.item === item);
-	let newIdx = -1;
-	if (!slot) {
-		newIdx = mix.findIndex((e) => !e);
-		if (newIdx === -1) { ui.mixHint.textContent = 'The mix box is full.'; return; }
+	const MIX_SLOTS = 6;
+	const mix = new Array(MIX_SLOTS).fill(null); // {item, count}
+	function mixAggregate() {
+		const m = {};
+		for (const e of mix) if (e) m[e.item] = (m[e.item] || 0) + e.count;
+		return m;
 	}
-	if (!removeItem(item, 1)) return;
-	if (newIdx !== -1) mix[newIdx] = slot = { item, count: 0 };
-	slot.count++;
-	renderMix();
-}
-function returnMixSlot(i) {
-	const e = mix[i];
-	if (!e) return;
-	if (!addItem(e.item, e.count)) { log('No room in your inventory.', 'warn'); return; }
-	mix[i] = null;
-	renderMix();
-}
-function clearMixToInventory() {
-	for (let i = 0; i < mix.length; i++) {
-		if (mix[i]) { addItem(mix[i].item, mix[i].count); mix[i] = null; }
-	}
-	renderMix();
-}
-function renderMix() {
-	ui.mixSlots.innerHTML = '';
-	mix.forEach((e, i) => {
-		const cell = document.createElement('button');
-		cell.className =
-			'relative flex h-16 items-center justify-center rounded-xl border text-2xl transition ' +
-			(e ? 'border-amber-300/40 bg-amber-400/10 hover:bg-amber-400/20 cursor-pointer'
-				: 'border-white/10 bg-white/[0.04]');
-		if (e) {
-			cell.innerHTML =
-				'<span>' + ITEMS[e.item].icon + '</span>' +
-				'<span class="absolute bottom-0.5 right-1.5 text-[11px] font-bold text-amber-200">' + e.count + '</span>';
-			attachTooltip(cell, e.item, ' — click to take back');
-			cell.addEventListener('click', () => returnMixSlot(i));
+	function moveToMix(item) {
+		let slot = mix.find((e) => e && e.item === item);
+		let newIdx = -1;
+		if (!slot) {
+			newIdx = mix.findIndex((e) => !e);
+			if (newIdx === -1) { ui.mixHint.textContent = 'The mix box is full.'; return; }
 		}
-		ui.mixSlots.appendChild(cell);
-	});
-	renderRecipes();
-}
-function reqMatches(agg, req) {
-	const keysA = Object.keys(agg), keysR = Object.keys(req);
-	if (keysA.length !== keysR.length) return false;
-	for (const k of keysR) if (agg[k] !== req[k]) return false;
-	return true;
-}
-function canAfford(req) {
-	for (const k of Object.keys(req)) if (invCount(k) < req[k]) return false;
-	return true;
-}
-function effectiveRate(r) { return clamp(r.rate + (player.craftLvl - 1) * 0.03, 0.1, 0.98); }
-function renderRecipes() {
-	ui.recipeList.innerHTML = '';
-	// group by tier, preserving insertion order
-	const groups = [];
-	const groupMap = {};
-	for (const r of RECIPES) {
-		if (!groupMap[r.tier]) { groupMap[r.tier] = []; groups.push(r.tier); }
-		groupMap[r.tier].push(r);
+		if (!removeItem(item, 1)) return;
+		if (newIdx !== -1) mix[newIdx] = slot = { item, count: 0 };
+		slot.count++;
+		renderMix();
 	}
-	// decide which group is "current" (first tier that has any affordable recipe, fallback first)
-	let defaultOpen = groups[0];
-	for (const t of groups) {
-		if (groupMap[t].some(r => canAfford(r.req))) { defaultOpen = t; break; }
+	function returnMixSlot(i) {
+		const e = mix[i];
+		if (!e) return;
+		if (!addItem(e.item, e.count)) { log('No room in your inventory.', 'warn'); return; }
+		mix[i] = null;
+		renderMix();
 	}
-	for (const tier of groups) {
-		const recipes = groupMap[tier];
-		const anyAfford = recipes.some(r => canAfford(r.req));
-		// accordion header
-		const header = document.createElement('button');
-		header.className = 'w-full flex items-center justify-between rounded-lg px-3 py-2 text-left text-[11px] font-bold uppercase tracking-widest transition ' +
-			(anyAfford ? 'text-amber-200 hover:bg-white/5' : 'text-zinc-500 hover:bg-white/5');
-		const isOpen = tier === defaultOpen;
-		header.innerHTML = '<span>' + tier + '</span><span class="accordion-caret">' + (isOpen ? '▲' : '▼') + '</span>';
-		const body = document.createElement('div');
-		body.className = 'space-y-2 mb-2' + (isOpen ? '' : ' hidden');
-		header.addEventListener('click', () => {
-			const nowHidden = body.classList.toggle('hidden');
-			header.querySelector('.accordion-caret').textContent = nowHidden ? '▼' : '▲';
+	function clearMixToInventory() {
+		for (let i = 0; i < mix.length; i++) {
+			if (mix[i]) { addItem(mix[i].item, mix[i].count); mix[i] = null; }
+		}
+		renderMix();
+	}
+	function renderMix() {
+		ui.mixSlots.innerHTML = '';
+		mix.forEach((e, i) => {
+			const cell = document.createElement('button');
+			cell.className =
+				'relative flex h-16 items-center justify-center rounded-xl border text-2xl transition ' +
+				(e ? 'border-amber-300/40 bg-amber-400/10 hover:bg-amber-400/20 cursor-pointer'
+					: 'border-white/10 bg-white/[0.04]');
+			if (e) {
+				cell.innerHTML =
+					'<span>' + ITEMS[e.item].icon + '</span>' +
+					'<span class="absolute bottom-0.5 right-1.5 text-[11px] font-bold text-amber-200">' + e.count + '</span>';
+				attachTooltip(cell, e.item, ' — click to take back');
+				cell.addEventListener('click', () => returnMixSlot(i));
+			}
+			ui.mixSlots.appendChild(cell);
 		});
-		ui.recipeList.appendChild(header);
-		ui.recipeList.appendChild(body);
-		for (const r of recipes) {
-			const afford = canAfford(r.req);
-			const pct = Math.round(effectiveRate(r) * 100);
-			const row = document.createElement('div');
-			row.className = 'rounded-xl border p-2.5 transition ' +
-				(afford ? 'border-emerald-300/30 bg-emerald-400/5' : 'border-white/10 bg-white/[0.03] opacity-60');
-			const ing = Object.entries(r.req)
-				.map(([k, v]) => ITEMS[k].icon + '×' + v + ' <span class="text-zinc-400">' + k + '</span>')
-				.join(' · ');
-			row.innerHTML =
-				'<div class="flex items-center justify-between">' +
-				'<div class="flex items-center gap-2">' +
-				'<span class="text-xl">' + ITEMS[r.out].icon + '</span>' +
-				'<div><div class="text-sm font-semibold text-zinc-100">' + r.out +
-				' <span class="ml-1 rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-cyan-200">' + r.tag + '</span>' +
-				' <span class="ml-1 rounded bg-black/40 px-1.5 py-0.5 text-[10px] text-emerald-300">' + pct + '%</span></div>' +
-				'<div class="mt-0.5 text-[11px] leading-tight">' + ing + '</div></div>' +
-				'</div>' +
-				'<button class="load-btn shrink-0 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition ' +
-				(afford
-					? 'border-emerald-300/50 bg-emerald-400/15 text-emerald-200 hover:bg-emerald-400/30'
-					: 'border-white/10 bg-white/5 text-zinc-500 cursor-not-allowed') +
-				'">Load</button>' +
-				'</div>';
-			const btn = row.querySelector('.load-btn');
-			btn.addEventListener('click', () => {
-				clearMixToInventory();
-				if (!canAfford(r.req)) { ui.mixHint.textContent = 'You are missing ingredients for that.'; return; }
-				let i = 0;
-				for (const [item, count] of Object.entries(r.req)) {
-					removeItem(item, count);
-					mix[i++] = { item, count };
-				}
-				renderMix();
-				ui.mixHint.textContent = 'Ingredients loaded — press Mix!';
+		renderRecipes();
+	}
+	function reqMatches(agg, req) {
+		const keysA = Object.keys(agg), keysR = Object.keys(req);
+		if (keysA.length !== keysR.length) return false;
+		for (const k of keysR) if (agg[k] !== req[k]) return false;
+		return true;
+	}
+	function canAfford(req) {
+		for (const k of Object.keys(req)) if (invCount(k) < req[k]) return false;
+		return true;
+	}
+	function effectiveRate(r) { return clamp(r.rate + (player.craftLvl - 1) * 0.03, 0.1, 0.98); }
+	function renderRecipes() {
+		ui.recipeList.innerHTML = '';
+		// group by tier, preserving insertion order
+		const groups = [];
+		const groupMap = {};
+		for (const r of RECIPES) {
+			if (!groupMap[r.tier]) { groupMap[r.tier] = []; groups.push(r.tier); }
+			groupMap[r.tier].push(r);
+		}
+		// decide which group is "current" (first tier that has any affordable recipe, fallback first)
+		let defaultOpen = groups[0];
+		for (const t of groups) {
+			if (groupMap[t].some(r => canAfford(r.req))) { defaultOpen = t; break; }
+		}
+		for (const tier of groups) {
+			const recipes = groupMap[tier];
+			const anyAfford = recipes.some(r => canAfford(r.req));
+			// accordion header
+			const header = document.createElement('button');
+			header.className = 'w-full flex items-center justify-between rounded-lg px-3 py-2 text-left text-[11px] font-bold uppercase tracking-widest transition ' +
+				(anyAfford ? 'text-amber-200 hover:bg-white/5' : 'text-zinc-500 hover:bg-white/5');
+			const isOpen = tier === defaultOpen;
+			header.innerHTML = '<span>' + tier + '</span><span class="accordion-caret">' + (isOpen ? '▲' : '▼') + '</span>';
+			const body = document.createElement('div');
+			body.className = 'space-y-2 mb-2' + (isOpen ? '' : ' hidden');
+			header.addEventListener('click', () => {
+				const nowHidden = body.classList.toggle('hidden');
+				header.querySelector('.accordion-caret').textContent = nowHidden ? '▼' : '▲';
 			});
-			body.appendChild(row);
+			ui.recipeList.appendChild(header);
+			ui.recipeList.appendChild(body);
+			for (const r of recipes) {
+				const afford = canAfford(r.req);
+				const pct = Math.round(effectiveRate(r) * 100);
+				const row = document.createElement('div');
+				row.className = 'rounded-xl border p-2.5 transition ' +
+					(afford ? 'border-emerald-300/30 bg-emerald-400/5' : 'border-white/10 bg-white/[0.03] opacity-60');
+				const ing = Object.entries(r.req)
+					.map(([k, v]) => ITEMS[k].icon + '×' + v + ' <span class="text-zinc-400">' + k + '</span>')
+					.join(' · ');
+				row.innerHTML =
+					'<div class="flex items-center justify-between">' +
+					'<div class="flex items-center gap-2">' +
+					'<span class="text-xl">' + ITEMS[r.out].icon + '</span>' +
+					'<div><div class="text-sm font-semibold text-zinc-100">' + r.out +
+					' <span class="ml-1 rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-cyan-200">' + r.tag + '</span>' +
+					' <span class="ml-1 rounded bg-black/40 px-1.5 py-0.5 text-[10px] text-emerald-300">' + pct + '%</span></div>' +
+					'<div class="mt-0.5 text-[11px] leading-tight">' + ing + '</div></div>' +
+					'</div>' +
+					'<button class="load-btn shrink-0 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition ' +
+					(afford
+						? 'border-emerald-300/50 bg-emerald-400/15 text-emerald-200 hover:bg-emerald-400/30'
+						: 'border-white/10 bg-white/5 text-zinc-500 cursor-not-allowed') +
+					'">Load</button>' +
+					'</div>';
+				const btn = row.querySelector('.load-btn');
+				btn.addEventListener('click', () => {
+					clearMixToInventory();
+					if (!canAfford(r.req)) { ui.mixHint.textContent = 'You are missing ingredients for that.'; return; }
+					let i = 0;
+					for (const [item, count] of Object.entries(r.req)) {
+						removeItem(item, count);
+						mix[i++] = { item, count };
+					}
+					renderMix();
+					ui.mixHint.textContent = 'Ingredients loaded — press Mix!';
+				});
+				body.appendChild(row);
+			}
 		}
 	}
-}
-let mixing = false;
+	let mixing = false;
 // Try to reload mix[] from inventory using the same recipe requirements.
 // Returns true if the mix box was successfully re-populated.
-function reloadMixFromRecipe(req) {
-	if (!canAfford(req)) return false;
-	for (let i = 0; i < mix.length; i++) mix[i] = null;
-	let idx = 0;
-	for (const [item, count] of Object.entries(req)) {
-		if (!removeItem(item, count)) { clearMixToInventory(); return false; }
-		mix[idx++] = { item, count };
-	}
-	return true;
-}
-function doMix(times) {
-	if (mixing) return;
-	const remaining = { left: (times && times > 1) ? times : 1 };
-	const agg = mixAggregate();
-	if (Object.keys(agg).length === 0) { ui.mixHint.textContent = 'The mix box is empty.'; return; }
-	const recipe = RECIPES.find((r) => reqMatches(agg, r.req));
-	if (!recipe) {
-		ui.mixHint.textContent = 'You mash it all together… nothing happens. Wrong combination.';
-		log('That combination makes nothing.', 'warn');
-		return;
-	}
-	function runOnce(isFirst) {
-		if (!isFirst) {
-			// reload the mix box for subsequent iterations
-			if (!reloadMixFromRecipe(recipe.req)) { mixing = false; renderInventory(); renderMix(); return; }
+	function reloadMixFromRecipe(req) {
+		if (!canAfford(req)) return false;
+		for (let i = 0; i < mix.length; i++) mix[i] = null;
+		let idx = 0;
+		for (const [item, count] of Object.entries(req)) {
+			if (!removeItem(item, count)) { clearMixToInventory(); return false; }
+			mix[idx++] = { item, count };
 		}
-		// consume the ingredients up front (they're at risk — crafting can fail!)
-		const spent = {};
-		for (let i = 0; i < mix.length; i++) { if (mix[i]) { spent[mix[i].item] = (spent[mix[i].item] || 0) + mix[i].count; mix[i] = null; } }
-		renderMix();
-		player.castT = 1.5;
-		spawnCraftSwirl(0x7fe0ff, 1.5);
-		log('You begin to manufacture a ' + recipe.out + '…', 'craft');
-		setTimeout(() => {
-			const success = Math.random() < effectiveRate(recipe);
-			player.grantXp('craft', success ? 12 : 5);
-			if (success) {
-				if (!addItem(recipe.out, 1)) {
-					for (const [k, v] of Object.entries(spent)) addItem(k, v); // no room → give ingredients back
-					ui.mixHint.textContent = 'No room in your inventory for the result!';
-					mixing = false; renderInventory(); reloadMixFromRecipe(recipe.req); renderMix(); return;
-				}
-				spawnGroundRing(player.group.position, 0xe879f9, 0.5, 3.0, 0.8, 0.1);
-				spawnSparkBurst(player.group.position, 0xffd36b, 22, 2.4, 3.2);
-				ui.mixHint.textContent = 'Success! You made a ' + recipe.out + '. (' + recipe.tag + ')';
-				log('You mixed a ' + recipe.out + '!', 'craft');
-				floatText('⚗️ ' + recipe.out + '!', headPos(), '#e879f9', 1.1);
-			} else {
-				// failure — you lose some materials, but salvage the rest (each item ~50%)
-				const saved = [];
-				for (const [k, v] of Object.entries(spent)) {
-					let keep = 0; for (let n = 0; n < v; n++) if (Math.random() < 0.5) keep++;
-					if (keep > 0) { addItem(k, keep); saved.push(keep + '× ' + k); }
-				}
-				spawnGroundRing(player.group.position, 0x9aa2ad, 0.5, 2.4, 0.7, 0.1);
-				spawnSparkBurst(player.group.position, 0x777777, 16, 1.8, 1.8);
-				ui.mixHint.textContent = 'The mixture fizzles and fails! ' + (saved.length ? 'Salvaged: ' + saved.join(', ') + '.' : 'All materials lost.');
-				log('You failed to make the ' + recipe.out + '.', 'warn');
-				floatText('✗ Failed!', headPos(), '#f87171', 1.05);
-			}
-			remaining.left--;
-			if (remaining.left > 0) {
-				runOnce(false);
-			} else {
-				mixing = false;
-				renderInventory();
-				reloadMixFromRecipe(recipe.req);
-				renderMix();
-			}
-		}, 1350);
+		return true;
 	}
-	mixing = true;
-	runOnce(true);
-}
+	function doMix(times) {
+		if (mixing) return;
+		const remaining = { left: (times && times > 1) ? times : 1 };
+		const agg = mixAggregate();
+		if (Object.keys(agg).length === 0) { ui.mixHint.textContent = 'The mix box is empty.'; return; }
+		const recipe = RECIPES.find((r) => reqMatches(agg, r.req));
+		if (!recipe) {
+			ui.mixHint.textContent = 'You mash it all together… nothing happens. Wrong combination.';
+			log('That combination makes nothing.', 'warn');
+			return;
+		}
+		function runOnce(isFirst) {
+			if (!isFirst) {
+				// reload the mix box for subsequent iterations
+				if (!reloadMixFromRecipe(recipe.req)) { mixing = false; renderInventory(); renderMix(); return; }
+			}
+			// consume the ingredients up front (they're at risk — crafting can fail!)
+			const spent = {};
+			for (let i = 0; i < mix.length; i++) { if (mix[i]) { spent[mix[i].item] = (spent[mix[i].item] || 0) + mix[i].count; mix[i] = null; } }
+			renderMix();
+			player.castT = 1.5;
+			spawnCraftSwirl(0x7fe0ff, 1.5);
+			log('You begin to manufacture a ' + recipe.out + '…', 'craft');
+			setTimeout(() => {
+				const success = Math.random() < effectiveRate(recipe);
+				player.grantXp('craft', success ? 12 : 5);
+				if (success) {
+					if (!addItem(recipe.out, 1)) {
+						for (const [k, v] of Object.entries(spent)) addItem(k, v); // no room → give ingredients back
+						ui.mixHint.textContent = 'No room in your inventory for the result!';
+						mixing = false; renderInventory(); reloadMixFromRecipe(recipe.req); renderMix(); return;
+					}
+					spawnGroundRing(player.group.position, 0xe879f9, 0.5, 3.0, 0.8, 0.1);
+					spawnSparkBurst(player.group.position, 0xffd36b, 22, 2.4, 3.2);
+					ui.mixHint.textContent = 'Success! You made a ' + recipe.out + '. (' + recipe.tag + ')';
+					log('You mixed a ' + recipe.out + '!', 'craft');
+					floatText('⚗️ ' + recipe.out + '!', headPos(), '#e879f9', 1.1);
+				} else {
+					// failure — you lose some materials, but salvage the rest (each item ~50%)
+					const saved = [];
+					for (const [k, v] of Object.entries(spent)) {
+						let keep = 0; for (let n = 0; n < v; n++) if (Math.random() < 0.5) keep++;
+						if (keep > 0) { addItem(k, keep); saved.push(keep + '× ' + k); }
+					}
+					spawnGroundRing(player.group.position, 0x9aa2ad, 0.5, 2.4, 0.7, 0.1);
+					spawnSparkBurst(player.group.position, 0x777777, 16, 1.8, 1.8);
+					ui.mixHint.textContent = 'The mixture fizzles and fails! ' + (saved.length ? 'Salvaged: ' + saved.join(', ') + '.' : 'All materials lost.');
+					log('You failed to make the ' + recipe.out + '.', 'warn');
+					floatText('✗ Failed!', headPos(), '#f87171', 1.05);
+				}
+				remaining.left--;
+				if (remaining.left > 0) {
+					runOnce(false);
+				} else {
+					mixing = false;
+					renderInventory();
+					reloadMixFromRecipe(recipe.req);
+					renderMix();
+				}
+			}, 1350);
+		}
+		mixing = true;
+		runOnce(true);
+	}
 
-$('btnCraft').addEventListener('click', () => {
-	ui.craftModal.classList.remove('hidden');
-	ui.craftModal.classList.add('flex');
-	ui.mixHint.textContent = 'Click items in your inventory to place them here.';
-	renderMix();
-});
-$('btnCraftClose').addEventListener('click', () => {
-	clearMixToInventory();
-	ui.craftModal.classList.add('hidden');
-	ui.craftModal.classList.remove('flex');
-});
+	$('btnCraft').addEventListener('click', () => {
+		ui.craftModal.classList.remove('hidden');
+		ui.craftModal.classList.add('flex');
+		ui.mixHint.textContent = 'Click items in your inventory to place them here.';
+		renderMix();
+	});
+	$('btnCraftClose').addEventListener('click', () => {
+		clearMixToInventory();
+		ui.craftModal.classList.add('hidden');
+		ui.craftModal.classList.remove('flex');
+	});
 
 // Make craft modal draggable so player can reposition it to see the character animation
-(function() {
-	const overlay = ui.craftModal;
-	const panel = overlay.querySelector(':scope > div');
-	if (!panel) return;
-	panel.style.cursor = 'grab';
-	panel.style.userSelect = 'none';
-	let dragging = false, ox = 0, oy = 0;
-	panel.addEventListener('mousedown', (e) => {
-		if (e.target.closest('button, input, select, textarea, #recipeList, #mixSlots, #mixHint')) return;
-		dragging = true;
-		const r = panel.getBoundingClientRect();
-		ox = e.clientX - r.left;
-		oy = e.clientY - r.top;
-		panel.style.cursor = 'grabbing';
-		panel.style.position = 'fixed';
-		panel.style.margin = '0';
-		panel.style.left = r.left + 'px';
-		panel.style.top = r.top + 'px';
-		overlay.style.alignItems = 'flex-start';
-		overlay.style.justifyContent = 'flex-start';
-		e.preventDefault();
-	});
-	document.addEventListener('mousemove', (e) => {
-		if (!dragging) return;
-		panel.style.left = (e.clientX - ox) + 'px';
-		panel.style.top  = (e.clientY - oy) + 'px';
-	});
-	document.addEventListener('mouseup', () => {
-		if (!dragging) return;
-		dragging = false;
+	(function() {
+		const overlay = ui.craftModal;
+		const panel = overlay.querySelector(':scope > div');
+		if (!panel) return;
 		panel.style.cursor = 'grab';
-	});
-})();
+		panel.style.userSelect = 'none';
+		let dragging = false, ox = 0, oy = 0;
+		panel.addEventListener('mousedown', (e) => {
+			if (e.target.closest('button, input, select, textarea, #recipeList, #mixSlots, #mixHint')) return;
+			dragging = true;
+			const r = panel.getBoundingClientRect();
+			ox = e.clientX - r.left;
+			oy = e.clientY - r.top;
+			panel.style.cursor = 'grabbing';
+			panel.style.position = 'fixed';
+			panel.style.margin = '0';
+			panel.style.left = r.left + 'px';
+			panel.style.top = r.top + 'px';
+			overlay.style.alignItems = 'flex-start';
+			overlay.style.justifyContent = 'flex-start';
+			e.preventDefault();
+		});
+		document.addEventListener('mousemove', (e) => {
+			if (!dragging) return;
+			panel.style.left = (e.clientX - ox) + 'px';
+			panel.style.top  = (e.clientY - oy) + 'px';
+		});
+		document.addEventListener('mouseup', () => {
+			if (!dragging) return;
+			dragging = false;
+			panel.style.cursor = 'grab';
+		});
+	})();
 
-$('btnMix').addEventListener('click', () => doMix(1));
-$('btnMix5').addEventListener('click', () => doMix(5));
-$('btnHelp').addEventListener('click', () => {
-	ui.helpModal.classList.remove('hidden');
-	ui.helpModal.classList.add('flex');
-});
-$('btnTalents').addEventListener('click', () => {
-	const tm = document.getElementById('talentModal');
-	if (tm && tm.classList.contains('hidden')) openTalentTree(); else closeTalentTree();
-});
-$('btnHelpClose').addEventListener('click', () => {
-	ui.helpModal.classList.add('hidden');
-	ui.helpModal.classList.remove('flex');
-});
+	$('btnMix').addEventListener('click', () => doMix(1));
+	$('btnMix5').addEventListener('click', () => doMix(5));
+	$('btnHelp').addEventListener('click', () => {
+		ui.helpModal.classList.remove('hidden');
+		ui.helpModal.classList.add('flex');
+	});
+	$('btnTalents').addEventListener('click', () => {
+		const tm = document.getElementById('talentModal');
+		if (tm && tm.classList.contains('hidden')) openTalentTree(); else closeTalentTree();
+	});
+	$('btnHelpClose').addEventListener('click', () => {
+		ui.helpModal.classList.add('hidden');
+		ui.helpModal.classList.remove('flex');
+	});
 
 // ------------------------------------------------------------------ intro
-function beginGame() {
-	const nameEl = $('nameInput');
-	let nm = (nameEl ? nameEl.value : '').trim();
-	if (!nm) nm = 'Adventurer';
-	nm = nm.slice(0, 16).replace(/[<>]/g, '');
-	player.name = nm;
-	const hasSave = loadGame();
-	if (hasSave) {
-		nm = player.name;
-		refreshStatsUI();
-		refreshHpUI();
-		renderInventory();
-		refreshEquipVisuals();
-	}
-	drawLabel(player.label, nm);
-	if (ui.nameTag) ui.nameTag.textContent = nm.toUpperCase();
-	document.getElementById('intro').style.display = 'none';
-	ui.hud.classList.remove('hidden');
-	const hotbarEl = document.getElementById('hotbar');
-	if (hotbarEl) hotbarEl.classList.remove('hidden');
-	refreshHotbarUI();
-	document.getElementById('btnTalentClose').addEventListener('click', closeTalentTree);
-	document.getElementById('btnTalentReset').addEventListener('click', () => {
-		if (!confirm('Reset all talents? Your points will be fully refunded.')) return;
-		player.talents = {};
-		player.hotbar = [null, null, null, null, null];
-		player.skillCooldowns = {};
-		player.frostWardTimer = 0;
-		player.frostWardBonus = 0;
-		player.hotTimer = 0;
-		player.hotHealTotal = 0;
-		saveGame();
-		renderTalentTree();
+	function beginGame() {
+		const nameEl = $('nameInput');
+		let nm = (nameEl ? nameEl.value : '').trim();
+		if (!nm) nm = 'Adventurer';
+		nm = nm.slice(0, 16).replace(/[<>]/g, '');
+		player.name = nm;
+		const hasSave = loadGame();
+		if (hasSave) {
+			nm = player.name;
+			refreshStatsUI();
+			refreshHpUI();
+			renderInventory();
+			refreshEquipVisuals();
+		}
+		drawLabel(player.label, nm);
+		if (ui.nameTag) ui.nameTag.textContent = nm.toUpperCase();
+		document.getElementById('intro').style.display = 'none';
+		ui.hud.classList.remove('hidden');
+		const hotbarEl = document.getElementById('hotbar');
+		if (hotbarEl) hotbarEl.classList.remove('hidden');
 		refreshHotbarUI();
-		log('✨ Talents reset — all points refunded.', 'sys');
-	});
-	started = true;
-	if (hasSave) {
-		log('Welcome back, ' + nm + '! Your progress has been restored.', 'sys');
-	} else {
-		log('Welcome to Isla Prima, ' + nm + '!', 'sys');
+		document.getElementById('btnTalentClose').addEventListener('click', closeTalentTree);
+		document.getElementById('btnTalentReset').addEventListener('click', () => {
+			if (!confirm('Reset all talents? Your points will be fully refunded.')) return;
+			player.talents = {};
+			player.hotbar = [null, null, null, null, null];
+			player.skillCooldowns = {};
+			player.frostWardTimer = 0;
+			player.frostWardBonus = 0;
+			player.hotTimer = 0;
+			player.hotHealTotal = 0;
+			saveGame();
+			renderTalentTree();
+			refreshHotbarUI();
+			log('✨ Talents reset — all points refunded.', 'sys');
+		});
+		started = true;
+		if (hasSave) {
+			log('Welcome back, ' + nm + '! Your progress has been restored.', 'sys');
+		} else {
+			log('Welcome to Isla Prima, ' + nm + '!', 'sys');
+		}
+		log('Click the ground to walk — you can wade into the shallows to swim.', 'sys');
+		log('Click flowers, trees, rocks, fishing spots and creatures to interact.', 'sys');
+		log('Slaying creatures raises your Attack and Defense. Wolves and bears bite first!', 'sys');
 	}
-	log('Click the ground to walk — you can wade into the shallows to swim.', 'sys');
-	log('Click flowers, trees, rocks, fishing spots and creatures to interact.', 'sys');
-	log('Slaying creatures raises your Attack and Defense. Wolves and bears bite first!', 'sys');
-}
-$('btnStart').addEventListener('click', beginGame);
-if ($('nameInput')) $('nameInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') beginGame(); });
+	$('btnStart').addEventListener('click', beginGame);
+	if ($('nameInput')) $('nameInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') beginGame(); });
 
 // pre-fill name from save if one exists
-(function() {
-	try {
-		const raw = localStorage.getItem('eternalIsles_save');
-		if (raw) {
-			const s = JSON.parse(raw);
-			if (s.name && document.getElementById('nameInput')) document.getElementById('nameInput').value = s.name;
-		}
-	} catch(e) {}
-})();
+	(function() {
+		try {
+			const raw = localStorage.getItem('eternalIsles_save');
+			if (raw) {
+				const s = JSON.parse(raw);
+				if (s.name && document.getElementById('nameInput')) document.getElementById('nameInput').value = s.name;
+			}
+		} catch(e) {}
+	})();
 
 // ------------------------------------------------------------------ main loop
-const clock = new THREE.Clock();
-let elapsed = 0;
-camTarget.copy(player.group.position);
-camera.position.copy(camTarget).add(CAM_OFFSET);
-camera.lookAt(camTarget.x, camTarget.y + 1, camTarget.z);
-renderInventory();
-refreshStatsUI();
-refreshHpUI();
-
-function animate() {
-	requestAnimationFrame(animate);
-	const dt = Math.min(clock.getDelta(), 0.05);
-	elapsed += dt;
-
-	if (started) {
-		updatePlayer(dt);
-		for (const c of creatures) updateCreature(c, dt);
-	}
-
-	// camera lerp
-	camTarget.lerp(player.group.position, Math.min(1, 4.5 * dt));
-	const desired = camTarget.clone().add(CAM_OFFSET.clone().multiplyScalar(camZoom));
-	camera.position.lerp(desired, Math.min(1, 4.5 * dt));
+	const clock = new THREE.Clock();
+	let elapsed = 0;
+	camTarget.copy(player.group.position);
+	camera.position.copy(camTarget).add(CAM_OFFSET);
 	camera.lookAt(camTarget.x, camTarget.y + 1, camTarget.z);
+	renderInventory();
+	refreshStatsUI();
+	refreshHpUI();
 
-	// click ring pulse
-	if (ringT < 1) {
-		ringT = Math.min(1, ringT + dt * 2.2);
-		const s = 1 + ringT * 1.6;
-		ring.scale.set(s, s, s);
-		ring.material.opacity = 0.9 * (1 - ringT);
-	} else ring.material.opacity = 0;
+	function animate() {
+		requestAnimationFrame(animate);
+		const dt = Math.min(clock.getDelta(), 0.05);
+		elapsed += dt;
 
-	// water waves
-	{
-		const pos = water.geometry.attributes.position;
-		for (let i = 0; i < pos.count; i++) {
-			const x = waterBase[i * 3], z = waterBase[i * 3 + 2];
-			pos.setY(i, Math.sin(x * 0.12 + elapsed * 1.1) * 0.12 + Math.cos(z * 0.1 + elapsed * 0.8) * 0.1);
+		if (started) {
+			updatePlayer(dt);
+			for (const c of creatures) updateCreature(c, dt);
 		}
-		pos.needsUpdate = true;
-	}
 
-	// fireflies drift
-	{
-		const pos = fireflies.geometry.attributes.position;
-		for (let i = 0; i < FIREFLY_N; i++) {
-			const ph = ffPhase[i];
-			pos.setX(i, ffBase[i * 3] + Math.sin(elapsed * 0.5 + ph) * 0.9);
-			pos.setY(i, ffBase[i * 3 + 1] + Math.sin(elapsed * 0.9 + ph * 2) * 0.45);
-			pos.setZ(i, ffBase[i * 3 + 2] + Math.cos(elapsed * 0.4 + ph) * 0.9);
+		// camera lerp
+		camTarget.lerp(player.group.position, Math.min(1, 4.5 * dt));
+		const desired = camTarget.clone().add(CAM_OFFSET.clone().multiplyScalar(camZoom));
+		camera.position.lerp(desired, Math.min(1, 4.5 * dt));
+		camera.lookAt(camTarget.x, camTarget.y + 1, camTarget.z);
+
+		// click ring pulse
+		if (ringT < 1) {
+			ringT = Math.min(1, ringT + dt * 2.2);
+			const s = 1 + ringT * 1.6;
+			ring.scale.set(s, s, s);
+			ring.material.opacity = 0.9 * (1 - ringT);
+		} else ring.material.opacity = 0;
+
+		// water waves
+		{
+			const pos = water.geometry.attributes.position;
+			for (let i = 0; i < pos.count; i++) {
+				const x = waterBase[i * 3], z = waterBase[i * 3 + 2];
+				pos.setY(i, Math.sin(x * 0.12 + elapsed * 1.1) * 0.12 + Math.cos(z * 0.1 + elapsed * 0.8) * 0.1);
+			}
+			pos.needsUpdate = true;
 		}
-		pos.needsUpdate = true;
-	}
 
-	// flower sparkles rise & loop
-	{
-		const pos = sparkles.geometry.attributes.position;
-		for (let i = 0; i < sparkN; i++) {
-			const ph = spPhase[i];
-			const t = (elapsed * 0.5 + ph) % 1.6;
-			pos.setX(i, spAnchor[i * 3] + Math.sin(ph + elapsed) * 0.28);
-			pos.setY(i, spAnchor[i * 3 + 1] + 0.3 + t * 0.8);
-			pos.setZ(i, spAnchor[i * 3 + 2] + Math.cos(ph + elapsed) * 0.28);
+		// fireflies drift
+		{
+			const pos = fireflies.geometry.attributes.position;
+			for (let i = 0; i < FIREFLY_N; i++) {
+				const ph = ffPhase[i];
+				pos.setX(i, ffBase[i * 3] + Math.sin(elapsed * 0.5 + ph) * 0.9);
+				pos.setY(i, ffBase[i * 3 + 1] + Math.sin(elapsed * 0.9 + ph * 2) * 0.45);
+				pos.setZ(i, ffBase[i * 3 + 2] + Math.cos(elapsed * 0.4 + ph) * 0.9);
+			}
+			pos.needsUpdate = true;
 		}
-		pos.needsUpdate = true;
-	}
 
-	// fishing-spot ripples + bobbers
-	for (const fs of fishingSpots) {
-		const rings = fs.group.userData._rings, bob = fs.group.userData._bob;
-		if (rings) rings.forEach((rg, k) => {
-			const t = (elapsed * 0.6 + k * 0.5) % 1;
-			rg.scale.setScalar(0.6 + t * 1.6);
-			rg.material.opacity = 0.5 * (1 - t);
-		});
-		if (bob) bob.position.y = WATER_Y + 0.12 + Math.sin(elapsed * 2 + fs.x) * 0.05;
-	}
+		// flower sparkles rise & loop
+		{
+			const pos = sparkles.geometry.attributes.position;
+			for (let i = 0; i < sparkN; i++) {
+				const ph = spPhase[i];
+				const t = (elapsed * 0.5 + ph) % 1.6;
+				pos.setX(i, spAnchor[i * 3] + Math.sin(ph + elapsed) * 0.28);
+				pos.setY(i, spAnchor[i * 3 + 1] + 0.3 + t * 0.8);
+				pos.setZ(i, spAnchor[i * 3 + 2] + Math.cos(ph + elapsed) * 0.28);
+			}
+			pos.needsUpdate = true;
+		}
 
-	updateFireballs(dt);
-	updateStatusSprites();
-	updateFloaters(dt);
-	updateEffects(dt);
-	updateHealthBars(dt);
-	updateLabels();
-	updateHoverCursor(dt);
-	renderer.render(scene, camera);
-}
+		// fishing-spot ripples + bobbers
+		for (const fs of fishingSpots) {
+			const rings = fs.group.userData._rings, bob = fs.group.userData._bob;
+			if (rings) rings.forEach((rg, k) => {
+				const t = (elapsed * 0.6 + k * 0.5) % 1;
+				rg.scale.setScalar(0.6 + t * 1.6);
+				rg.material.opacity = 0.5 * (1 - t);
+			});
+			if (bob) bob.position.y = WATER_Y + 0.12 + Math.sin(elapsed * 2 + fs.x) * 0.05;
+		}
+
+		updateFireballs(dt);
+		updateStatusSprites();
+		updateFloaters(dt);
+		updateEffects(dt);
+		updateHealthBars(dt);
+		updateLabels();
+		updateHoverCursor(dt);
+		renderer.render(scene, camera);
+	}
 
 	// ---- Fireball projectile update ----
 	function updateFireballs(dt) {
@@ -4349,7 +4349,7 @@ function animate() {
 	}
 
 	// ---- Status indicator sprites ----
-	const STATUS_CANVAS_W = 256, STATUS_CANVAS_H = 48;
+	const STATUS_CANVAS_W = 256, STATUS_CANVAS_H = 64;
 	function getOrCreateStatusSprite(entity, yOff) {
 		if (!entity._statusCanvas) {
 			const cv = document.createElement('canvas');
@@ -4357,7 +4357,7 @@ function animate() {
 			const tex = new THREE.CanvasTexture(cv);
 			const mat = new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true });
 			const sprite = new THREE.Sprite(mat);
-			sprite.scale.set(2.2, 0.42, 1);
+			sprite.scale.set(2.4, 0.7, 1);
 			scene.add(sprite);
 			entity._statusCanvas = cv;
 			entity._statusTex = tex;
@@ -4374,10 +4374,10 @@ function animate() {
 		const cv = entity._statusCanvas;
 		const ctx = cv.getContext('2d');
 		ctx.clearRect(0, 0, STATUS_CANVAS_W, STATUS_CANVAS_H);
-		ctx.font = '32px serif';
-		const spacing = 38;
-		const startX = (STATUS_CANVAS_W - icons.length * spacing) / 2 + 16;
-		icons.forEach((ico, i) => ctx.fillText(ico, startX + i * spacing, 38));
+		ctx.font = '40px serif';
+		const spacing = 44;
+		const startX = (STATUS_CANVAS_W - icons.length * spacing) / 2 + 18;
+		icons.forEach((ico, i) => ctx.fillText(ico, startX + i * spacing, 50));
 		entity._statusTex.needsUpdate = true;
 	}
 	function updateStatusSprites() {
@@ -4387,11 +4387,11 @@ function animate() {
 		if (player.hotTimer > 0) playerIcons.push('💚');
 		if (player.staticAuraTimer > 0) playerIcons.push('🌩️');
 		if (talentRank('spirit_passive') > 0) playerIcons.push('🌿');
-		const playerSprite = getOrCreateStatusSprite(player, player._statusYOff || 3.4);
+		const playerSprite = getOrCreateStatusSprite(player, player._statusYOff || 4.2);
 		if (playerIcons.length > 0) {
 			drawStatusIcons(player, playerIcons);
 			const pp = player.group.position.clone();
-			pp.y += player._statusYOff || 3.4;
+			pp.y += player._statusYOff || 4.2;
 			playerSprite.position.copy(pp);
 			playerSprite.visible = true;
 		} else {
@@ -4405,7 +4405,7 @@ function animate() {
 			if (player.burnTargets.some(b => b.creature === c)) icons.push('🔥');
 			if (player.iceFreeze.some(f => f.creature === c)) icons.push('❄️');
 			if (player.lightningStuns.some(s => s.creature === c)) icons.push('⚡');
-			const yOff = (c.def && c.def.barY != null ? c.def.barY + 1.2 : 3.0);
+			const yOff = (c.def && c.def.barY != null ? c.def.barY + 2.05 : 3.5);
 			const sprite = getOrCreateStatusSprite(c, yOff);
 			if (icons.length > 0) {
 				drawStatusIcons(c, icons);
@@ -4419,5 +4419,5 @@ function animate() {
 		}
 	}
 
-animate();
+	animate();
 })();
