@@ -3879,16 +3879,15 @@
 				const dv = player.group.position.clone().sub(g.position);
 				turnTowards(g, Math.atan2(dv.x, dv.z), dt, 10);
 				// check freeze/stun — creature cannot attack while frozen or stunned
-				const isFrozen = player.iceFreeze.some(f => f.creature === c);
+				const freeze = player.iceFreeze.find(f => f.creature === c);
+				if (freeze) { freeze.turnsLeft -= dt / 1.6; }
+				const isFrozen = freeze && freeze.turnsLeft > 0;
 				const isStunned = player.lightningStuns.some(s => s.creature === c);
 				if (!isFrozen && !isStunned) {
 					c.attackTimer -= dt;
 					if (c.attackTimer <= 0) {
 						c.attackTimer = 1.6;
 						creatureHit(c);
-						// tick down ice freeze turns on each would-be attack
-						const freeze = player.iceFreeze.find(f => f.creature === c);
-						if (freeze) { freeze.turnsLeft--; }
 					}
 				}
 			}
