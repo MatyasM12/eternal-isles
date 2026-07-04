@@ -1386,7 +1386,15 @@
 		staticAuraTimer: 0,
 		staticAuraDmg: 0,
 		fireballMode: false,
-		fireballs: [],      // active fireball projectiles
+		fireballs: [],           // active fireball projectiles { mesh, target, startPos, endPos, t, damage }
+		iceLanceMode: false,
+		iceLances: [],           // active ice lance projectiles
+		lightningStrikeMode: false,
+		lightningStrikes: [],    // active multi-hit sequences { creature, hitsLeft, interval, timer, damage }
+		infernoCast: null,       // { timer, duration, dmg, rank } while channeling
+		blizzardCast: null,      // { timer, duration, dmg, rank } while channeling
+		lightningStormCast: null, // { timer, duration, dmgPerHit, rank, hitsLeft, hitTimer } while channeling + ticking
+		healingSurge: null,      // { hitsLeft, healPerPulse, timer } for in-progress surges
 	};
 	// XP curve + level helpers ---------------------------------------------------
 	function xpForLevel(l) { return Math.floor(40 * Math.pow(1.28, l - 1)); }
@@ -1451,6 +1459,14 @@
 						'Fireball deals 110 fire damage.',
 						'Fireball deals 160 fire damage — scorching projectile.',
 						'Fireball deals 220 fire damage — LEGENDARY: a star falls to earth!'] },
+				{ id: 'fire_inferno', name: 'Inferno', type: 'active', icon: '🌋', maxRank: 5,
+					cooldowns: [0, 45, 40, 35, 30, 25],
+					rankDescs: ['',
+						'Channel for 2.5s then erupt — deals 20 fire damage to ALL enemies within 7 units.',
+						'Inferno deals 35 fire damage in the blast.',
+						'Inferno deals 55 fire damage — the ground cracks.',
+						'Inferno deals 80 fire damage — molten earth erupts.',
+						'Inferno deals 110 fire damage — LEGENDARY: a volcano tears the world open!'] },
 			]
 		},
 		{
@@ -1499,6 +1515,22 @@
 						'Aura deals 13 dmg/s.',
 						'Aura deals 17 dmg/s.',
 						'Aura deals 22 dmg/s — crackling storm encircles you!'] },
+				{ id: 'lightning_strike', name: 'Lightning Strike', type: 'active', icon: '🗲', maxRank: 5,
+					cooldowns: [0, 22, 20, 18, 16, 14],
+					rankDescs: ['',
+						'Hurl a bolt at a creature — strikes 5 times over 8s for 10 lightning damage each. Click a creature to aim.',
+						'Each strike deals 17 lightning damage.',
+						'Each strike deals 27 lightning damage.',
+						'Each strike deals 40 lightning damage.',
+						'Each strike deals 55 lightning damage — LEGENDARY: divine judgment strikes without mercy!'] },
+				{ id: 'lightning_storm', name: 'Lightning Storm', type: 'active', icon: '🌪️', maxRank: 5,
+					cooldowns: [0, 50, 44, 38, 32, 26],
+					rankDescs: ['',
+						'Channel 2.5s — a storm strikes ALL enemies within 7 units 4 times over 6s for 7 lightning damage each.',
+						'Each strike deals 12 lightning damage.',
+						'Each strike deals 18 lightning damage.',
+						'Each strike deals 27 lightning damage.',
+						'Each strike deals 37 lightning damage — LEGENDARY: the sky is your weapon!'] },
 			]
 		},
 		{
@@ -1551,6 +1583,22 @@
 						'Shatter deals 95 damage.',
 						'Shatter deals 130 damage.',
 						'Shatter deals 170 damage — LEGENDARY: enemies burst like glass!'] },
+				{ id: 'ice_lance', name: 'Ice Lance', type: 'active', icon: '🧊', maxRank: 5,
+					cooldowns: [0, 18, 16, 14, 12, 10],
+					rankDescs: ['',
+						'Hurl an ice lance at a creature for 25 ice damage, freezing it for 3 turns. Click a creature to aim.',
+						'Ice Lance deals 44 ice damage.',
+						'Ice Lance deals 70 ice damage.',
+						'Ice Lance deals 100 ice damage.',
+						'Ice Lance deals 140 ice damage — LEGENDARY: absolute zero on impact!'] },
+				{ id: 'ice_blizzard', name: 'Blizzard', type: 'active', icon: '🌨️', maxRank: 5,
+					cooldowns: [0, 48, 42, 36, 30, 24],
+					rankDescs: ['',
+						'Channel 2.5s — blizzard erupts, dealing 15 ice damage to ALL enemies within 7 units and freezing them for 2 turns.',
+						'Blizzard deals 26 ice damage.',
+						'Blizzard deals 40 ice damage.',
+						'Blizzard deals 58 ice damage.',
+						'Blizzard deals 80 ice damage — LEGENDARY: an ice age descends!'] },
 			]
 		},
 		{
@@ -1602,6 +1650,14 @@
 						'+25 max HP. Damage reduced by 5%.',
 						'+32 max HP. Damage reduced by 6%.',
 						'+40 max HP. Damage reduced by 8% — unbreakable resolve!'] },
+				{ id: 'spirit_healing_surge', name: 'Healing Surge', type: 'active', icon: '💫', maxRank: 5,
+					cooldowns: [0, 36, 32, 28, 24, 20],
+					rankDescs: ['',
+						'Surge of life — heals you 3 times over 4s: 15 HP per pulse.',
+						'Each pulse heals 28 HP.',
+						'Each pulse heals 45 HP.',
+						'Each pulse heals 65 HP.',
+						'Each pulse heals 90 HP — LEGENDARY: spirit floods your very soul!'] },
 			]
 		},
 	];
@@ -1613,18 +1669,24 @@
 		fire_wildfire:           'fire_backdraft',
 		fire_cremation:          'fire_wildfire',
 		fire_fireball:           'fire_cremation',
+		fire_inferno:            'fire_fireball',
 		lightning_passive:       'lightning_active',
 		lightning_conductor:     'lightning_passive',
 		lightning_aftershock:    'lightning_conductor',
 		lightning_static_aura:   'lightning_aftershock',
+		lightning_strike:        'lightning_static_aura',
+		lightning_storm:         'lightning_strike',
 		ice_passive:             'ice_active',
 		ice_shield:              'ice_passive',
 		ice_brittle:             'ice_shield',
 		ice_shatter:             'ice_brittle',
+		ice_lance:               'ice_shatter',
+		ice_blizzard:            'ice_lance',
 		spirit_passive:          'spirit_active',
 		spirit_hot:              'spirit_passive',
 		spirit_siphon:           'spirit_hot',
 		spirit_fortitude:        'spirit_siphon',
+		spirit_healing_surge:    'spirit_fortitude',
 	};
 
 	function getTalentDef(id) {
@@ -1700,6 +1762,29 @@
 		} else if (id === 'fire_fireball') {
 			player.fireballMode = true;
 			log('🔮 Fireball ready — click a creature to launch!', 'craft');
+		} else if (id === 'ice_lance') {
+			player.iceLanceMode = true;
+			log('🧊 Ice Lance ready — click a creature to launch!', 'craft');
+		} else if (id === 'lightning_strike') {
+			player.lightningStrikeMode = true;
+			log('🗲 Lightning Strike ready — click a creature to target!', 'craft');
+		} else if (id === 'fire_inferno') {
+			const dmg = Math.ceil(playerAtk() * [0, 0.9, 1.6, 2.5, 3.6, 5.0][rank]);
+			player.infernoCast = { timer: 0, duration: 2.5, dmg, rank };
+			log('🌋 Inferno — channeling… stand your ground!', 'craft');
+		} else if (id === 'ice_blizzard') {
+			const dmg = Math.ceil(playerAtk() * [0, 0.65, 1.12, 1.72, 2.50, 3.45][rank]);
+			player.blizzardCast = { timer: 0, duration: 2.5, dmg, rank };
+			log('🌨️ Blizzard — channeling… the air turns arctic!', 'craft');
+		} else if (id === 'lightning_storm') {
+			const dmgPerHit = Math.ceil(playerAtk() * [0, 0.30, 0.52, 0.78, 1.15, 1.58][rank]);
+			player.lightningStormCast = { timer: 0, duration: 2.5, dmgPerHit, rank, hitsLeft: 4, hitTimer: 0 };
+			log('🌪️ Lightning Storm — channeling… the sky blackens!', 'craft');
+		} else if (id === 'spirit_healing_surge') {
+			const heal = Math.ceil(player.maxhp * [0, 0.07, 0.12, 0.18, 0.26, 0.35][rank]);
+			player.healingSurge = { hitsLeft: 3, healPerPulse: heal, timer: 0 };
+			floatText('💫 Surge!', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#86efac', 1.0);
+			log('💫 Healing Surge (Rank ' + rank + '): 3 pulses of ' + heal + ' HP over 4s.', 'craft');
 		} else if (id === 'lightning_static_aura') {
 			const dmg = Math.ceil(playerAtk() * [0, 0.15, 0.22, 0.30, 0.38, 0.48][rank]);
 			player.staticAuraTimer = 10;
@@ -1860,6 +1945,149 @@
 						creatureTakeDamage(c, tickDmg);
 					}
 				});
+			}
+		}
+		// inferno channel
+		if (player.infernoCast) {
+			const ic = player.infernoCast;
+			ic.timer += dt;
+			const frac = ic.timer / ic.duration;
+			// during cast: spinning charge rings + growing glow around player
+			const pp = player.group.position.clone();
+			if (Math.floor(ic.timer / 0.18) > Math.floor((ic.timer - dt) / 0.18)) {
+				spawnGroundRing(pp, 0xff3300, 0.3, 1.4 + frac * 3.5, 0.4, 0.06);
+			}
+			if (frac >= 1) {
+				// DETONATE
+				const aoeRadius = 7;
+				const dmg = ic.dmg;
+				// big blast rings expanding outward
+				spawnGroundRing(pp, 0xff2200, 0.4, aoeRadius * 1.1, 0.9, 0.06);
+				spawnGroundRing(pp, 0xff6600, 0.2, aoeRadius * 0.7, 0.7, 0.1);
+				spawnGroundRing(pp, 0xffaa00, 0.1, aoeRadius * 0.4, 0.55, 0.14);
+				spawnPillar(pp, 0xff3300, 1.2);
+				spawnSparkBurst(pp, 0xff4400, 40, 5.5, 5.0);
+				spawnSparkBurst(pp, 0xffaa00, 25, 3.5, 3.5);
+				floatText('🌋 INFERNO!', pp.clone().add(new THREE.Vector3(0, 3.5, 0)), '#ff4400', 1.6);
+				let hits = 0;
+				creatures.forEach(c => {
+					if (c.state !== 'dead' && c.group.position.distanceTo(pp) <= aoeRadius) {
+						creatureTakeDamage(c, dmg);
+						floatText('🔥 ' + dmg, c.group.position.clone().add(new THREE.Vector3(0, 2.2, 0)), '#ff6b35', 1.1);
+						spawnSparkBurst(c.group.position.clone(), 0xff4400, 14, 2.5, 3.0);
+						applyPassiveOnHit(c);
+						hits++;
+					}
+				});
+				log('🌋 Inferno (Rank ' + ic.rank + '): ' + dmg + ' fire damage to ' + hits + ' enemies!', 'dmgOut');
+				player.infernoCast = null;
+			}
+		}
+		// blizzard channel
+		if (player.blizzardCast) {
+			const bc = player.blizzardCast;
+			bc.timer += dt;
+			const frac = bc.timer / bc.duration;
+			const pp = player.group.position.clone();
+			if (Math.floor(bc.timer / 0.18) > Math.floor((bc.timer - dt) / 0.18)) {
+				spawnGroundRing(pp, 0x7dd3fc, 0.3, 1.4 + frac * 3.5, 0.4, 0.06);
+			}
+			if (frac >= 1) {
+				const aoeRadius = 7;
+				const dmg = bc.dmg;
+				spawnGroundRing(pp, 0xaaddff, 0.4, aoeRadius * 1.1, 0.9, 0.06);
+				spawnGroundRing(pp, 0xcceeff, 0.2, aoeRadius * 0.7, 0.7, 0.1);
+				spawnGroundRing(pp, 0xffffff, 0.1, aoeRadius * 0.4, 0.55, 0.14);
+				spawnPillar(pp, 0x7dd3fc, 1.0);
+				spawnSparkBurst(pp, 0xaaddff, 40, 5.5, 5.0);
+				spawnSparkBurst(pp, 0xffffff, 25, 3.5, 3.5);
+				floatText('🌨️ BLIZZARD!', pp.clone().add(new THREE.Vector3(0, 3.5, 0)), '#7dd3fc', 1.6);
+				let hits = 0;
+				creatures.forEach(c => {
+					if (c.state !== 'dead' && c.group.position.distanceTo(pp) <= aoeRadius) {
+						creatureTakeDamage(c, dmg);
+						floatText('❄️ ' + dmg, c.group.position.clone().add(new THREE.Vector3(0, 2.2, 0)), '#7dd3fc', 1.1);
+						spawnSparkBurst(c.group.position.clone(), 0xaaddff, 14, 2.5, 3.0);
+						// freeze for 2 turns
+						const existingFreeze = player.iceFreeze.find(f => f.creature === c);
+						if (existingFreeze) { existingFreeze.turnsLeft = Math.max(existingFreeze.turnsLeft, 2); }
+						else { player.iceFreeze.push({ creature: c, turnsLeft: 2 }); }
+						hits++;
+					}
+				});
+				log('🌨️ Blizzard (Rank ' + bc.rank + '): ' + dmg + ' ice damage + froze ' + hits + ' enemies!', 'dmgOut');
+				player.blizzardCast = null;
+			}
+		}
+		// lightning storm channel + ticking
+		if (player.lightningStormCast) {
+			const ls = player.lightningStormCast;
+			ls.timer += dt;
+			const frac = ls.timer / ls.duration;
+			const pp = player.group.position.clone();
+			// during channel: arcing yellow rings
+			if (ls.hitsLeft === 4 && ls.timer <= ls.duration) {
+				if (Math.floor(ls.timer / 0.18) > Math.floor((ls.timer - dt) / 0.18)) {
+					spawnGroundRing(pp, 0xfacc15, 0.3, 1.4 + frac * 3.5, 0.4, 0.06);
+				}
+			}
+			if (frac >= 1 && ls.hitsLeft > 0) {
+				// first hit fires on channel completion; subsequent hits every 2s
+				ls.hitTimer -= dt;
+				if (ls.timer >= ls.duration && ls.hitTimer <= 0) {
+					ls.hitTimer = 2.0;
+					const aoeRadius = 7;
+					spawnGroundRing(pp, 0xfacc15, 0.3, aoeRadius * 0.9, 0.5, 0.08);
+					spawnSparkBurst(pp, 0xfacc15, 20, 4.0, 3.5);
+					floatText('🌪️ Storm ' + (5 - ls.hitsLeft) + '/4!', pp.clone().add(new THREE.Vector3(0, 3.5, 0)), '#facc15', 1.0);
+					creatures.forEach(c => {
+						if (c.state !== 'dead' && c.group.position.distanceTo(pp) <= aoeRadius) {
+							creatureTakeDamage(c, ls.dmgPerHit);
+							floatText('⚡ ' + ls.dmgPerHit, c.group.position.clone().add(new THREE.Vector3(0, 2.2, 0)), '#facc15', 1.0);
+							spawnSparkBurst(c.group.position.clone(), 0xfacc15, 10, 2.0, 2.5);
+							applyPassiveOnHit(c);
+						}
+					});
+					log('🌪️ Storm strikes! (' + ls.dmgPerHit + ' lightning to all nearby)', 'dmgOut');
+					ls.hitsLeft--;
+					if (ls.hitsLeft <= 0) player.lightningStormCast = null;
+				}
+			}
+		}
+		// lightning strike multi-hit sequences
+		for (let i = player.lightningStrikes.length - 1; i >= 0; i--) {
+			const ls = player.lightningStrikes[i];
+			if (ls.creature.state === 'dead' || ls.hitsLeft <= 0) { player.lightningStrikes.splice(i, 1); continue; }
+			ls.timer -= dt;
+			if (ls.timer <= 0) {
+				ls.timer = ls.interval;
+				creatureTakeDamage(ls.creature, ls.damage);
+				floatText('⚡ ' + ls.damage, ls.creature.group.position.clone().add(new THREE.Vector3(0, 2.2, 0)), '#facc15', 1.0);
+				spawnSparkBurst(ls.creature.group.position.clone(), 0xfacc15, 12, 2.0, 2.5);
+				spawnPillar(ls.creature.group.position.clone(), 0xfacc15, 0.6);
+				applyPassiveOnHit(ls.creature);
+				ls.hitsLeft--;
+				if (ls.hitsLeft <= 0) {
+					log('🗲 Lightning Strike: final bolt hits ' + ls.creature.name + '!', 'dmgOut');
+					player.lightningStrikes.splice(i, 1);
+				} else {
+					log('🗲 Lightning Strike: bolt hits ' + ls.creature.name + ' for ' + ls.damage + ' (' + ls.hitsLeft + ' remaining)!', 'dmgOut');
+				}
+			}
+		}
+		// healing surge pulses
+		if (player.healingSurge) {
+			const hs = player.healingSurge;
+			hs.timer -= dt;
+			if (hs.timer <= 0) {
+				hs.timer = 2.0;
+				const heal = hs.healPerPulse;
+				player.hp = Math.min(player.maxhp, player.hp + heal);
+				setBar(player.bar, player.hp / player.maxhp); refreshHpUI();
+				floatText('+' + heal + ' 💫', headPos().add(new THREE.Vector3(0, 0.6, 0)), '#86efac', 1.0);
+				log('💫 Healing Surge pulse: +' + heal + ' HP.', 'craft');
+				hs.hitsLeft--;
+				if (hs.hitsLeft <= 0) player.healingSurge = null;
 			}
 		}
 		// ice freeze cleanup
@@ -3434,6 +3662,33 @@
 						log('🔮 Fireball launched at ' + it.creature.name + '!', 'craft');
 						return;
 					}
+					// Ice Lance targeting mode
+					if (player.iceLanceMode) {
+						player.iceLanceMode = false;
+						const rank = talentRank('ice_lance');
+						const dmg = Math.ceil(playerAtk() * ([0, 1.1, 1.9, 2.9, 4.1, 5.6][rank]));
+						const geo = new THREE.CylinderGeometry(0.06, 0.18, 0.9, 6);
+						const mat = new THREE.MeshBasicMaterial({ color: 0x7dd3fc });
+						const mesh = new THREE.Mesh(geo, mat);
+						const light = new THREE.PointLight(0xaaeeff, 1.2, 4);
+						mesh.add(light);
+						const startPos = headPos();
+						const endPos = it.creature.group.position.clone().add(new THREE.Vector3(0, 1, 0));
+						mesh.position.copy(startPos);
+						scene.add(mesh);
+						player.iceLances.push({ mesh, target: it.creature, startPos, endPos, t: 0, damage: dmg });
+						log('🧊 Ice Lance launched at ' + it.creature.name + '!', 'craft');
+						return;
+					}
+					// Lightning Strike targeting mode
+					if (player.lightningStrikeMode) {
+						player.lightningStrikeMode = false;
+						const rank = talentRank('lightning_strike');
+						const dmg = Math.ceil(playerAtk() * ([0, 0.45, 0.70, 1.05, 1.55, 2.10][rank]));
+						player.lightningStrikes.push({ creature: it.creature, hitsLeft: 5, interval: 1.6, timer: 0, damage: dmg });
+						log('🗲 Lightning Strike locked on ' + it.creature.name + ' — 5 bolts incoming!', 'craft');
+						return;
+					}
 					stopHarvest();
 					player.action = { type: 'attack', creature: it.creature };
 					player.moveTarget = null;
@@ -4355,6 +4610,34 @@
 		log('🐉 The Dragon breathes fire!', 'dmgIn');
 	}
 	function updateFireballs(dt) {
+		// ice lances
+		for (let i = player.iceLances.length - 1; i >= 0; i--) {
+			const fb = player.iceLances[i];
+			fb.t += dt / 0.9; // faster than fireball
+			if (fb.t >= 1) {
+				scene.remove(fb.mesh);
+				player.iceLances.splice(i, 1);
+				if (fb.target.state !== 'dead') {
+					creatureTakeDamage(fb.target, fb.damage);
+					floatText('🧊 ' + fb.damage, fb.target.group.position.clone().add(new THREE.Vector3(0, 2.2, 0)), '#7dd3fc', 1.1);
+					spawnSparkBurst(fb.target.group.position.clone(), 0xaaddff, 12, 2.0, 2.5);
+					// freeze for 3 turns
+					const existingFreeze = player.iceFreeze.find(f => f.creature === fb.target);
+					if (existingFreeze) { existingFreeze.turnsLeft = Math.max(existingFreeze.turnsLeft, 3); }
+					else { player.iceFreeze.push({ creature: fb.target, turnsLeft: 3 }); }
+					log('❄️ Ice Lance: froze ' + fb.target.name + ' for 3 turns!', 'dmgOut');
+					applyPassiveOnHit(fb.target);
+				}
+				continue;
+			}
+			// flat arc (lances fly straight with slight upward arc)
+			const p = fb.startPos.clone().lerp(fb.endPos, fb.t);
+			p.y += Math.sin(fb.t * Math.PI) * 1.2;
+			fb.mesh.position.copy(p);
+			// rotate lance to face direction of travel
+			const dir = fb.endPos.clone().sub(fb.startPos).normalize();
+			fb.mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+		}
 		// player fireballs
 		for (let i = player.fireballs.length - 1; i >= 0; i--) {
 			const fb = player.fireballs[i];
