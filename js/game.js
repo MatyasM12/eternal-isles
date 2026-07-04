@@ -3871,23 +3871,38 @@
 			if (player.dead || distToPlayer > 15) {
 				c.state = 'wander';
 				c.hp = c.maxhp; setBar(c.bar, 1);
-			} else if (distToPlayer > 1.8) {
-				c.moving = true;
-				moveEntityTowards(g, player.group.position, c.def.speed, dt);
-				turnTowards(g, g.userData._angle, dt, 10);
 			} else {
+				const isDragon = c.name === 'Dragon';
 				const dv = player.group.position.clone().sub(g.position);
 				turnTowards(g, Math.atan2(dv.x, dv.z), dt, 10);
-				// check freeze/stun — creature cannot attack while frozen or stunned
+				// freeze/stun checks
 				const freeze = player.iceFreeze.find(f => f.creature === c);
 				if (freeze) { freeze.turnsLeft -= dt / 1.6; }
 				const isFrozen = freeze && freeze.turnsLeft > 0;
 				const isStunned = player.lightningStuns.some(s => s.creature === c);
-				if (!isFrozen && !isStunned) {
-					c.attackTimer -= dt;
-					if (c.attackTimer <= 0) {
-						c.attackTimer = 1.6;
-						creatureHit(c);
+				if (isDragon && distToPlayer > 4.5) {
+					// Dragon: hold position and hurl fireballs when player is far
+					c.moving = false;
+					if (!isFrozen && !isStunned) {
+						if (!c.fireballTimer) c.fireballTimer = 3.5;
+						c.fireballTimer -= dt;
+						if (c.fireballTimer <= 0) {
+							c.fireballTimer = rand(3.0, 5.0);
+							spawnDragonFireball(c, c.def.dmg + randInt(0, 20));
+						}
+					}
+				} else if (distToPlayer > 1.8) {
+					c.moving = true;
+					moveEntityTowards(g, player.group.position, c.def.speed, dt);
+				} else {
+					c.moving = false;
+					// melee attack
+					if (!isFrozen && !isStunned) {
+						c.attackTimer -= dt;
+						if (c.attackTimer <= 0) {
+							c.attackTimer = 1.6;
+							creatureHit(c);
+						}
 					}
 				}
 			}
@@ -4326,7 +4341,21 @@
 	}
 
 	// ---- Fireball projectile update ----
+	const dragonFireballs = []; // { mesh, light, startPos, endPos, t, damage }
+	function spawnDragonFireball(dragon, damage) {
+		const mat = new THREE.MeshBasicMaterial({ color: 0xff2200 });
+		const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 8), mat);
+		const light = new THREE.PointLight(0xff4400, 2.5, 6);
+		mesh.add(light);
+		const startPos = dragon.group.position.clone().add(new THREE.Vector3(0, 2.8, 0));
+		const endPos = player.group.position.clone().add(new THREE.Vector3(0, 1.0, 0));
+		mesh.position.copy(startPos);
+		scene.add(mesh);
+		dragonFireballs.push({ mesh, startPos, endPos, t: 0, damage });
+		log('🐉 The Dragon breathes fire!', 'dmgIn');
+	}
 	function updateFireballs(dt) {
+		// player fireballs
 		for (let i = player.fireballs.length - 1; i >= 0; i--) {
 			const fb = player.fireballs[i];
 			fb.t += dt / 1.2;
@@ -4343,6 +4372,32 @@
 			}
 			const p = fb.startPos.clone().lerp(fb.endPos, fb.t);
 			p.y += Math.sin(fb.t * Math.PI) * 2.5;
+			fb.mesh.position.copy(p);
+		}
+		// dragon fireballs
+		for (let i = dragonFireballs.length - 1; i >= 0; i--) {
+			const fb = dragonFireballs[i];
+			fb.t += dt / 1.6;
+			if (fb.t >= 1) {
+				scene.remove(fb.mesh);
+				dragonFireballs.splice(i, 1);
+				if (!player.dead) {
+					let dmg = Math.max(1, fb.damage - playerDef());
+					const fortRank = talentRank('spirit_fortitude');
+					if (fortRank > 0) dmg = Math.max(1, Math.floor(dmg * (1 - [0,0.02,0.04,0.05,0.06,0.08][fortRank])));
+					player.hp -= dmg;
+					player.lastHurt = elapsed;
+					setBar(player.bar, player.hp / player.maxhp);
+					refreshHpUI();
+					floatText('🔥 -' + dmg, headPos(), '#ff4400');
+					log('The Dragon\'s fireball hits you for ' + dmg + '!', 'dmgIn');
+					if (player.hp <= 0) playerDeath();
+					else grantXp('def', Math.max(1, dmg * 0.5 * challengeFactor(50)));
+				}
+				continue;
+			}
+			const p = fb.startPos.clone().lerp(fb.endPos, fb.t);
+			p.y += Math.sin(fb.t * Math.PI) * 3.5;
 			fb.mesh.position.copy(p);
 		}
 	}
