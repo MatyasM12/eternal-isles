@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Eternal Isles — an Eternal Lands tribute</title>
+    <link rel="stylesheet" href="css/tw.css" />
+    <style>
+        html, body { height: 100%; }
+        body {
+            font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-user-select: none; user-select: none;
+            overscroll-behavior: none;
+        }
+        .font-display { font-family: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif; letter-spacing: 0.08em; }
+        #app canvas { display: block; }
+        /* thin scrollbars for log / recipe list */
+        .thin-scroll::-webkit-scrollbar { width: 6px; }
+        .thin-scroll::-webkit-scrollbar-track { background: transparent; }
+        .thin-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 3px; }
+        .thin-scroll { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.18) transparent; }
+        @keyframes panelIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .panel-in { animation: panelIn .45s ease-out both; }
+        @keyframes pulseGlow { 0%,100% { box-shadow: 0 0 10px rgba(127,224,255,.25);} 50% { box-shadow: 0 0 22px rgba(127,224,255,.55);} }
+        .glow-pulse { animation: pulseGlow 2.2s ease-in-out infinite; }
+        @media (prefers-reduced-motion: reduce) {
+            .panel-in, .glow-pulse { animation: none; }
+        }
+        /* circular harvest progress — driven by inline conic-gradient from JS */
+        #progressRing { background: conic-gradient(#7fe0ff 0%, rgba(255,255,255,0.08) 0); }
+    </style>
+</head>
+<body class="overflow-hidden bg-[#0a0f14] text-zinc-100">
+
+<!-- 3D viewport -->
+<div id="app" class="fixed inset-0"></div>
+
+<!-- ==================== HUD ==================== -->
+<div id="hud" class="pointer-events-none fixed inset-0 hidden">
+
+    <!-- Player profile (top-left) -->
+    <div class="pointer-events-auto absolute left-4 top-4 w-72 rounded-2xl border border-white/10 bg-black/40 p-4 shadow-2xl backdrop-blur-md panel-in">
+        <div class="flex items-center justify-between">
+            <div>
+                <div id="nameTag" class="font-display text-lg font-bold tracking-widest text-amber-200">ADVENTURER</div>
+                <div class="text-[11px] uppercase tracking-widest text-sky-300/80">Isla Prima · Eternal Isles</div>
+            </div>
+            <div class="flex h-10 w-10 items-center justify-center rounded-full border border-cyan-300/30 bg-cyan-400/10 text-xl glow-pulse">🛡️</div>
+        </div>
+
+        <div class="mt-3">
+            <div class="mb-1 flex justify-between text-[11px] font-semibold uppercase tracking-wider text-zinc-300">
+                <span>Health</span><span id="hpText">50 / 50</span>
+            </div>
+            <div class="h-3 w-full overflow-hidden rounded-full border border-white/10 bg-black/50">
+                <div id="hpBar" class="h-full w-full rounded-full bg-gradient-to-r from-emerald-400 to-lime-300 transition-all duration-200"></div>
+            </div>
+        </div>
+
+        <div class="mt-3 grid grid-cols-2 gap-2 text-xs">
+            <div class="rounded-lg border border-white/10 bg-white/5 px-2 py-1.5">
+                <div class="flex items-center justify-between">
+                    <span>⚔️ ATK <span id="atkVal" class="font-bold text-rose-300">3</span></span>
+                    <span id="atkLvl" class="text-[10px] text-rose-200/80">Lv 1</span>
+                </div>
+                <div class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-black/50">
+                    <div id="atkXpBar" class="h-full w-0 rounded-full bg-gradient-to-r from-rose-400 to-orange-300 transition-all duration-300"></div>
+                </div>
+            </div>
+            <div class="rounded-lg border border-white/10 bg-white/5 px-2 py-1.5">
+                <div class="flex items-center justify-between">
+                    <span>🛡️ DEF <span id="defVal" class="font-bold text-sky-300">0</span></span>
+                    <span id="defLvl" class="text-[10px] text-sky-200/80">Lv 1</span>
+                </div>
+                <div class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-black/50">
+                    <div id="defXpBar" class="h-full w-0 rounded-full bg-gradient-to-r from-sky-400 to-cyan-300 transition-all duration-300"></div>
+                </div>
+            </div>
+            <div class="col-span-2 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5">
+                <div class="flex items-center justify-between">
+                    <span>⚗️ MFG <span id="mfgVal" class="font-bold text-fuchsia-300">Lv 1</span></span>
+                    <span id="mfgBonus" class="text-[10px] text-fuchsia-200/80">+0% craft rate</span>
+                </div>
+                <div class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-black/50">
+                    <div id="mfgXpBar" class="h-full w-0 rounded-full bg-gradient-to-r from-fuchsia-400 to-purple-300 transition-all duration-300"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-3">
+            <div class="mb-1 text-[10px] font-semibold uppercase tracking-widest text-zinc-400">Equipped</div>
+            <div class="grid grid-cols-3 gap-2">
+                <button id="eqWeapon" title="Weapon slot — click to unequip" class="flex h-12 flex-col items-center justify-center rounded-lg border border-white/10 bg-white/5 text-lg transition hover:border-cyan-300/40 hover:bg-white/10">
+                    <span class="eq-icon opacity-30">⚔️</span><span class="eq-label text-[9px] text-zinc-400">Weapon</span>
+                </button>
+                <button id="eqArmor" title="Armor slot — click to unequip" class="flex h-12 flex-col items-center justify-center rounded-lg border border-white/10 bg-white/5 text-lg transition hover:border-cyan-300/40 hover:bg-white/10">
+                    <span class="eq-icon opacity-30">🧥</span><span class="eq-label text-[9px] text-zinc-400">Armor</span>
+                </button>
+                <button id="eqHelm" title="Helm slot — click to unequip" class="flex h-12 flex-col items-center justify-center rounded-lg border border-white/10 bg-white/5 text-lg transition hover:border-cyan-300/40 hover:bg-white/10">
+                    <span class="eq-icon opacity-30">🪖</span><span class="eq-label text-[9px] text-zinc-400">Helm</span>
+                </button>
+                <button id="eqShield" title="Shield slot — click to unequip" class="flex h-12 flex-col items-center justify-center rounded-lg border border-white/10 bg-white/5 text-lg transition hover:border-cyan-300/40 hover:bg-white/10">
+                    <span class="eq-icon opacity-30">🛡️</span><span class="eq-label text-[9px] text-zinc-400">Shield</span>
+                </button>
+                <button id="eqCuisses" title="Cuisses slot — click to unequip" class="flex h-12 flex-col items-center justify-center rounded-lg border border-white/10 bg-white/5 text-lg transition hover:border-cyan-300/40 hover:bg-white/10">
+                    <span class="eq-icon opacity-30">👖</span><span class="eq-label text-[9px] text-zinc-400">Cuisses</span>
+                </button>
+                <button id="eqGreaves" title="Greaves slot — click to unequip" class="flex h-12 flex-col items-center justify-center rounded-lg border border-white/10 bg-white/5 text-lg transition hover:border-cyan-300/40 hover:bg-white/10">
+                    <span class="eq-icon opacity-30">🥾</span><span class="eq-label text-[9px] text-zinc-400">Greaves</span>
+                </button>
+                <button id="eqMedallion" title="Medallion slot — click to unequip" class="flex h-12 flex-col items-center justify-center rounded-lg border border-white/10 bg-white/5 text-lg transition hover:border-cyan-300/40 hover:bg-white/10">
+                    <span class="eq-icon opacity-30">🏅</span><span class="eq-label text-[9px] text-zinc-400">Medallion</span>
+                </button>
+                <button id="eqRing" title="Ring slot — click to unequip" class="flex h-12 flex-col items-center justify-center rounded-lg border border-white/10 bg-white/5 text-lg transition hover:border-cyan-300/40 hover:bg-white/10">
+                    <span class="eq-icon opacity-30">💍</span><span class="eq-label text-[9px] text-zinc-400">Ring</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Inventory (top-right) -->
+    <div class="pointer-events-auto absolute right-4 top-4 w-64 rounded-2xl border border-white/10 bg-black/40 p-4 shadow-2xl backdrop-blur-md panel-in">
+        <div class="mb-2 flex items-center justify-between">
+            <div class="font-display text-sm font-bold tracking-widest text-amber-200">INVENTORY</div>
+            <div id="invCount" class="text-[10px] text-zinc-400">0 / 16</div>
+        </div>
+        <div id="invGrid" class="grid grid-cols-4 gap-2"></div>
+        <div class="mt-2 text-center text-[10px] text-zinc-500">Click gear to equip · food to eat · items to load the mix box</div>
+    </div>
+
+    <!-- Combat / event log (bottom-left) -->
+    <div class="pointer-events-auto absolute bottom-4 left-4 w-96 rounded-2xl border border-white/10 bg-black/40 shadow-2xl backdrop-blur-md panel-in">
+        <div class="border-b border-white/10 px-4 py-2 font-display text-xs font-bold tracking-widest text-amber-200">CHANNEL LOG</div>
+        <div id="logBox" class="thin-scroll h-40 space-y-0.5 overflow-y-auto px-4 py-2 text-[12px] leading-snug"></div>
+    </div>
+
+    <!-- Harvest progress (bottom-center) -->
+    <div id="progressWrap" class="pointer-events-none absolute bottom-28 left-1/2 hidden -translate-x-1/2 items-center gap-3 rounded-2xl border border-cyan-300/20 bg-black/50 px-4 py-3 shadow-2xl backdrop-blur-md">
+        <div class="relative h-14 w-14">
+            <div id="progressRing" class="h-14 w-14 rounded-full"></div>
+            <div class="absolute inset-1.5 flex items-center justify-center rounded-full bg-[#0a0f14]/90 text-lg" id="progressIcon">🌹</div>
+        </div>
+        <div>
+            <div id="progressLabel" class="text-sm font-semibold text-cyan-200">Harvesting…</div>
+            <div class="text-[10px] text-zinc-400">Click elsewhere to stop</div>
+        </div>
+    </div>
+
+    <!-- Action buttons (bottom-right) -->
+    <div class="pointer-events-auto absolute bottom-4 right-4 flex gap-2 panel-in">
+        <button id="btnHelp" class="rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm font-semibold text-zinc-200 shadow-xl backdrop-blur-md transition hover:border-cyan-300/40 hover:bg-black/60">❔ Help</button>
+        <button id="btnTalents" class="rounded-xl border border-violet-400/30 bg-black/40 px-4 py-3 text-sm font-bold tracking-wide text-violet-200 shadow-xl backdrop-blur-md transition hover:border-violet-400/60 hover:bg-black/60">✨ Talents</button>
+        <button id="btnCraft" class="rounded-xl border border-amber-300/30 bg-black/40 px-5 py-3 text-sm font-bold tracking-wide text-amber-200 shadow-xl backdrop-blur-md transition hover:border-amber-300/60 hover:bg-black/60">⚗️ Craft</button>
+    </div>
+
+    <!-- Tribute footer -->
+    <div class="pointer-events-none absolute bottom-1 left-1/2 -translate-x-1/2 text-[10px] tracking-widest text-white/25">
+        A FAN-MADE TRIBUTE TO <span class="text-white/40">ETERNAL LANDS</span> · PROTOTYPE
+    </div>
+</div>
+
+<!-- ==================== CRAFT WINDOW (Eternal Lands style mix box) ==================== -->
+<div id="craftModal" class="fixed inset-0 z-30 hidden items-center justify-center bg-black/30 backdrop-blur-[2px]">
+    <div class="pointer-events-auto w-[720px] max-w-[94vw] rounded-2xl border border-amber-300/20 bg-black/60 shadow-2xl backdrop-blur-xl panel-in">
+        <div class="flex items-center justify-between border-b border-white/10 px-5 py-3">
+            <div>
+                <div class="font-display text-lg font-bold tracking-widest text-amber-200">MANUFACTURE</div>
+                <div class="text-[11px] text-zinc-400">Place ingredients in the mix box, then press Mix — just like the old lands.</div>
+            </div>
+            <button id="btnCraftClose" class="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-zinc-300 transition hover:bg-white/15">✕ Close</button>
+        </div>
+
+        <div class="grid grid-cols-1 gap-4 p-5 md:grid-cols-2">
+            <!-- Recipe book -->
+            <div>
+                <div class="mb-2 text-[11px] font-bold uppercase tracking-widest text-zinc-400">Known recipes</div>
+                <div id="recipeList" class="thin-scroll max-h-72 space-y-2 overflow-y-auto pr-1"></div>
+            </div>
+
+            <!-- Mix box -->
+            <div class="flex flex-col">
+                <div class="mb-2 text-[11px] font-bold uppercase tracking-widest text-zinc-400">Mix box</div>
+                <div id="mixSlots" class="grid grid-cols-3 gap-2"></div>
+                <div id="mixHint" class="mt-3 min-h-[2.5rem] rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-zinc-300">
+                    Click items in your inventory to place them here.
+                </div>
+                <div class="mt-3 flex gap-2">
+                    <button id="btnMix" class="flex-1 rounded-xl border border-emerald-300/40 bg-emerald-400/15 px-4 py-3 font-display text-base font-bold tracking-widest text-emerald-200 transition hover:bg-emerald-400/30">⚗️ MIX</button>
+                    <button id="btnMix5" class="rounded-xl border border-fuchsia-300/40 bg-fuchsia-400/15 px-4 py-3 font-display text-base font-bold tracking-widest text-fuchsia-200 transition hover:bg-fuchsia-400/30">⚗️ ×5</button>
+                </div>
+                <div class="mt-3 rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-fuchsia-300 font-semibold">⚗️ Manufacture <span id="mfgVal2" class="font-bold">Lv 1</span></span>
+                        <span id="mfgXpText" class="text-fuchsia-200/70">0 / 40 xp</span>
+                    </div>
+                    <div class="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-black/50">
+                        <div id="mfgXpBar2" class="h-full w-0 rounded-full bg-gradient-to-r from-fuchsia-400 to-purple-300 transition-all duration-300"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== SKILL HOTBAR ==================== -->
+<div id="hotbar" class="pointer-events-auto fixed bottom-4 left-1/2 -translate-x-1/2 hidden z-20">
+    <div class="flex gap-2 rounded-2xl border border-white/10 bg-black/50 px-4 py-2.5 shadow-2xl backdrop-blur-md panel-in">
+        <div class="mr-1 flex flex-col justify-center text-[10px] text-zinc-500 font-semibold uppercase tracking-widest">Skills</div>
+        <div id="hotbarSlots" class="flex gap-2"></div>
+    </div>
+</div>
+
+<!-- ==================== TALENT TREE MODAL ==================== -->
+<div id="talentModal" class="fixed inset-0 z-30 hidden items-center justify-center bg-black/60 backdrop-blur-[3px]">
+    <div class="pointer-events-auto flex flex-col rounded-2xl border border-purple-300/20 bg-black/70 shadow-2xl backdrop-blur-xl panel-in overflow-hidden" style="width:700px;height:520px;max-width:96vw;max-height:96vh">
+        <div class="flex items-center justify-between border-b border-white/10 px-5 py-3 shrink-0">
+            <div>
+                <div class="font-display text-lg font-bold tracking-widest text-purple-200">TALENT TREE</div>
+                <div class="text-[11px] text-zinc-400">Hover a node to inspect · click to upgrade · active skills = square nodes</div>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="text-sm font-bold text-purple-200">✨ <span id="talentPointsDisplay">0</span> pts</div>
+                <button id="btnTalentReset" class="rounded-lg border border-red-400/30 bg-red-400/10 px-3 py-1.5 text-sm text-red-300 transition hover:bg-red-400/25">↺ Reset</button>
+                <button id="btnTalentClose" class="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-zinc-300 transition hover:bg-white/15">✕ Close</button>
+            </div>
+        </div>
+        <div id="talentPaths" style="flex:1;display:flex;overflow:hidden"></div>
+        <div id="talentTooltip" style="display:none"></div>
+    </div>
+</div>
+
+<!-- ==================== HELP ==================== -->
+<div id="helpModal" class="fixed inset-0 z-30 hidden items-center justify-center bg-black/30 backdrop-blur-[2px]">
+    <div class="pointer-events-auto w-[480px] max-w-[92vw] rounded-2xl border border-white/10 bg-black/60 p-6 shadow-2xl backdrop-blur-xl panel-in">
+        <div class="mb-3 font-display text-lg font-bold tracking-widest text-amber-200">HOW TO PLAY</div>
+        <ul class="space-y-2 text-sm text-zinc-300">
+            <li>🖱️ <b>Click the ground</b> to walk. A glowing ring marks your destination.</li>
+            <li>🌊 <b>Wade into the shallows</b> to swim across water — the deep sea is off-limits.</li>
+            <li>🌹 <b>Click flowers</b> to harvest, 🌲 <b>trees</b> for wood, ⛏️ <b>rocks</b> for ore.</li>
+            <li>🎣 <b>Click the fishing ripples</b> in the shallows to fish for food and scales.</li>
+            <li>⚔️ <b>Click a creature</b> to fight it. Winning raises your Attack &amp; Defense levels — watch the XP bars fill and level-up bursts flare. Wolves and bears strike first!</li>
+            <li>🍖 <b>Click food</b> (meat, fish) in your inventory to eat and restore HP.</li>
+            <li>⚗️ <b>Craft</b> in the Manufacture window — mixes can <i>fail</i>, so mind the odds shown on each recipe. Click finished gear to equip it.</li>
+            <li>🔍 <b>Mouse wheel</b> zooms · hover items for instant tooltips.</li>
+            <li>✨ <b>Press N</b> to open the Talent Tree — spend talent points (earned each ATK/DEF level) on Fire, Lightning, Ice, or Spirit skills.</li>
+            <li>🎯 <b>Skills hotbar</b> at the bottom — assign skills from the Talent Tree, then press <b>1–5</b> to activate them.</li>
+        </ul>
+        <button id="btnHelpClose" class="mt-5 w-full rounded-xl border border-white/10 bg-white/10 py-2.5 text-sm font-semibold transition hover:bg-white/20">Back to the isle</button>
+    </div>
+</div>
+
+<!-- ==================== INTRO ==================== -->
+<div id="intro" class="fixed inset-0 z-40 flex flex-col items-center justify-center bg-gradient-to-b from-black/70 via-black/40 to-black/70 backdrop-blur-[3px]">
+    <div class="text-center panel-in">
+        <div class="font-display text-6xl font-bold tracking-[0.25em] text-amber-200 drop-shadow-[0_0_25px_rgba(251,191,36,0.35)]">ETERNAL&nbsp;ISLES</div>
+        <div class="mt-3 text-sm tracking-[0.35em] text-sky-200/80">A FAN-MADE TRIBUTE TO ETERNAL LANDS</div>
+        <div class="mx-auto mt-6 max-w-md text-sm leading-relaxed text-zinc-300">
+            You wash ashore on <span class="text-amber-200">Isla Prima</span>. Harvest flowers, chop wood, mine ore,
+            fish the shallows, hunt the wildlife, and mix your spoils into weapons and armor.
+        </div>
+        <div class="mx-auto mt-6 flex max-w-xs flex-col items-center gap-2">
+            <label for="nameInput" class="text-[11px] uppercase tracking-widest text-sky-200/70">Name your adventurer</label>
+            <input id="nameInput" maxlength="16" placeholder="Adventurer" autocomplete="off"
+                   class="w-full rounded-xl border border-white/15 bg-black/40 px-4 py-2.5 text-center text-lg text-amber-100 outline-none transition focus:border-amber-300/50 focus:bg-black/60" />
+        </div>
+        <button id="btnStart" class="mt-6 rounded-2xl border border-amber-300/40 bg-amber-400/15 px-10 py-4 font-display text-xl font-bold tracking-[0.2em] text-amber-100 shadow-2xl transition hover:scale-105 hover:bg-amber-400/30 glow-pulse">ENTER THE ISLE</button>
+        <div class="mt-6 text-[11px] text-zinc-500">Point &amp; click · everything resets on refresh</div>
+    </div>
+</div>
+
+<script src="js/three.min.js"></script>
+<script src="js/game.js?v=13"></script>
+</body>
+</html>
