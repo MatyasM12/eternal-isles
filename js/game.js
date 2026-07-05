@@ -5296,14 +5296,14 @@
 						c.spellTimer -= dt;
 						if (c.spellTimer <= 0) {
 							let interval, color, label, dmgMult;
-							if (isCaveTroll)    { interval = rand(4.5, 6.5); color = 0x8B6914; label = '🪨 The Cave Troll hurls a boulder!'; dmgMult = 0.55; }
-							else if (isFrostGolem)  { interval = rand(4.0, 6.0); color = 0x7dd3fc; label = '❄️ The Frost Golem launches an ice shard!'; dmgMult = 0.60; }
-							else if (isLavaTitan)   { interval = rand(2.5, 4.0); color = 0xff4400; label = '🌋 The Lava Titan spews a lava ball!'; dmgMult = 0.80; }
-							else if (isShadowWraith){ interval = rand(2.0, 3.5); color = 0x6600cc; label = '🌑 The Shadow Wraith fires a shadow bolt!'; dmgMult = 0.85; }
-							else if (isVoidStalker) { interval = rand(2.0, 3.5); color = 0x330066; label = '🌀 The Void Stalker launches a void lance!'; dmgMult = 0.90; }
-							else if (isAncientGolem){ interval = rand(2.5, 4.0); color = 0x7c6a3b; label = '🗿 The Ancient Golem sends a shockwave!'; dmgMult = 0.70; }
-							else if (isInfernalTitan){ interval = rand(1.8, 3.0); color = 0xff1100; label = '🔥 The Infernal Titan unleashes an inferno burst!'; dmgMult = 0.95; }
-							else                    { interval = rand(1.5, 2.8); color = 0x220044; label = '💀 The Void Colossus fires a void pulse!'; dmgMult = 1.00; }
+							if (isCaveTroll)    { interval = rand(4.5, 6.5); color = 0x8B6914; label = '🪨 The Cave Troll hurls a boulder!'; dmgMult = 1.55; }
+							else if (isFrostGolem)  { interval = rand(4.0, 6.0); color = 0x7dd3fc; label = '❄️ The Frost Golem launches an ice shard!'; dmgMult = 1.60; }
+							else if (isLavaTitan)   { interval = rand(2.5, 4.0); color = 0xff4400; label = '🌋 The Lava Titan spews a lava ball!'; dmgMult = 1.80; }
+							else if (isShadowWraith){ interval = rand(2.0, 3.5); color = 0x6600cc; label = '🌑 The Shadow Wraith fires a shadow bolt!'; dmgMult = 1.85; }
+							else if (isVoidStalker) { interval = rand(2.0, 3.5); color = 0x330066; label = '🌀 The Void Stalker launches a void lance!'; dmgMult = 1.90; }
+							else if (isAncientGolem){ interval = rand(2.5, 4.0); color = 0x7c6a3b; label = '🗿 The Ancient Golem sends a shockwave!'; dmgMult = 1.70; }
+							else if (isInfernalTitan){ interval = rand(1.8, 3.0); color = 0xff1100; label = '🔥 The Infernal Titan unleashes an inferno burst!'; dmgMult = 1.95; }
+							else                    { interval = rand(1.5, 2.8); color = 0x220044; label = '💀 The Void Colossus fires a void pulse!'; dmgMult = 2.00; }
 							c.spellTimer = interval;
 							spawnCreatureProjectile(c, Math.ceil(c.def.dmg * dmgMult) + randInt(0, 10), color, label);
 						}
