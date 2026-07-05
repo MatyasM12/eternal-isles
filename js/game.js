@@ -34,13 +34,14 @@
 		// Dragon's Lair — tiny, brutally steep peak, barely any flat land
 		{ name: "Dragon's Lair",   x:    0, z: -165,   r: 28, tier: 6, biome: 'volcanic',  peakMult: 2.40, elongX: 1.0,  elongZ: 1.0,  hillFreq: 0.20 },
 		// Eldenmere — vast arcane island, home to ancient beasts and a walled city
-		{ name: 'Eldenmere',       x:    0, z: -235,   r: 52, tier: 7, biome: 'arcane',    peakMult: 1.10, elongX: 1.2,  elongZ: 1.0,  hillFreq: 0.05 },
+		{ name: 'Eldenmere',       x:    0, z: -235,   r: 120, tier: 7, biome: 'arcane',    peakMult: 0.80, elongX: 1.3,  elongZ: 1.1,  hillFreq: 0.04 },
 	];
 	const ISLAND_R = 52; // legacy alias (fireflies etc. use it)
 	const WATER_Y = -1.15;
 	const SEA = WATER_Y - 2.15; // shallow lagoon floor (swimmable everywhere between isles)
 	// cluster bounding circle (centered at origin-ish) → deep ocean past OUTER_R
-	const OUTER_R = 300;
+	// Must cover the full extent of all islands — Eldenmere's NW corner reaches ~400 units from origin
+	const OUTER_R = 450;
 	function islandHeightAt(x, z) {
 		let land = 0, near = null, nearD = 1e9;
 		for (const isle of ISLES) {
@@ -95,8 +96,8 @@
 	app.appendChild(renderer.domElement);
 
 	const scene = new THREE.Scene();
-	scene.background = new THREE.Color(0xb9dcef);
-	scene.fog = new THREE.Fog(0xb9dcef, 70, 230);
+	scene.background = new THREE.Color(0x7fa8c4);
+	scene.fog = new THREE.Fog(0x7fa8c4, 70, 230);
 
 	const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.5, 600);
 	let camZoom = 1.0; // mouse-wheel zoom
@@ -112,7 +113,7 @@
 	// ------------------------------------------------------------------ lighting
 	// Warm sun + soft bluish ambient fill — the classic "looks expensive" combo.
 	const SUN_OFFSET = new THREE.Vector3(34, 52, 22);
-	const sun = new THREE.DirectionalLight(0xffdfb0, 1.35);
+	const sun = new THREE.DirectionalLight(0xffdfb0, 0.78);
 	sun.position.copy(SUN_OFFSET);
 	sun.castShadow = true;
 	sun.shadow.mapSize.set(2048, 2048);
@@ -125,11 +126,11 @@
 	sun.shadow.bias = -0.0006;
 	scene.add(sun);
 	const sunTarget = new THREE.Object3D(); scene.add(sunTarget); sun.target = sunTarget;
-	scene.add(new THREE.AmbientLight(0x8fa7ff, 0.55));
-	scene.add(new THREE.HemisphereLight(0xcfe6ff, 0x50713f, 0.28));
+	scene.add(new THREE.AmbientLight(0x8fa7ff, 0.28));
+	scene.add(new THREE.HemisphereLight(0xcfe6ff, 0x50713f, 0.14));
 
 	// ------------------------------------------------------------------ ground
-	const groundGeo = new THREE.PlaneGeometry(480, 480, 240, 240);
+	const groundGeo = new THREE.PlaneGeometry(960, 960, 320, 320);
 	groundGeo.rotateX(-Math.PI / 2);
 	{
 		const pos = groundGeo.attributes.position;
@@ -481,144 +482,397 @@
 	}
 	for (const isle of ISLES) buildSignpost(isle);
 
-	// ------------------------------------------------------------------ Eldenmere: town and NPC
+	// ------------------------------------------------------------------ Eldenmere: great arcane city
 	(function buildEldenmere() {
 		const EX = 0, EZ = -235; // Eldenmere island center
 
 		// --- materials ---
-		const stoneMat  = new THREE.MeshStandardMaterial({ color: 0x8a8070, flatShading: true, roughness: 0.85 });
-		const thatchMat = new THREE.MeshStandardMaterial({ color: 0xc89a40, flatShading: true, roughness: 0.95 });
-		const castleMat = new THREE.MeshStandardMaterial({ color: 0x605850, flatShading: true, roughness: 0.9, metalness: 0.1 });
-		const woodMat   = new THREE.MeshStandardMaterial({ color: 0x6b4820, flatShading: true, roughness: 0.9 });
-		const awningMat = new THREE.MeshStandardMaterial({ color: 0xb83030, flatShading: true, roughness: 0.9, side: THREE.DoubleSide });
-		const gateMat   = new THREE.MeshStandardMaterial({ color: 0x4a3820, flatShading: true, roughness: 0.85 });
-		const npcMat    = new THREE.MeshStandardMaterial({ color: 0xf5c880, flatShading: true });
-		const npcCloak  = new THREE.MeshStandardMaterial({ color: 0x2233aa, flatShading: true });
+		const stoneMat    = new THREE.MeshStandardMaterial({ color: 0x7a7468, flatShading: true, roughness: 0.85 });
+		const darkStoneMat= new THREE.MeshStandardMaterial({ color: 0x4a4040, flatShading: true, roughness: 0.9, metalness: 0.15 });
+		const thatchMat   = new THREE.MeshStandardMaterial({ color: 0xc89a40, flatShading: true, roughness: 0.95 });
+		const castleMat   = new THREE.MeshStandardMaterial({ color: 0x5a5050, flatShading: true, roughness: 0.9, metalness: 0.1 });
+		const woodMat     = new THREE.MeshStandardMaterial({ color: 0x5a3a18, flatShading: true, roughness: 0.9 });
+		const awningMat   = new THREE.MeshStandardMaterial({ color: 0x8a2020, flatShading: true, roughness: 0.9, side: THREE.DoubleSide });
+		const awningBlue  = new THREE.MeshStandardMaterial({ color: 0x1a3a80, flatShading: true, roughness: 0.9, side: THREE.DoubleSide });
+		const gateMat     = new THREE.MeshStandardMaterial({ color: 0x3a2810, flatShading: true, roughness: 0.85 });
+		const npcMat      = new THREE.MeshStandardMaterial({ color: 0xf5c880, flatShading: true });
+		const npcCloak    = new THREE.MeshStandardMaterial({ color: 0x1a2288, flatShading: true });
+		const npcRobe     = new THREE.MeshStandardMaterial({ color: 0x882222, flatShading: true });
+		const npcGreen    = new THREE.MeshStandardMaterial({ color: 0x224422, flatShading: true });
+		const arcaneGlow  = new THREE.MeshStandardMaterial({ color: 0x6600cc, emissive: 0x6600cc, emissiveIntensity: 2.0, flatShading: true });
+		const goldMat     = new THREE.MeshStandardMaterial({ color: 0xd4a017, metalness: 0.7, roughness: 0.3 });
+		const marbleMat   = new THREE.MeshStandardMaterial({ color: 0xddd8d0, flatShading: true, roughness: 0.5 });
+		const copperMat   = new THREE.MeshStandardMaterial({ color: 0xb87333, metalness: 0.6, roughness: 0.4 });
 
-		// -- helper: place a group at terrain height --
 		function placeAt(g, x, z, yOff) {
 			const y = terrainHeight(x, z) + (yOff || 0);
 			g.position.set(x, y, z);
 			scene.add(g);
 		}
 
-		// ---------------------------------------------------------------- town wall (rectangle)
-		// Wall runs around town center at (EX, EZ + 10), half-extents 20×16
-		const TC = { x: EX, z: EZ + 10 }; // town center
-		const WW = 20, WD = 16, WH = 2.8, WT = 0.9; // half-width, half-depth, height, thickness
-		const wallPieces = [
-			// north wall (no gap)
-			{ wx: 0, wz: -WD,  sx: WW * 2, sz: WT,  rx: 0 },
-			// south wall has gate gap: two halves
-			{ wx: -WW * 0.5 - 2, wz: WD, sx: WW - 8, sz: WT, rx: 0 },
-			{ wx:  WW * 0.5 + 2, wz: WD, sx: WW - 8, sz: WT, rx: 0 },
-			// east wall
-			{ wx: WW,  wz: 0,  sx: WT, sz: WD * 2, rx: 0 },
-			// west wall
-			{ wx: -WW, wz: 0,  sx: WT, sz: WD * 2, rx: 0 },
-		];
-		for (const wp of wallPieces) {
-			const wg = new THREE.Group();
-			const wall = new THREE.Mesh(new THREE.BoxGeometry(wp.sx, WH, wp.sz), stoneMat);
-			wall.position.y = WH / 2; wall.castShadow = true; wall.receiveShadow = true; wg.add(wall);
-			placeAt(wg, TC.x + wp.wx, TC.z + wp.wz, 0);
-			// register collision box for this wall segment (half-thickness pad of 0.6)
-			const pad = 0.6;
-			solidBoxes.push({
-				x1: TC.x + wp.wx - wp.sx / 2 - pad,
-				x2: TC.x + wp.wx + wp.sx / 2 + pad,
-				z1: TC.z + wp.wz - wp.sz / 2 - pad,
-				z2: TC.z + wp.wz + wp.sz / 2 + pad,
-			});
-		}
-		// gate posts (two pillars flanking the southern gap)
-		for (const s of [-1, 1]) {
-			const post = new THREE.Mesh(new THREE.BoxGeometry(1.2, WH + 1.5, 1.2), stoneMat);
-			post.position.y = (WH + 1.5) / 2; post.castShadow = true;
-			const pg = new THREE.Group(); pg.add(post);
-			placeAt(pg, TC.x + s * 5.5, TC.z + WD, 0);
-		}
-		// gate lintel
-		const lintelG = new THREE.Group();
-		const lintel = new THREE.Mesh(new THREE.BoxGeometry(10, 0.6, 1.0), gateMat);
-		lintel.position.y = WH + 1.2; lintelG.add(lintel);
-		placeAt(lintelG, TC.x, TC.z + WD, 0);
-
-		// ---------------------------------------------------------------- house builder
-		function buildHouse(cx, cz, w, d, color) {
+		// ---------------------------------------------------------------- house builder (no collision walls)
+		function buildHouse(cx, cz, w, d, color, roofColor) {
 			const g = new THREE.Group();
 			const hm = new THREE.MeshStandardMaterial({ color, flatShading: true, roughness: 0.85 });
-			const walls = new THREE.Mesh(new THREE.BoxGeometry(w, 2.2, d), hm);
-			walls.position.y = 1.1; walls.castShadow = true; walls.receiveShadow = true; g.add(walls);
-			const roof = new THREE.Mesh(new THREE.ConeGeometry(Math.max(w, d) * 0.78, 1.8, 4), thatchMat);
-			roof.position.y = 2.2 + 0.9; roof.rotation.y = Math.PI / 4; roof.castShadow = true; g.add(roof);
-			placeAt(g, TC.x + cx, TC.z + cz, 0);
+			const rm = roofColor ? new THREE.MeshStandardMaterial({ color: roofColor, flatShading: true, roughness: 0.9 }) : thatchMat;
+			const walls = new THREE.Mesh(new THREE.BoxGeometry(w, 2.8, d), hm);
+			walls.position.y = 1.4; walls.castShadow = true; walls.receiveShadow = true; g.add(walls);
+			// chimney
+			const chimney = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.2, 0.5), stoneMat);
+			chimney.position.set(w * 0.3, 2.8 + 0.6, d * 0.2); g.add(chimney);
+			// roof
+			const roof = new THREE.Mesh(new THREE.ConeGeometry(Math.max(w, d) * 0.72, 2.0, 4), rm);
+			roof.position.y = 2.8 + 1.0; roof.rotation.y = Math.PI / 4; roof.castShadow = true; g.add(roof);
+			placeAt(g, EX + cx, EZ + cz, 0);
 		}
-		buildHouse(-13,  -10, 5.5, 4.5, 0xa07850);
-		buildHouse(-13,   -2, 5.5, 4.5, 0x9c7548);
-		buildHouse(-13,    6, 5.5, 4.5, 0xa58060);
-		buildHouse( 11,  -10, 5.5, 4.5, 0x957040);
-		buildHouse( 11,   -2, 5.5, 4.5, 0xb08060);
 
-		// ---------------------------------------------------------------- castle (north of town)
-		(function buildCastle() {
-			const CCX = TC.x, CCZ = TC.z - 12;
-			const cg = new THREE.Group();
-			// main keep
-			const keep = new THREE.Mesh(new THREE.BoxGeometry(10, 7, 8), castleMat);
-			keep.position.y = 3.5; keep.castShadow = true; keep.receiveShadow = true; cg.add(keep);
-			// battlements on top
-			for (let i = -4; i <= 4; i += 2) {
-				const mex = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.2, 0.8), castleMat);
-				mex.position.set(i, 7.6, 3.6); cg.add(mex);
-				const mez = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.2, 0.8), castleMat);
-				mez.position.set(i, 7.6, -3.6); cg.add(mez);
-			}
-			// towers on corners
-			for (const [tx, tz] of [[-5.5, -4.5], [5.5, -4.5], [-5.5, 4.5], [5.5, 4.5]]) {
-				const tower = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 2.0, 9, 8), castleMat);
-				tower.position.set(tx, 4.5, tz); tower.castShadow = true; cg.add(tower);
-				const turret = new THREE.Mesh(new THREE.ConeGeometry(2.0, 2.5, 8), thatchMat);
-				turret.position.set(tx, 9.75, tz); cg.add(turret);
-			}
-			placeAt(cg, CCX, CCZ, 0);
-		})();
-
-		// ---------------------------------------------------------------- market stalls
-		function buildStall(cx, cz, angle) {
+		// ---------------------------------------------------------------- large manor builder
+		function buildManor(cx, cz, w, d, h, color) {
 			const g = new THREE.Group();
-			const frame = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.08, 2.4), woodMat);
-			frame.position.y = 1.9; g.add(frame);
-			const awning = new THREE.Mesh(new THREE.PlaneGeometry(4.0, 2.8), awningMat);
-			awning.position.y = 2.0; awning.rotation.x = -0.35; g.add(awning);
-			for (const px of [-1.7, 1.7]) {
-				const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 2.0, 5), woodMat);
-				post.position.set(px, 1.0, 0.8); g.add(post);
+			const hm = new THREE.MeshStandardMaterial({ color, flatShading: true, roughness: 0.8 });
+			const body = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), hm);
+			body.position.y = h / 2; body.castShadow = true; body.receiveShadow = true; g.add(body);
+			// crenellations on top
+			for (let i = -Math.floor(w / 2); i <= Math.floor(w / 2); i += 2) {
+				const mer = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.9, 0.9), hm);
+				mer.position.set(i, h + 0.45, d / 2); g.add(mer);
+				const merb = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.9, 0.9), hm);
+				merb.position.set(i, h + 0.45, -d / 2); g.add(merb);
 			}
+			placeAt(g, EX + cx, EZ + cz, 0);
+		}
+
+		// ---------------------------------------------------------------- arcane pillar
+		function buildPillar(cx, cz, h, glowColor) {
+			const g = new THREE.Group();
+			const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.45, h, 8), darkStoneMat);
+			shaft.position.y = h / 2; shaft.castShadow = true; g.add(shaft);
+			const cap = new THREE.Mesh(new THREE.SphereGeometry(0.45, 8, 6), new THREE.MeshStandardMaterial({ color: glowColor, emissive: glowColor, emissiveIntensity: 1.8 }));
+			cap.position.y = h + 0.35; g.add(cap);
+			const base = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.4, 1.1), stoneMat);
+			base.position.y = 0.2; g.add(base);
+			placeAt(g, EX + cx, EZ + cz, 0);
+		}
+
+		// ---------------------------------------------------------------- fountain
+		function buildFountain(cx, cz) {
+			const g = new THREE.Group();
+			const basin = new THREE.Mesh(new THREE.CylinderGeometry(3.5, 3.8, 0.6, 12), marbleMat);
+			basin.position.y = 0.3; basin.receiveShadow = true; g.add(basin);
+			const innerPool = new THREE.Mesh(new THREE.CylinderGeometry(3.0, 3.0, 0.3, 12), new THREE.MeshStandardMaterial({ color: 0x2255aa, roughness: 0.1, metalness: 0.3 }));
+			innerPool.position.y = 0.55; g.add(innerPool);
+			const column = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 2.2, 8), marbleMat);
+			column.position.y = 1.4; column.castShadow = true; g.add(column);
+			const topBowl = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 0.8, 0.4, 10), marbleMat);
+			topBowl.position.y = 2.7; g.add(topBowl);
+			// arcane water glow at top
+			const glow = new THREE.Mesh(new THREE.SphereGeometry(0.25, 7, 5), new THREE.MeshStandardMaterial({ color: 0x44ccff, emissive: 0x44ccff, emissiveIntensity: 2.5 }));
+			glow.position.y = 3.1; g.add(glow);
+			placeAt(g, EX + cx, EZ + cz, 0);
+		}
+
+		// ---------------------------------------------------------------- market stall
+		function buildStall(cx, cz, angle, color) {
+			const g = new THREE.Group();
+			const mat = color ? new THREE.MeshStandardMaterial({ color, flatShading: true, roughness: 0.9, side: THREE.DoubleSide }) : awningMat;
+			const frame = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.1, 2.6), woodMat);
+			frame.position.y = 2.0; g.add(frame);
+			const awning = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 3.0), mat);
+			awning.position.y = 2.1; awning.rotation.x = -0.3; g.add(awning);
+			for (const px of [-1.8, 1.8]) {
+				const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 2.1, 5), woodMat);
+				post.position.set(px, 1.05, 0.9); g.add(post);
+			}
+			// counter
+			const counter = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.12, 0.8), woodMat);
+			counter.position.set(0, 1.1, 0.9); g.add(counter);
 			g.rotation.y = angle;
-			placeAt(g, TC.x + cx, TC.z + cz, 0);
+			placeAt(g, EX + cx, EZ + cz, 0);
 		}
-		buildStall(-6, 10, 0);
-		buildStall( 0, 12, 0);
-		buildStall( 6, 10, 0);
 
-		// ---------------------------------------------------------------- NPC herald near gate
-		(function buildNPC() {
+		// ---------------------------------------------------------------- NPC builder
+		function buildNPC(cx, cz, cloakMat, name) {
 			const g = new THREE.Group();
-			const torso = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.9, 0.45), npcCloak);
-			torso.position.y = 0.8; torso.castShadow = true; g.add(torso);
-			const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 6), npcMat);
-			head.position.y = 1.6; head.castShadow = true; g.add(head);
+			const torso = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.95, 0.5), cloakMat);
+			torso.position.y = 0.85; torso.castShadow = true; g.add(torso);
+			const head = new THREE.Mesh(new THREE.SphereGeometry(0.30, 8, 6), npcMat);
+			head.position.y = 1.7; head.castShadow = true; g.add(head);
 			for (const s of [-1, 1]) {
-				const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.08, 0.75, 5), npcCloak);
-				arm.position.set(s * 0.4, 0.85, 0); arm.rotation.z = s * 0.4; g.add(arm);
+				const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.08, 0.8, 5), cloakMat);
+				arm.position.set(s * 0.43, 0.88, 0); arm.rotation.z = s * 0.35; g.add(arm);
 			}
-			const legs = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.7, 0.4), npcCloak);
+			const legs = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.75, 0.45), cloakMat);
 			legs.position.y = 0.3; g.add(legs);
-			g.userData.interact = { kind: 'npc', npc: 'herald' };
+			g.userData.interact = { kind: 'npc', npc: name };
 			clickables.push(g);
-			placeAt(g, TC.x + 1, TC.z + WD + 4, 0);
+			placeAt(g, EX + cx, EZ + cz, 0);
+		}
+
+		// ================================================================ DISTRICT: CENTRAL PLAZA
+		// Central fountain with arcane pillars around it
+		buildFountain(0, 5);
+		// 8 pillars in a ring around the fountain
+		for (let i = 0; i < 8; i++) {
+			const a = (i / 8) * Math.PI * 2;
+			const colors = [0x8800ff, 0x0088ff, 0xff4400, 0x00cc88];
+			buildPillar(Math.cos(a) * 7, 5 + Math.sin(a) * 7, 4.5, colors[i % 4]);
+		}
+
+		// ================================================================ DISTRICT: CASTLE QUARTER (north)
+		(function buildCastle() {
+			const CCX = 0, CCZ = -22;
+			const cg = new THREE.Group();
+			// great keep
+			const keep = new THREE.Mesh(new THREE.BoxGeometry(14, 10, 12), castleMat);
+			keep.position.y = 5; keep.castShadow = true; keep.receiveShadow = true; cg.add(keep);
+			// battlements along all four edges
+			for (let i = -6; i <= 6; i += 2) {
+				for (const z of [-6.2, 6.2]) {
+					const m = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.4, 1.0), castleMat);
+					m.position.set(i, 10.7, z); cg.add(m);
+				}
+			}
+			for (let i = -5; i <= 5; i += 2) {
+				for (const x of [-7.2, 7.2]) {
+					const m = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.4, 1.0), castleMat);
+					m.position.set(x, 10.7, i); cg.add(m);
+				}
+			}
+			// four great towers at corners
+			for (const [tx, tz] of [[-8, -7], [8, -7], [-8, 7], [8, 7]]) {
+				const tower = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.8, 13, 10), castleMat);
+				tower.position.set(tx, 6.5, tz); tower.castShadow = true; cg.add(tower);
+				const turret = new THREE.Mesh(new THREE.ConeGeometry(2.8, 3.5, 10), darkStoneMat);
+				turret.position.set(tx, 13.75, tz); cg.add(turret);
+				// glowing orb at turret tip
+				const orb = new THREE.Mesh(new THREE.SphereGeometry(0.35, 7, 5), arcaneGlow);
+				orb.position.set(tx, 15.5, tz); cg.add(orb);
+			}
+			// gatehouse arch (south face)
+			const gateL = new THREE.Mesh(new THREE.BoxGeometry(2.5, 6, 2.5), castleMat);
+			gateL.position.set(-3.5, 3, 6.4); cg.add(gateL);
+			const gateR = new THREE.Mesh(new THREE.BoxGeometry(2.5, 6, 2.5), castleMat);
+			gateR.position.set(3.5, 3, 6.4); cg.add(gateR);
+			const lintel = new THREE.Mesh(new THREE.BoxGeometry(9, 1.0, 1.5), castleMat);
+			lintel.position.set(0, 6.2, 6.4); cg.add(lintel);
+			// inner courtyard floor
+			const yard = new THREE.Mesh(new THREE.BoxGeometry(13, 0.15, 11), stoneMat);
+			yard.position.y = 0.08; yard.receiveShadow = true; cg.add(yard);
+			placeAt(cg, EX + CCX, EZ + CCZ, 0);
 		})();
+
+		// ================================================================ DISTRICT: ARCANE QUARTER (east)
+		// Arcane tower (tall spire) — kept within x+20 to stay on land
+		(function buildArcaneSpire() {
+			const g = new THREE.Group();
+			const base = new THREE.Mesh(new THREE.CylinderGeometry(3.5, 4.2, 4.0, 10), darkStoneMat);
+			base.position.y = 2; base.castShadow = true; g.add(base);
+			const tower = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 3.0, 14, 10), darkStoneMat);
+			tower.position.y = 11; tower.castShadow = true; g.add(tower);
+			const spire = new THREE.Mesh(new THREE.ConeGeometry(2.5, 5, 8), castleMat);
+			spire.position.y = 20.5; g.add(spire);
+			for (const ry of [6, 12, 17]) {
+				const ring = new THREE.Mesh(new THREE.TorusGeometry(2.5, 0.18, 6, 18), arcaneGlow);
+				ring.position.y = ry; ring.rotation.x = Math.PI / 2; g.add(ring);
+			}
+			const apex = new THREE.Mesh(new THREE.SphereGeometry(0.6, 8, 6), new THREE.MeshStandardMaterial({ color: 0xcc44ff, emissive: 0xcc44ff, emissiveIntensity: 3.0 }));
+			apex.position.y = 23.5; g.add(apex);
+			placeAt(g, EX + 18, EZ - 5, 0);
+		})();
+		// Arcane library
+		buildManor(16, 8, 10, 8, 5, 0x3a3050);
+		// Arcane study houses — pulled inward
+		buildHouse(14, 18, 6, 5, 0x3a3060, 0x1a1040);
+		buildHouse(22, 18, 6, 5, 0x3a3060, 0x1a1040);
+		buildHouse(22, 8, 6, 5, 0x3a3060, 0x1a1040);
+		// Arcane pillars along the eastern approach
+		for (let i = 0; i < 4; i++) {
+			buildPillar(10 + i * 3, -12 + i * 4, 5.5, 0xcc44ff);
+		}
+		// Arcane obelisks — kept within x+25
+		for (const [ox, oz] of [[18, -15], [24, -8], [25, -18]]) {
+			const g = new THREE.Group();
+			const shaft = new THREE.Mesh(new THREE.BoxGeometry(1.2, 8, 1.2), darkStoneMat);
+			shaft.position.y = 4; shaft.castShadow = true; g.add(shaft);
+			const tip = new THREE.Mesh(new THREE.ConeGeometry(0.7, 2, 4), new THREE.MeshStandardMaterial({ color: 0x8800ff, emissive: 0x8800ff, emissiveIntensity: 1.5 }));
+			tip.position.y = 9; g.add(tip);
+			for (const ry of [2, 4, 6]) {
+				const rune = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.08, 0.08), arcaneGlow);
+				rune.position.set(0, ry, 0); g.add(rune);
+			}
+			placeAt(g, EX + ox, EZ + oz, 0);
+		}
+
+		// ================================================================ DISTRICT: MARKET SQUARE (south-east of plaza)
+		// Compact market — 9 stalls in 3×3 grid, all within z+10 to z+28
+		const stallColors = [0x8a2020, 0x1a3a80, 0x205020, 0x7a5010];
+		for (let row = 0; row < 3; row++) {
+			for (let col = 0; col < 3; col++) {
+				buildStall(-10 + col * 9, 10 + row * 7, 0, stallColors[col % 4]);
+			}
+		}
+		// Market square small fountain
+		buildFountain(2, 22);
+		// Market pillars at corners — contained within ±16, z+8 to z+28
+		for (const [mx, mz] of [[-14, 8], [14, 8], [-14, 28], [14, 28]]) {
+			buildPillar(mx, mz, 3.5, 0xffaa00);
+		}
+
+		// ================================================================ DISTRICT: RESIDENTIAL WEST
+		// Rows of townhouses — pulled inward, max x=-30
+		const westHouseColors = [0x9c7548, 0xa07850, 0xb08060, 0x957040, 0xa58060, 0x88604a, 0x7a5840];
+		for (let row = 0; row < 3; row++) {
+			for (let col = 0; col < 2; col++) {
+				const ci = (row * 2 + col) % westHouseColors.length;
+				buildHouse(-18 - col * 8, -8 + row * 11, 5.5, 4.5, westHouseColors[ci]);
+			}
+		}
+		// West manor buildings — kept within x=-28
+		buildManor(-22, 18, 9, 8, 5, 0x8a7060);
+		buildManor(-16, -18, 11, 9, 6, 0x9a8070);
+
+		// ================================================================ DISTRICT: SMITHY QUARTER (southeast of plaza)
+		(function buildSmithy() {
+			const g = new THREE.Group();
+			const body = new THREE.Mesh(new THREE.BoxGeometry(9, 4, 7), stoneMat);
+			body.position.y = 2; body.castShadow = true; body.receiveShadow = true; g.add(body);
+			const chimney = new THREE.Mesh(new THREE.BoxGeometry(1.5, 3.5, 1.5), darkStoneMat);
+			chimney.position.set(2.5, 5.75, 1.5); chimney.castShadow = true; g.add(chimney);
+			const forge = new THREE.Mesh(new THREE.SphereGeometry(0.4, 6, 5), new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xff6600, emissiveIntensity: 2.5 }));
+			forge.position.set(2.5, 7.6, 1.5); g.add(forge);
+			const anvil = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.6, 0.7), new THREE.MeshStandardMaterial({ color: 0x303030, metalness: 0.8, roughness: 0.3 }));
+			anvil.position.set(-3.0, 0.3, 0.5); g.add(anvil);
+			placeAt(g, EX + 12, EZ + 16, 0);
+		})();
+		// Smithy worker houses — compact row, max z+26
+		for (let i = 0; i < 3; i++) {
+			buildHouse(8 + i * 8, 26, 5, 4, 0x806050);
+		}
+
+		// ================================================================ DISTRICT: TEMPLE QUARTER (northwest)
+		(function buildTemple() {
+			const g = new THREE.Group();
+			// temple steps
+			for (let s = 0; s < 4; s++) {
+				const step = new THREE.Mesh(new THREE.BoxGeometry(12 - s, 0.35, 10 - s), marbleMat);
+				step.position.set(0, s * 0.35, 0); step.receiveShadow = true; g.add(step);
+			}
+			// temple body
+			const body = new THREE.Mesh(new THREE.BoxGeometry(10, 6, 8), marbleMat);
+			body.position.y = 1.4 + 3; body.castShadow = true; body.receiveShadow = true; g.add(body);
+			// pediment (triangular gable)
+			const ped = new THREE.Mesh(new THREE.CylinderGeometry(0, 6, 3, 4), marbleMat);
+			ped.position.y = 7.9; ped.rotation.y = Math.PI / 4; ped.castShadow = true; g.add(ped);
+			// columns around the front
+			for (let i = -4; i <= 4; i += 2) {
+				const col = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.45, 5.5, 8), marbleMat);
+				col.position.set(i, 3.15, 4.8); col.castShadow = true; g.add(col);
+			}
+			// altar flame
+			const altar = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.2, 1.5), marbleMat);
+			altar.position.y = 1.4; g.add(altar);
+			const flame = new THREE.Mesh(new THREE.ConeGeometry(0.35, 1.0, 7), new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xffaa00, emissiveIntensity: 3.0 }));
+			flame.position.y = 2.4; g.add(flame);
+			placeAt(g, EX - 18, EZ - 16, 0);
+		})();
+		// Temple quarter houses — max x=-28, z within -14 to +4
+		for (let i = 0; i < 4; i++) {
+			buildHouse(-20 - (i % 2) * 8, -14 + Math.floor(i / 2) * 12, 5, 4.5, 0xc8c0b0, 0x8a6030);
+		}
+
+		// ================================================================ DISTRICT: TAVERN (south of plaza)
+		(function buildTavern() {
+			const g = new THREE.Group();
+			const body = new THREE.Mesh(new THREE.BoxGeometry(12, 4, 9), new THREE.MeshStandardMaterial({ color: 0x7a4820, flatShading: true, roughness: 0.85 }));
+			body.position.y = 2; body.castShadow = true; body.receiveShadow = true; g.add(body);
+			// upper half-timber floor
+			const upper = new THREE.Mesh(new THREE.BoxGeometry(13, 2.5, 9.5), new THREE.MeshStandardMaterial({ color: 0x9a6030, flatShading: true, roughness: 0.85 }));
+			upper.position.y = 5.25; upper.castShadow = true; g.add(upper);
+			// thatched roof
+			const roof = new THREE.Mesh(new THREE.BoxGeometry(14, 0.2, 10.5), thatchMat);
+			roof.position.y = 6.6; g.add(roof);
+			const roofPeak = new THREE.Mesh(new THREE.CylinderGeometry(0, 7.5, 3, 4), thatchMat);
+			roofPeak.position.y = 8.1; roofPeak.rotation.y = Math.PI / 4; roofPeak.castShadow = true; g.add(roofPeak);
+			// sign post
+			const sign = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.8, 0.1), woodMat);
+			sign.position.set(0, 3.5, 4.85); g.add(sign);
+			// lanterns flanking door
+			for (const sx of [-1, 1]) {
+				const lantern = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.4, 0.3), new THREE.MeshStandardMaterial({ color: 0xffcc44, emissive: 0xffcc44, emissiveIntensity: 2.0 }));
+				lantern.position.set(sx * 2.2, 2.6, 4.6); g.add(lantern);
+			}
+			placeAt(g, EX - 2, EZ + 14, 0);
+		})();
+
+		// ================================================================ DISTRICT: HARBOR (south of plaza, compact)
+		(function buildHarbor() {
+			// dock planks — moved to z+28 to z+36 range, safely on land
+			for (let i = 0; i < 4; i++) {
+				const plank = new THREE.Mesh(new THREE.BoxGeometry(3, 0.25, 8), woodMat);
+				plank.position.y = 0.12; plank.receiveShadow = true;
+				placeAt(plank, EX - 7 + i * 3, EZ + 32, 0);
+			}
+			// dock posts
+			for (const [px, pz] of [[-8, 30], [-8, 36], [4, 30], [4, 36]]) {
+				const post = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 2.5, 6), woodMat);
+				post.position.y = 1.25;
+				placeAt(post, EX + px, EZ + pz, 0);
+			}
+			// harbor warehouse — z+38, well inside island
+			const wh = new THREE.Mesh(new THREE.BoxGeometry(12, 4, 7), new THREE.MeshStandardMaterial({ color: 0x6a5030, flatShading: true }));
+			wh.position.y = 2.0; wh.castShadow = true;
+			placeAt(wh, EX - 2, EZ + 38, 0);
+		})();
+
+		// ================================================================ NPCs distributed around town
+		buildNPC(1, 10, npcCloak, 'herald');        // herald near plaza
+		buildNPC(-2, -6, npcRobe, 'arcane_scholar'); // arcane quarter scholar
+		buildNPC(8, 18, npcGreen, 'merchant');      // market merchant
+		buildNPC(-16, -16, npcMat, 'priest');       // temple priest
+		buildNPC(10, 20, woodMat, 'blacksmith');    // smithy blacksmith
+
+		// ================================================================ Scattered decorative elements
+		// Benches around the plaza
+		for (let i = 0; i < 6; i++) {
+			const a = (i / 6) * Math.PI * 2;
+			const g = new THREE.Group();
+			const bench = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.22, 0.55), woodMat);
+			bench.position.y = 0.55;
+			g.add(bench);
+			for (const bx of [-0.7, 0.7]) {
+				const leg = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.55, 0.5), woodMat);
+				leg.position.set(bx, 0.28, 0); g.add(leg);
+			}
+			g.rotation.y = a;
+			placeAt(g, EX + Math.cos(a) * 11, EZ + 5 + Math.sin(a) * 11, 0);
+		}
+		// Barrels near the tavern
+		for (let i = 0; i < 4; i++) {
+			const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.42, 0.9, 8), woodMat);
+			barrel.position.y = 0.45;
+			placeAt(barrel, EX - 6 + i * 1.2, EZ + 13, 0);
+		}
+		// Crates in the market
+		for (let i = 0; i < 5; i++) {
+			const crate = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.9, 0.9), woodMat);
+			crate.position.y = 0.45; crate.castShadow = true;
+			placeAt(crate, EX - 12 + i * 4, EZ + 14, 0);
+		}
+		// Lamp posts along main road
+		for (let i = -3; i <= 3; i++) {
+			const g = new THREE.Group();
+			const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 4.5, 6), darkStoneMat);
+			pole.position.y = 2.25; g.add(pole);
+			const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.22, 7, 5), new THREE.MeshStandardMaterial({ color: 0xffe080, emissive: 0xffe080, emissiveIntensity: 2.5 }));
+			lamp.position.y = 4.7; g.add(lamp);
+			placeAt(g, EX + 8, EZ + i * 8, 0); // east road
+			const g2 = new THREE.Group();
+			const pole2 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 4.5, 6), darkStoneMat);
+			pole2.position.y = 2.25; g2.add(pole2);
+			const lamp2 = new THREE.Mesh(new THREE.SphereGeometry(0.22, 7, 5), new THREE.MeshStandardMaterial({ color: 0xffe080, emissive: 0xffe080, emissiveIntensity: 2.5 }));
+			lamp2.position.y = 4.7; g2.add(lamp2);
+			placeAt(g2, EX - 8, EZ + i * 8, 0); // west road
+		}
 
 	})(); // end buildEldenmere
 
@@ -824,6 +1078,27 @@
 		// ---- Eldenmere tier-6 medallions & rings ----
 		'Starstone Medallion': { icon: '🏅', type: 'medallion', def: 25, atk: 15, desc: 'A medallion of starstone. +25 DEF, +15 ATK.' },
 		'Void Ring':        { icon: '💍', type: 'ring', atk: 18, def: 10, desc: 'A ring of void crystal. +18 ATK, +10 DEF.' },
+		// ---- Flower-brewed elixirs (consumables) ----
+		'Moonbloom Draught':    { icon: '🌙', type: 'food', heal: 60,                                         desc: 'Click to drink · restores 60 HP.' },
+		'Sunfire Tonic':        { icon: '🔆', type: 'food', heal: 0,   atkBuff: 8,  buffDur: 60,              desc: 'Click to drink · grants +8 ATK for 60 seconds.' },
+		'Void Elixir':          { icon: '🌑', type: 'food', heal: 0,   defBuff: 10, buffDur: 60,              desc: 'Click to drink · grants +10 DEF for 60 seconds.' },
+		'Starbloom Brew':       { icon: '⭐', type: 'food', heal: 45,  atkBuff: 5,  buffDur: 45,              desc: 'Click to drink · restores 45 HP and grants +5 ATK for 45 seconds.' },
+		'Moonbloom Salve':      { icon: '🌛', type: 'food', heal: 0,   hotHeal: 120, hotDur: 30,              desc: 'Click to drink · restores 120 HP over 30 seconds.' },
+		'Solar Draught':        { icon: '☀️', type: 'food', heal: 0,   atkBuff: 15, buffDur: 45,              desc: 'Click to drink · grants +15 ATK for 45 seconds.' },
+		'Void Shroud':          { icon: '🌒', type: 'food', heal: 0,   defBuff: 18, dmgReduce: 0.10, buffDur: 45, desc: 'Click to drink · grants +18 DEF and reduces damage taken by 10% for 45 seconds.' },
+		'Celestial Brew':       { icon: '🌠', type: 'food', heal: 80,  atkBuff: 10, defBuff: 8, buffDur: 45, desc: 'Click to drink · restores 80 HP and grants +10 ATK +8 DEF for 45 seconds.' },
+		// ---- Enriched crafting reagent ----
+		'Enriched Fire Essence': { icon: '🔥', type: 'reagent', desc: 'A Fire Essence suffused with rare energy. Required for legendary crafting.' },
+		// ---- Drops from Eldenmere legendary creatures (used only in Legendary Forge) ----
+		'Infernal Ember':  { icon: '🔴', type: 'reagent', desc: 'A smoldering ember torn from an Infernal Titan. Required for legendary forging.' },
+		'Void Relic':      { icon: '🟣', type: 'reagent', desc: 'A crystallised void shard from a Void Colossus. Required for legendary forging.' },
+		// ---- Legendary Arcane Forge items (crafted with Enriched Fire Essence) ----
+		'Emberforged Blade':      { icon: '⚔️', type: 'weapon', atk: 75, desc: 'A legendary blade tempered with Enriched Fire Essence. +75 ATK.' },
+		'Phoenixweave Vestment':  { icon: '🧥', type: 'armor', def: 65, desc: 'Legendary robes woven through molten essence. +65 DEF.' },
+		'Embercrown':             { icon: '👑', type: 'helm', def: 40, atk: 10, desc: 'A helm glowing with enriched fire. +40 DEF, +10 ATK.' },
+		'Infernoplate':           { icon: '🛡️', type: 'armor', def: 80, desc: 'Legendary armor radiating infernal heat. +80 DEF.' },
+		'Volcanic Warblade':      { icon: '⚔️', type: 'weapon', atk: 90, desc: 'A blade erupting with volcanic power. +90 ATK.' },
+		'Emberveil Ring':         { icon: '💍', type: 'ring', atk: 25, def: 15, desc: 'A ring shimmering with enriched fire. +25 ATK, +15 DEF.' },
 	};
 	// rate = base success chance (raised by your Manufacture skill).  tier groups the book.
 	const RECIPES = [
@@ -876,11 +1151,11 @@
 		// --- cuisses ---
 		{ out: 'Leather Cuisses',  req: { 'Tanned Leather': 2 },                          tag: '+2 DEF',  rate: 0.82, tier: 'Cuisses' },
 		{ out: 'Iron Cuisses',     req: { 'Iron Bar': 3, 'Tanned Leather': 1 },           tag: '+4 DEF',  rate: 0.62, tier: 'Cuisses' },
-		{ out: 'Steel Cuisses',    req: { 'Steel Bar': 2, 'Tanned Leather': 1 },          tag: '+7 DEF',  rate: 0.44, tier: 'Cuisses' },
+		{ out: 'Steel Cuisses',    req: { 'Steel Bar': 2, 'Tanned Leather': 2 },          tag: '+7 DEF',  rate: 0.44, tier: 'Cuisses' },
 		// --- greaves ---
 		{ out: 'Leather Greaves',  req: { 'Tanned Leather': 1, 'Bones': 1 },              tag: '+2 DEF',  rate: 0.82, tier: 'Greaves' },
 		{ out: 'Iron Greaves',     req: { 'Iron Bar': 2 },                                tag: '+3 DEF',  rate: 0.62, tier: 'Greaves' },
-		{ out: 'Steel Greaves',    req: { 'Steel Bar': 2, 'Tanned Leather': 1 },          tag: '+6 DEF',  rate: 0.44, tier: 'Greaves' },
+		{ out: 'Steel Greaves',    req: { 'Steel Bar': 2, 'Coal': 1 },                    tag: '+6 DEF',  rate: 0.44, tier: 'Greaves' },
 		// --- medallions ---
 		{ out: 'Silver Medallion', req: { 'Silver Bar': 2, 'Fish Scales': 2 },                      tag: '+3 DEF +1 ATK', rate: 0.72, tier: 'Medallions' },
 		{ out: 'Quartz Medallion', req: { 'Quartz Crystal': 2, 'Silver Bar': 1 },                   tag: '+5 DEF +2 ATK', rate: 0.60, tier: 'Medallions' },
@@ -903,7 +1178,7 @@
 		{ out: 'Dragon Scale Shield',   req: { 'Dragon Scale': 4, 'Steel Bar': 2 },                            tag: '+18 DEF', rate: 0.18, tier: 'Dragon Forge' },
 		{ out: 'Dragon Skull Helm',     req: { 'Dragon Bone': 2, 'Dragon Scale': 2 },                          tag: '+16 DEF', rate: 0.18, tier: 'Dragon Forge' },
 		{ out: 'Dragon Scale Hauberk',  req: { 'Dragon Scale': 6, 'Dragon Heart': 1, 'Steel Bar': 2 },         tag: '+30 DEF', rate: 0.15, tier: 'Dragon Forge' },
-		{ out: 'Dragon Bone Cuisses',   req: { 'Dragon Bone': 2, 'Dragon Scale': 2 },                          tag: '+14 DEF', rate: 0.18, tier: 'Dragon Forge' },
+		{ out: 'Dragon Bone Cuisses',   req: { 'Dragon Bone': 3, 'Dragon Scale': 1 },                          tag: '+14 DEF', rate: 0.18, tier: 'Dragon Forge' },
 		{ out: 'Dragon Bone Greaves',   req: { 'Dragon Bone': 2, 'Dragon Fang': 1 },                           tag: '+12 DEF', rate: 0.18, tier: 'Dragon Forge' },
 		{ out: 'Dragon Heart Medallion', req: { 'Dragon Heart': 1, 'Gold Bar': 2, 'Dragon Fang': 1 },         tag: '+15 DEF +8 ATK', rate: 0.15, tier: 'Dragon Forge' },
 		{ out: 'Dragon Fang Ring',       req: { 'Dragon Fang': 2, 'Gold Bar': 1 },                            tag: '+10 ATK +5 DEF', rate: 0.18, tier: 'Dragon Forge' },
@@ -930,6 +1205,22 @@
 		// ---- Arcane Forge — medallions & rings ----
 		{ out: 'Starstone Medallion',   req: { 'Star Alloy': 2, 'Ancient Core': 1, 'Aether Bar': 1 },        tag: '+25 DEF +15 ATK', rate: 0.20, tier: 'Arcane Forge' },
 		{ out: 'Void Ring',             req: { 'Void Fang': 2, 'Void Ingot': 1 },                            tag: '+18 ATK +10 DEF', rate: 0.22, tier: 'Arcane Forge' },
+		// ---- Botanica (flower-based consumables) ----
+		{ out: 'Moonbloom Draught',  req: { 'Moonbloom': 2, 'Blue Star Flower': 1 },                             tag: '+60 HP',                 rate: 0.90, tier: 'Botanica' },
+		{ out: 'Sunfire Tonic',      req: { 'Sunfire Lily': 2, 'Fire Essence': 1 },                              tag: '+8 ATK 60s',             rate: 0.85, tier: 'Botanica' },
+		{ out: 'Void Elixir',        req: { 'Voidpetal': 2, 'Coal': 1 },                                         tag: '+10 DEF 60s',            rate: 0.85, tier: 'Botanica' },
+		{ out: 'Starbloom Brew',     req: { 'Starbloom': 2, 'Chrysanthemum': 1 },                                tag: '+45 HP +5 ATK',          rate: 0.85, tier: 'Botanica' },
+		{ out: 'Moonbloom Salve',    req: { 'Moonbloom': 3, 'Voidpetal': 1, 'Blue Star Flower': 2 },             tag: '+120 HP regen 30s',      rate: 0.75, tier: 'Botanica' },
+		{ out: 'Solar Draught',      req: { 'Sunfire Lily': 3, 'Starbloom': 1, 'Gold Bar': 1 },                  tag: '+15 ATK 45s',            rate: 0.70, tier: 'Botanica' },
+		{ out: 'Void Shroud',        req: { 'Voidpetal': 3, 'Moonbloom': 1, 'Tanned Leather': 2 },              tag: '+18 DEF -10% dmg 45s',   rate: 0.65, tier: 'Botanica' },
+		{ out: 'Celestial Brew',     req: { 'Starbloom': 3, 'Moonbloom': 2, 'Sunfire Lily': 1, 'Voidpetal': 1 }, tag: '+80 HP +10 ATK +8 DEF', rate: 0.55, tier: 'Botanica' },
+		// ---- Legendary Forge (requires Enriched Fire Essence) ----
+		{ out: 'Emberforged Blade',     req: { 'Enriched Fire Essence': 2, 'Infernal Ember': 4 },             tag: '+75 ATK',          rate: 0.12, tier: 'Legendary Forge' },
+		{ out: 'Volcanic Warblade',     req: { 'Enriched Fire Essence': 3, 'Infernal Ember': 5, 'Void Relic': 2 }, tag: '+90 ATK',       rate: 0.08, tier: 'Legendary Forge' },
+		{ out: 'Phoenixweave Vestment', req: { 'Enriched Fire Essence': 2, 'Void Relic': 3, 'Infernal Ember': 2 }, tag: '+65 DEF',       rate: 0.12, tier: 'Legendary Forge' },
+		{ out: 'Infernoplate',          req: { 'Enriched Fire Essence': 3, 'Void Relic': 5 },                   tag: '+80 DEF',          rate: 0.08, tier: 'Legendary Forge' },
+		{ out: 'Embercrown',            req: { 'Enriched Fire Essence': 2, 'Infernal Ember': 2, 'Void Relic': 2 }, tag: '+40 DEF +10 ATK', rate: 0.14, tier: 'Legendary Forge' },
+		{ out: 'Emberveil Ring',        req: { 'Enriched Fire Essence': 1, 'Infernal Ember': 2 },               tag: '+25 ATK +15 DEF',  rate: 0.18, tier: 'Legendary Forge' },
 	];
 	const EQUIP_SLOTS = ['weapon', 'shield', 'helm', 'armor', 'cuisses', 'greaves', 'medallion', 'ring'];
 
@@ -1076,7 +1367,9 @@
 	}
 	function eatFood(name) {
 		const info = ITEMS[name];
-		if (player.hp >= player.maxhp) { log('You are already at full health.', 'sys'); return; }
+		const hasHeal = info.heal && info.heal > 0;
+		const hasBuff = info.atkBuff || info.defBuff || info.hotHeal;
+		if (hasHeal && !hasBuff && player.hp >= player.maxhp) { log('You are already at full health.', 'sys'); return; }
 		const cooldown = 5;
 		if (elapsed - player.lastEat < cooldown) {
 			const remaining = Math.ceil(cooldown - (elapsed - player.lastEat));
@@ -1084,11 +1377,39 @@
 			return;
 		}
 		if (!removeItem(name, 1)) return;
-		player.hp = Math.min(player.maxhp, player.hp + info.heal);
 		player.lastEat = elapsed;
-		setBar(player.bar, player.hp / player.maxhp); refreshHpUI();
-		log('You consume the ' + name + ' and recover ' + info.heal + ' HP.', 'harvest');
-		floatText('+' + info.heal + ' HP', headPos(), '#4ade80', 0.9);
+		if (hasHeal) {
+			player.hp = Math.min(player.maxhp, player.hp + info.heal);
+			setBar(player.bar, player.hp / player.maxhp); refreshHpUI();
+			floatText('+' + info.heal + ' HP', headPos(), '#4ade80', 0.9);
+		}
+		if (info.hotHeal) {
+			player.consumableHotTotal = (player.consumableHotTotal || 0) + info.hotHeal;
+			player.consumableHotTimer = info.hotDur || 30;
+			floatText('💚 Regen', headPos(), '#86efac', 0.9);
+		}
+		if (info.atkBuff) {
+			player.consumableAtk = info.atkBuff;
+			player.consumableAtkTimer = info.buffDur || 60;
+			refreshStatsUI();
+			floatText('+' + info.atkBuff + ' ATK', headPos(), '#fbbf24', 0.9);
+		}
+		if (info.defBuff) {
+			player.consumableDef = info.defBuff;
+			player.consumableDefTimer = info.buffDur || 60;
+			refreshStatsUI();
+			floatText('+' + info.defBuff + ' DEF', headPos(), '#38bdf8', 0.9);
+		}
+		if (info.dmgReduce) {
+			player.consumableDmgReduce = info.dmgReduce;
+			player.consumableDmgReduceTimer = info.buffDur || 60;
+		}
+		const msgs = [];
+		if (hasHeal) msgs.push('recover ' + info.heal + ' HP');
+		if (info.hotHeal) msgs.push('+' + info.hotHeal + ' HP over ' + (info.hotDur || 30) + 's');
+		if (info.atkBuff) msgs.push('+' + info.atkBuff + ' ATK for ' + (info.buffDur || 60) + 's');
+		if (info.defBuff) msgs.push('+' + info.defBuff + ' DEF for ' + (info.buffDur || 60) + 's');
+		log('You consume the ' + name + (msgs.length ? ' · ' + msgs.join(', ') : '') + '.', 'harvest');
 		hideTooltip();
 	}
 
@@ -1395,6 +1716,19 @@
 		blizzardCast: null,      // { timer, duration, dmg, rank } while channeling
 		lightningStormCast: null, // { timer, duration, dmgPerHit, rank, hitsLeft, hitTimer } while channeling + ticking
 		healingSurge: null,      // { hitsLeft, healPerPulse, timer } for in-progress surges
+		// new skills
+		magmaShellTimer: 0, magmaShellAbsorb: 0, magmaShellReturnDmg: 0,
+		flameWallTimer: 0, flameWallDps: 0,
+		phoenixMarkUsed: false,
+		glacialArmorTimer: 0, glacialArmorAbsorb: 0, glacialArmorExplosionDmg: 0,
+		coldSnapCount: 0,        // counts attacks for Cold Snap proc
+		permafrostPatches: [],   // { mesh, timer, radius, dps }
+		ballLightningObj: null,  // { mesh, timer, dps, radius }
+		soulLeechCast: null,     // { creature, timer, duration, dps }
+		spiritWalkTimer: 0,
+		resurrectionMarkUsed: false,
+		aegisTimer: 0, aegisAbsorb: 0,
+		overloadDeadStunned: [], // for Overload passive cascades
 	};
 	// XP curve + level helpers ---------------------------------------------------
 	function xpForLevel(l) { return Math.floor(40 * Math.pow(1.28, l - 1)); }
@@ -1467,6 +1801,36 @@
 						'Inferno deals 55 fire damage — the ground cracks.',
 						'Inferno deals 80 fire damage — molten earth erupts.',
 						'Inferno deals 110 fire damage — LEGENDARY: a volcano tears the world open!'] },
+				{ id: 'fire_flame_wall', name: 'Flame Wall', type: 'active', icon: '🔥', maxRank: 5,
+					cooldowns: [0, 40, 36, 32, 28, 24],
+					rankDescs: ['',
+						'Erect a wall of fire at your feet — 8 dmg/s to crossing enemies for 6s.',
+						'Flame Wall deals 14 dmg/s for 7s.',
+						'Flame Wall deals 20 dmg/s for 8s.',
+						'Flame Wall deals 28 dmg/s for 10s.',
+						'Flame Wall deals 38 dmg/s for 12s — LEGENDARY: no one passes!'] },
+				{ id: 'fire_magma_shell', name: 'Magma Shell', type: 'active', icon: '🛡️', maxRank: 5,
+					cooldowns: [0, 38, 34, 30, 26, 22],
+					rankDescs: ['',
+						'Coat yourself in magma — absorb up to 30 damage. Attackers take 8 fire damage per hit.',
+						'Shell absorbs 55 damage. Attackers take 14 fire damage.',
+						'Shell absorbs 85 damage. Attackers take 22 fire damage.',
+						'Shell absorbs 120 damage. Attackers take 32 fire damage.',
+						'Shell absorbs 160 damage. Attackers take 45 fire damage — LEGENDARY: touch me and burn!'] },
+				{ id: 'fire_pyroclasm', name: 'Pyroclasm', type: 'passive', icon: '💥', maxRank: 5,
+					rankDescs: ['',
+						'Critical burn ticks: 10% chance a burn tick deals double damage.',
+						'Crit chance 15%.',
+						'Crit chance 20%.',
+						'Crit chance 28%.',
+						'Crit chance 35% — the inferno rages uncontrolled!'] },
+				{ id: 'fire_phoenix_mark', name: 'Phoenix Mark', type: 'passive', icon: '🦅', maxRank: 5,
+					rankDescs: ['',
+						'Once per combat: auto-cast Mend (25 HP) when your HP drops below 20%.',
+						'Heal 45 HP at 20% HP threshold.',
+						'Heal 70 HP at 25% HP threshold.',
+						'Heal 100 HP at 25% HP threshold.',
+						'Heal 140 HP at 30% HP threshold — the phoenix rises!'] },
 			]
 		},
 		{
@@ -1531,6 +1895,37 @@
 						'Each strike deals 18 lightning damage.',
 						'Each strike deals 27 lightning damage.',
 						'Each strike deals 37 lightning damage — LEGENDARY: the sky is your weapon!'] },
+				{ id: 'lightning_chain', name: 'Chain Lightning', type: 'active', icon: '⚡', maxRank: 5,
+					cooldowns: [0, 18, 16, 14, 12, 10],
+					rankDescs: ['',
+						'Strike a target for 18 lightning damage — arcs to 2 nearby enemies for 9 each.',
+						'Primary 30 dmg, arcs deal 15 each.',
+						'Primary 45 dmg, arcs deal 23 each — arcs to 3 targets.',
+						'Primary 65 dmg, arcs deal 33 each.',
+						'Primary 90 dmg, arcs deal 48 each — LEGENDARY: chain never stops!'] },
+				{ id: 'lightning_discharge', name: 'Discharge', type: 'active', icon: '💥', maxRank: 5,
+					cooldowns: [0, 22, 20, 18, 15, 12],
+					rankDescs: ['',
+						'Consume all shocks/stuns — deal 20 lightning damage per consumed effect.',
+						'25 damage per effect.',
+						'32 damage per effect.',
+						'42 damage per effect.',
+						'55 damage per effect — LEGENDARY: release all the charge at once!'] },
+				{ id: 'lightning_overload', name: 'Overload', type: 'passive', icon: '🌩️', maxRank: 5,
+					rankDescs: ['',
+						'Shocked enemies that die burst-stun nearby enemies within 4 units for 1 cycle.',
+						'Burst-stun radius 5 units.',
+						'Burst-stun radius 6 units, stuns 2 cycles.',
+						'Stun 2 cycles, radius 7 units.',
+						'Stun 3 cycles, radius 8 units — chain overloads cascade!'] },
+				{ id: 'lightning_ball', name: 'Ball Lightning', type: 'active', icon: '🔵', maxRank: 5,
+					cooldowns: [0, 28, 25, 22, 18, 15],
+					rankDescs: ['',
+						'Summon a slow orb that pulses 8 lightning damage/s to enemies within 3 units for 6s.',
+						'Orb pulses 14 dmg/s for 7s.',
+						'Orb pulses 20 dmg/s for 8s.',
+						'Orb pulses 28 dmg/s for 9s.',
+						'Orb pulses 38 dmg/s for 10s — LEGENDARY: a storm contained in a sphere!'] },
 			]
 		},
 		{
@@ -1599,6 +1994,36 @@
 						'Blizzard deals 40 ice damage.',
 						'Blizzard deals 58 ice damage.',
 						'Blizzard deals 80 ice damage — LEGENDARY: an ice age descends!'] },
+				{ id: 'ice_frost_nova', name: 'Frost Nova', type: 'active', icon: '❄️', maxRank: 5,
+					cooldowns: [0, 22, 20, 18, 15, 12],
+					rankDescs: ['',
+						'Instantly freeze all enemies within 5 units for 2 turns (no channel).',
+						'Freeze radius 6 units, 2 turns.',
+						'Freeze radius 7 units, 3 turns.',
+						'Freeze radius 8 units, 3 turns.',
+						'Freeze radius 9 units, 4 turns — LEGENDARY: everything stops!'] },
+				{ id: 'ice_glacial_armor', name: 'Glacial Armor', type: 'active', icon: '🧊', maxRank: 5,
+					cooldowns: [0, 35, 32, 28, 24, 20],
+					rankDescs: ['',
+						'Encase yourself in ice — absorb up to 40 damage. On expiry, explode for 20 ice damage in 5 units.',
+						'Absorb 70 damage. Explosion 35 ice damage.',
+						'Absorb 105 damage. Explosion 55 ice damage.',
+						'Absorb 145 damage. Explosion 78 ice damage.',
+						'Absorb 190 damage. Explosion 105 ice damage — LEGENDARY: a glacier detonates!'] },
+				{ id: 'ice_cold_snap', name: 'Cold Snap', type: 'passive', icon: '🌨️', maxRank: 5,
+					rankDescs: ['',
+						'Every 3rd attack automatically Chills the target (slows for 2s).',
+						'Every 3rd attack Chills and deals +8 bonus ice damage.',
+						'Every 3rd attack Chills and deals +15 bonus ice damage.',
+						'Chill becomes a Freeze for 1 turn. +20 bonus ice damage.',
+						'Freeze 2 turns. +28 bonus ice damage — Cold Snap cannot be resisted!'] },
+				{ id: 'ice_permafrost', name: 'Permafrost', type: 'passive', icon: '💎', maxRank: 5,
+					rankDescs: ['',
+						'Frozen enemies that die leave an ice patch (5-unit radius) for 8s — slows enemies that step on it.',
+						'Patch radius 6 units, lasts 10s.',
+						'Ice patch also deals 5 dmg/s to enemies standing on it.',
+						'Patch deals 9 dmg/s, radius 7 units.',
+						'Patch deals 14 dmg/s, lasts 15s — the ground never thaws!'] },
 			]
 		},
 		{
@@ -1658,6 +2083,37 @@
 						'Each pulse heals 45 HP.',
 						'Each pulse heals 65 HP.',
 						'Each pulse heals 90 HP — LEGENDARY: spirit floods your very soul!'] },
+				{ id: 'spirit_soul_leech', name: 'Soul Leech', type: 'active', icon: '🌀', maxRank: 5,
+					cooldowns: [0, 28, 25, 22, 18, 15],
+					rankDescs: ['',
+						'Tether a creature for 5s — drain 8 HP/s from it, healing yourself.',
+						'Drain 14 HP/s for 6s.',
+						'Drain 20 HP/s for 7s.',
+						'Drain 28 HP/s for 8s.',
+						'Drain 38 HP/s for 10s — LEGENDARY: life flows endlessly into you!'] },
+				{ id: 'spirit_spirit_walk', name: 'Spirit Walk', type: 'active', icon: '👻', maxRank: 5,
+					cooldowns: [0, 45, 40, 35, 30, 24],
+					rankDescs: ['',
+						'Become ethereal for 2s — untargetable, immune to damage. Cannot attack.',
+						'Spirit Walk lasts 2.5s.',
+						'Lasts 3s. Movement speed +30% while active.',
+						'Lasts 3.5s. Speed +40%.',
+						'Lasts 4s — LEGENDARY: become one with the spirit realm!'] },
+				{ id: 'spirit_resurrection_mark', name: 'Resurrection Mark', type: 'passive', icon: '✨', maxRank: 5,
+					rankDescs: ['',
+						'Once per combat: when HP drops below 15%, auto-cast Mend (30 HP) instantly.',
+						'Auto-Mend heals 55 HP at 15% HP threshold.',
+						'Auto-Mend heals 85 HP at 20% HP threshold.',
+						'Auto-Mend heals 120 HP at 20% HP threshold.',
+						'Heal 160 HP at 25% HP threshold — LEGENDARY: death cannot claim you!'] },
+				{ id: 'spirit_aegis', name: 'Aegis', type: 'active', icon: '🔮', maxRank: 5,
+					cooldowns: [0, 40, 36, 32, 28, 22],
+					rankDescs: ['',
+						'Conjure a spirit shield that absorbs up to 50 damage for 10s.',
+						'Shield absorbs 90 damage for 10s.',
+						'Shield absorbs 135 damage for 12s.',
+						'Shield absorbs 185 damage for 12s.',
+						'Shield absorbs 240 damage for 15s — LEGENDARY: the spirit protects absolutely!'] },
 			]
 		},
 	];
@@ -1682,11 +2138,27 @@
 		ice_shatter:             'ice_brittle',
 		ice_lance:               'ice_shatter',
 		ice_blizzard:            'ice_lance',
+		ice_frost_nova:          'ice_blizzard',
+		ice_glacial_armor:       'ice_frost_nova',
+		ice_cold_snap:           'ice_blizzard',
+		ice_permafrost:          'ice_brittle',
+		lightning_chain:         'lightning_storm',
+		lightning_discharge:     'lightning_chain',
+		lightning_overload:      'lightning_conductor',
+		lightning_ball:          'lightning_storm',
+		fire_flame_wall:         'fire_inferno',
+		fire_magma_shell:        'fire_flame_wall',
+		fire_pyroclasm:          'fire_cremation',
+		fire_phoenix_mark:       'fire_fireball',
 		spirit_passive:          'spirit_active',
 		spirit_hot:              'spirit_passive',
 		spirit_siphon:           'spirit_hot',
 		spirit_fortitude:        'spirit_siphon',
 		spirit_healing_surge:    'spirit_fortitude',
+		spirit_soul_leech:       'spirit_healing_surge',
+		spirit_spirit_walk:      'spirit_soul_leech',
+		spirit_resurrection_mark:'spirit_hot',
+		spirit_aegis:            'spirit_fortitude',
 	};
 
 	function getTalentDef(id) {
@@ -1730,20 +2202,31 @@
 		if (id === 'fire_active') {
 			const bonus = Math.ceil(playerAtk() * [0, 1.0, 1.5, 2.0, 2.6, 3.2, 4.0, 5.0, 6.2][rank]);
 			player.nextAttackFireBonus = bonus;
+			spawnSparkBurst(headPos(), 0xff4400, 18, 2.2, 3.5);
+			spawnPillar(player.group.position.clone(), 0xff6600, 0.5);
+			floatText('🔥 +' + bonus + ' Fire!', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#fb923c', 1.0);
 			log('🔥 ' + def.name + ' (Rank ' + rank + '): Your weapon blazes! Next attack +' + bonus + ' fire.', 'craft');
 		} else if (id === 'lightning_active') {
 			const bonus = Math.ceil(playerAtk() * [0, 0.9, 1.4, 1.9, 2.5, 3.1, 3.8, 4.7, 5.8][rank]);
 			player.nextAttackLightningBonus = bonus;
+			spawnSparkBurst(headPos(), 0xfacc15, 18, 2.2, 3.5);
+			spawnPillar(player.group.position.clone(), 0xfde047, 0.5);
+			floatText('⚡ +' + bonus + ' Lightning!', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#facc15', 1.0);
 			log('⚡ ' + def.name + ' (Rank ' + rank + '): Your weapon crackles! Next attack +' + bonus + ' lightning.', 'craft');
 		} else if (id === 'ice_active') {
 			const bonus = Math.ceil(playerAtk() * [0, 0.9, 1.4, 1.9, 2.5, 3.1, 3.8, 4.7, 5.8][rank]);
 			player.nextAttackIceBonus = bonus;
+			spawnSparkBurst(headPos(), 0x7dd3fc, 18, 2.2, 3.5);
+			spawnPillar(player.group.position.clone(), 0xbae6fd, 0.5);
+			floatText('❄️ +' + bonus + ' Ice!', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#7dd3fc', 1.0);
 			log('❄️ ' + def.name + ' (Rank ' + rank + '): Your weapon frosts over! Next attack +' + bonus + ' ice.', 'craft');
 		} else if (id === 'ice_shield') {
 			const bonus = Math.ceil(playerDef() * [0, 0.5, 0.8, 1.1, 1.5, 2.0, 2.6, 3.3, 4.2][rank] + 3);
 			const dur   = [0, 8, 10, 12, 14, 16, 18, 20, 25][rank];
 			player.frostWardTimer = dur;
 			player.frostWardBonus = bonus;
+			spawnGroundRing(player.group.position.clone(), 0x7dd3fc, 0.3, 2.4, 0.9, 0.08);
+			spawnSparkBurst(headPos(), 0xbae6fd, 16, 1.6, 2.8);
 			floatText('🧊 +' + bonus + ' Armor', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#7dd3fc', 1.0);
 			refreshStatsUI();
 			log('🧊 Frost Ward (Rank ' + rank + '): Ice encases you — +' + bonus + ' armor for ' + dur + ' seconds.', 'craft');
@@ -1758,6 +2241,8 @@
 			const dur = [0, 10, 12, 14, 16, 18, 20, 22, 25][rank];
 			player.hotTimer = dur;
 			player.hotHealTotal = hp;
+			spawnSparkBurst(headPos(), 0x86efac, 16, 1.6, 3.0);
+			floatText('💚 Renewal +' + hp + 'hp', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#86efac', 1.0);
 			log('✨ Renewal (Rank ' + rank + '): A healing aura — ' + hp + ' HP over ' + dur + 's.', 'craft');
 		} else if (id === 'fire_fireball') {
 			player.fireballMode = true;
@@ -1769,15 +2254,15 @@
 			player.lightningStrikeMode = true;
 			log('🗲 Lightning Strike ready — click a creature to target!', 'craft');
 		} else if (id === 'fire_inferno') {
-			const dmg = Math.ceil(playerAtk() * [0, 0.9, 1.6, 2.5, 3.6, 5.0][rank]);
+			const dmg = Math.ceil(playerAtk() * [0, 0.40, 0.75, 1.20, 1.80, 2.60][rank]);
 			player.infernoCast = { timer: 0, duration: 2.5, dmg, rank };
 			log('🌋 Inferno — channeling… stand your ground!', 'craft');
 		} else if (id === 'ice_blizzard') {
-			const dmg = Math.ceil(playerAtk() * [0, 0.65, 1.12, 1.72, 2.50, 3.45][rank]);
+			const dmg = Math.ceil(playerAtk() * [0, 0.30, 0.55, 0.85, 1.25, 1.75][rank]);
 			player.blizzardCast = { timer: 0, duration: 2.5, dmg, rank };
 			log('🌨️ Blizzard — channeling… the air turns arctic!', 'craft');
 		} else if (id === 'lightning_storm') {
-			const dmgPerHit = Math.ceil(playerAtk() * [0, 0.30, 0.52, 0.78, 1.15, 1.58][rank]);
+			const dmgPerHit = Math.ceil(playerAtk() * [0, 0.14, 0.24, 0.37, 0.55, 0.78][rank]);
 			player.lightningStormCast = { timer: 0, duration: 2.5, dmgPerHit, rank, hitsLeft: 4, hitTimer: 0 };
 			log('🌪️ Lightning Storm — channeling… the sky blackens!', 'craft');
 		} else if (id === 'spirit_healing_surge') {
@@ -1792,7 +2277,7 @@
 			floatText('🌩️ Aura +' + dmg + '/s', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#facc15', 1.0);
 			log('🌩️ Static Aura (Rank ' + rank + '): ' + dmg + ' lightning/s to all nearby for 10s.', 'craft');
 		} else if (id === 'ice_shatter') {
-			const dmg = Math.ceil(playerAtk() * [0, 1.2, 2.0, 3.0, 4.2, 5.5][rank]);
+			const dmg = Math.ceil(playerAtk() * [0, 0.55, 0.95, 1.45, 2.05, 2.80][rank]);
 			let shattered = 0;
 			for (let i = player.iceFreeze.length - 1; i >= 0; i--) {
 				const f = player.iceFreeze[i];
@@ -1805,6 +2290,124 @@
 			}
 			if (shattered === 0) log('❄️ No frozen enemies to shatter.', 'warn');
 			else log('💎 Shatter (Rank ' + rank + '): Shattered ' + shattered + ' frozen enemy/ies for ' + dmg + ' damage!', 'craft');
+		} else if (id === 'ice_frost_nova') {
+			const radius = [0, 5, 6, 7, 8, 9][rank];
+			const freeze = [0, 2, 2, 3, 3, 4][rank];
+			let frozen = 0;
+			for (const c of creatures) {
+				if (c.state === 'dead') continue;
+				if (c.group.position.distanceTo(player.group.position) <= radius) {
+					if (!player.iceFreeze.some(f => f.creature === c))
+						player.iceFreeze.push({ creature: c, turnsLeft: freeze });
+					frozen++;
+				}
+			}
+			spawnGroundRing(player.group.position.clone(), radius, 0x7dd3fc, 0.7);
+			floatText('❄️ Nova!', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#7dd3fc', 1.1);
+			log('❄️ Frost Nova (Rank ' + rank + '): Froze ' + frozen + ' enemies for ' + freeze + ' turns!', 'craft');
+		} else if (id === 'ice_glacial_armor') {
+			const absorbs = [0, 40, 70, 105, 145, 190][rank];
+			const explDmg = [0, 20, 35, 55, 78, 105][rank];
+			player.glacialArmorTimer = 12;
+			player.glacialArmorAbsorb = absorbs;
+			player.glacialArmorExplosionDmg = explDmg;
+			spawnGroundRing(player.group.position.clone(), 0x7dd3fc, 0.3, 2.2, 0.8, 0.08);
+			spawnSparkBurst(headPos(), 0xbae6fd, 22, 1.8, 2.8);
+			floatText('🧊 Glacial +' + absorbs, headPos().add(new THREE.Vector3(0, 0.5, 0)), '#bae6fd', 1.0);
+			log('🧊 Glacial Armor (Rank ' + rank + '): Absorbs ' + absorbs + ' damage. Shatters for ' + explDmg + '.', 'craft');
+		} else if (id === 'fire_flame_wall') {
+			const dps = [0, 8, 14, 20, 28, 38][rank];
+			const dur = [0, 6, 7, 8, 10, 12][rank];
+			player.flameWallTimer = dur;
+			player.flameWallDps = dps;
+			spawnGroundRing(player.group.position.clone(), 4, 0xff4400, 0.8);
+			floatText('🔥 Wall!', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#fb923c', 1.0);
+			log('🔥 Flame Wall (Rank ' + rank + '): ' + dps + ' dmg/s for ' + dur + 's to enemies at your feet.', 'craft');
+		} else if (id === 'fire_magma_shell') {
+			const absorbs = [0, 30, 55, 85, 120, 160][rank];
+			const retDmg = [0, 8, 14, 22, 32, 45][rank];
+			player.magmaShellTimer = 15;
+			player.magmaShellAbsorb = absorbs;
+			player.magmaShellReturnDmg = retDmg;
+			spawnGroundRing(player.group.position.clone(), 0xff6600, 0.3, 2.2, 0.8, 0.08);
+			spawnSparkBurst(headPos(), 0xff4400, 22, 1.8, 2.8);
+			spawnPillar(player.group.position.clone(), 0xff4400, 0.6);
+			floatText('🛡️ Shell +' + absorbs, headPos().add(new THREE.Vector3(0, 0.5, 0)), '#f97316', 1.0);
+			log('🛡️ Magma Shell (Rank ' + rank + '): Absorbs ' + absorbs + ' damage, returns ' + retDmg + ' fire to attackers.', 'craft');
+		} else if (id === 'lightning_chain') {
+			const primaryDmg = [0, 18, 30, 45, 65, 90][rank];
+			const arcDmg = [0, 9, 15, 23, 33, 48][rank];
+			const arcCount = rank >= 3 ? 3 : 2;
+			const nearby = [...creatures].filter(c => c.state !== 'dead').sort((a, b) =>
+				a.group.position.distanceTo(player.group.position) - b.group.position.distanceTo(player.group.position));
+			if (nearby.length === 0) { log('⚡ No targets.', 'warn'); return; }
+			const primary = nearby[0];
+			creatureTakeDamage(primary, primaryDmg);
+			floatText('⚡ ' + primaryDmg, primary.group.position.clone().add(new THREE.Vector3(0, 2, 0)), '#facc15', 1.1);
+			spawnSparkBurst(primary.group.position.clone().add(new THREE.Vector3(0, 1, 0)), 0xfacc15);
+			const arcs = nearby.slice(1, arcCount + 1);
+			for (const arc of arcs) {
+				creatureTakeDamage(arc, arcDmg);
+				floatText('⚡ ' + arcDmg, arc.group.position.clone().add(new THREE.Vector3(0, 2, 0)), '#fde047', 1.0);
+			}
+			log('⚡ Chain Lightning (Rank ' + rank + '): ' + primaryDmg + ' primary, ' + arcDmg + ' to ' + arcs.length + ' arc targets.', 'craft');
+		} else if (id === 'lightning_discharge') {
+			const dmgPerEffect = [0, 20, 25, 32, 42, 55][rank];
+			let total = 0;
+			for (const c of creatures) {
+				if (c.state === 'dead') continue;
+				let effects = 0;
+				const stunIdx = player.lightningStuns.findIndex(s => s.creature === c);
+				if (stunIdx >= 0) { effects++; player.lightningStuns.splice(stunIdx, 1); }
+				if (effects > 0) {
+					const d = effects * dmgPerEffect;
+					total += d;
+					creatureTakeDamage(c, d);
+					floatText('💥 ' + d, c.group.position.clone().add(new THREE.Vector3(0, 2, 0)), '#facc15', 1.1);
+					spawnSparkBurst(c.group.position.clone().add(new THREE.Vector3(0, 1, 0)), 0xfacc15);
+				}
+			}
+			if (total === 0) log('💥 No shocked/stunned targets to discharge.', 'warn');
+			else log('💥 Discharge (Rank ' + rank + '): Released ' + total + ' total lightning damage!', 'craft');
+		} else if (id === 'lightning_ball') {
+			const dps = [0, 8, 14, 20, 28, 38][rank];
+			const dur = [0, 6, 7, 8, 9, 10][rank];
+			const radius = 3;
+			if (player.ballLightningObj) { scene.remove(player.ballLightningObj.mesh); player.ballLightningObj = null; }
+			const ballGeo = new THREE.SphereGeometry(0.35, 10, 10);
+			const ballMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, wireframe: true });
+			const ballMesh = new THREE.Mesh(ballGeo, ballMat);
+			ballMesh.position.copy(player.group.position).add(new THREE.Vector3(0, 1.5, 0));
+			scene.add(ballMesh);
+			player.ballLightningObj = { mesh: ballMesh, timer: dur, dps, radius };
+			floatText('🔵 Ball!', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#38bdf8', 1.0);
+			log('🔵 Ball Lightning (Rank ' + rank + '): ' + dps + ' dmg/s to nearby enemies for ' + dur + 's.', 'craft');
+		} else if (id === 'spirit_soul_leech') {
+			const nearby = [...creatures].filter(c => c.state !== 'dead').sort((a, b) =>
+				a.group.position.distanceTo(player.group.position) - b.group.position.distanceTo(player.group.position));
+			if (nearby.length === 0) { log('🌀 No targets.', 'warn'); return; }
+			const dps = [0, 8, 14, 20, 28, 38][rank];
+			const dur = [0, 5, 6, 7, 8, 10][rank];
+			player.soulLeechCast = { creature: nearby[0], timer: 0, duration: dur, dps };
+			floatText('🌀 Leeching!', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#c084fc', 1.0);
+			log('🌀 Soul Leech (Rank ' + rank + '): Draining ' + dps + ' HP/s from ' + nearby[0].def.name + ' for ' + dur + 's.', 'craft');
+		} else if (id === 'spirit_spirit_walk') {
+			const dur = [0, 2, 2.5, 3, 3.5, 4][rank];
+			player.spiritWalkTimer = dur;
+			spawnSparkBurst(headPos(), 0xe9d5ff, 20, 1.4, 3.5);
+			spawnPillar(player.group.position.clone(), 0xc4b5fd, 0.5);
+			floatText('👻 Ethereal!', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#e9d5ff', 1.1);
+			log('👻 Spirit Walk (Rank ' + rank + '): Untargetable for ' + dur + 's.', 'craft');
+		} else if (id === 'spirit_aegis') {
+			const absorbs = [0, 50, 90, 135, 185, 240][rank];
+			const dur = rank >= 3 ? 12 : 10;
+			player.aegisTimer = dur;
+			player.aegisAbsorb = absorbs;
+			spawnGroundRing(player.group.position.clone(), 0xa78bfa, 0.3, 2.4, 0.9, 0.08);
+			spawnSparkBurst(headPos(), 0xc4b5fd, 22, 1.8, 3.0);
+			spawnPillar(player.group.position.clone(), 0x8b5cf6, 0.6);
+			floatText('🔮 Aegis +' + absorbs, headPos().add(new THREE.Vector3(0, 0.5, 0)), '#a78bfa', 1.0);
+			log('🔮 Aegis (Rank ' + rank + '): Spirit shield absorbs ' + absorbs + ' damage for ' + dur + 's.', 'craft');
 		}
 		refreshHotbarUI();
 	}
@@ -1862,6 +2465,30 @@
 				floatText('+' + siphonHeal + ' siphon', headPos().add(new THREE.Vector3(0.3, 0.3, 0)), '#86efac', 0.75);
 			}
 		}
+		// Cold Snap: every 3rd attack chills/freezes
+		const csRank = talentRank('ice_cold_snap');
+		if (csRank > 0) {
+			player.coldSnapCount = (player.coldSnapCount || 0) + 1;
+			if (player.coldSnapCount >= 3) {
+				player.coldSnapCount = 0;
+				const bonusDmg = [0, 0, 8, 15, 20, 28][csRank];
+				const freezeTurns = csRank >= 4 ? (csRank >= 5 ? 2 : 1) : 0;
+				if (bonusDmg > 0) {
+					creatureTakeDamage(c, bonusDmg);
+					floatText('❄️ Snap +' + bonusDmg, c.group.position.clone().add(new THREE.Vector3(0, 2.2, 0)), '#7dd3fc', 0.9);
+				}
+				if (freezeTurns > 0) {
+					const ef = player.iceFreeze.find(f => f.creature === c);
+					if (ef) ef.turnsLeft = Math.max(ef.turnsLeft, freezeTurns);
+					else player.iceFreeze.push({ creature: c, turnsLeft: freezeTurns });
+					floatText('❄️ Frozen!', c.group.position.clone().add(new THREE.Vector3(0, 2.5, 0)), '#bae6fd', 0.9);
+				} else {
+					floatText('❄️ Chill!', c.group.position.clone().add(new THREE.Vector3(0, 2.5, 0)), '#7dd3fc', 0.8);
+				}
+			}
+		}
+		// Pyroclasm: critical burn ticks (handled in burn loop, but flag for burn application)
+		// (burn applied from fire_passive; Pyroclasm's crit is handled in updateTalentEffects burn loop)
 	}
 
 	// ------------------------------------------------------------------ update talent DoT/HoT/cooldowns
@@ -1875,8 +2502,15 @@
 				b.timer = 1;
 				b.ticks--;
 				const wasBurning = b.creature.state !== 'dead';
-				creatureTakeDamage(b.creature, b.dmgPerTick);
-				floatText('🔥 ' + b.dmgPerTick, b.creature.group.position.clone().add(new THREE.Vector3(0, 2.2, 0)), '#fb923c', 0.8);
+				let tickDmg = b.dmgPerTick;
+				// Pyroclasm: chance for burn crit
+				const pyroRank = talentRank('fire_pyroclasm');
+				if (pyroRank > 0) {
+					const pyroCrit = [0, 0.10, 0.15, 0.20, 0.28, 0.35][pyroRank];
+					if (Math.random() < pyroCrit) { tickDmg *= 2; }
+				}
+				creatureTakeDamage(b.creature, tickDmg);
+				floatText('🔥 ' + tickDmg, b.creature.group.position.clone().add(new THREE.Vector3(0, 2.2, 0)), '#fb923c', 0.8);
 				// Backdraft: chance to add extra tick
 				const bdRank = talentRank('fire_backdraft');
 				if (bdRank > 0) {
@@ -1902,7 +2536,7 @@
 				if (wasBurning && b.creature.state === 'dead') {
 					const cremRank = talentRank('fire_cremation');
 					if (cremRank > 0) {
-						const cremDmg = Math.ceil(playerAtk() * [0, 0.6, 1.0, 1.4, 2.0, 2.8][cremRank]);
+						const cremDmg = Math.ceil(playerAtk() * [0, 0.25, 0.45, 0.70, 1.00, 1.40][cremRank]);
 						const origin = b.creature.group.position;
 						creatures.forEach(cc => {
 							if (cc.state !== 'dead' && cc.group.position.distanceTo(origin) < 4) {
@@ -1924,7 +2558,7 @@
 				// Aftershock: burst damage when stun expires
 				const asRank = talentRank('lightning_aftershock');
 				if (asRank > 0 && s.creature.state !== 'dead') {
-					const asDmg = Math.ceil(playerAtk() * ([0, 0.5, 0.85, 1.25, 1.70, 2.20][asRank]));
+					const asDmg = Math.ceil(playerAtk() * ([0, 0.22, 0.40, 0.62, 0.88, 1.20][asRank]));
 					creatureTakeDamage(s.creature, asDmg);
 					floatText('⚡ ' + asDmg, s.creature.group.position.clone().add(new THREE.Vector3(0, 2, 0)), '#facc15', 1.0);
 				}
@@ -2090,10 +2724,27 @@
 				if (hs.hitsLeft <= 0) player.healingSurge = null;
 			}
 		}
-		// ice freeze cleanup
+		// ice freeze cleanup + Permafrost patch on frozen death
 		for (let i = player.iceFreeze.length - 1; i >= 0; i--) {
 			const f = player.iceFreeze[i];
-			if (f.creature.state === 'dead' || f.turnsLeft <= 0) { player.iceFreeze.splice(i, 1); }
+			if (f.creature.state === 'dead' || f.turnsLeft <= 0) {
+				// Permafrost: leave ice patch when frozen enemy dies
+				if (f.creature.state === 'dead') {
+					const pfRank = talentRank('ice_permafrost');
+					if (pfRank > 0) {
+						const pfRadius = [0, 5, 6, 6, 7, 7][pfRank];
+						const pfDur = [0, 8, 10, 10, 12, 15][pfRank];
+						const pfDps = [0, 0, 0, 5, 9, 14][pfRank];
+						const patchGeo = new THREE.CylinderGeometry(pfRadius, pfRadius, 0.05, 16);
+						const patchMat = new THREE.MeshBasicMaterial({ color: 0xbae6fd, transparent: true, opacity: 0.35 });
+						const patchMesh = new THREE.Mesh(patchGeo, patchMat);
+						patchMesh.position.copy(f.creature.group.position);
+						scene.add(patchMesh);
+						player.permafrostPatches.push({ mesh: patchMesh, timer: pfDur, radius: pfRadius, dps: pfDps });
+					}
+				}
+				player.iceFreeze.splice(i, 1);
+			}
 		}
 		// frost ward timer
 		if (player.frostWardTimer > 0) {
@@ -2105,7 +2756,7 @@
 				log('🧊 Frost Ward faded.', 'sys');
 			}
 		}
-		// HoT
+		// HoT (talent)
 		if (player.hotTimer > 0) {
 			const totalHp  = player.hotHealTotal || 15;
 			const totalDur = player.hotTimer + dt;
@@ -2114,6 +2765,31 @@
 			player.hp = Math.min(player.maxhp, player.hp + healRate);
 			setBar(player.bar, player.hp / player.maxhp); refreshHpUI();
 			if (player.hotTimer <= 0) player.hotTimer = 0;
+		}
+		// Consumable HoT (Moonbloom Salve, Starbloom Brew, etc.)
+		if (player.consumableHotTimer > 0) {
+			const totalHp = player.consumableHotTotal || 0;
+			const totalDur = player.consumableHotTimer + dt;
+			player.consumableHotTimer -= dt;
+			const rate = dt * (totalHp / totalDur);
+			player.hp = Math.min(player.maxhp, player.hp + rate);
+			setBar(player.bar, player.hp / player.maxhp); refreshHpUI();
+			if (player.consumableHotTimer <= 0) { player.consumableHotTimer = 0; player.consumableHotTotal = 0; }
+		}
+		// Consumable ATK buff
+		if (player.consumableAtkTimer > 0) {
+			player.consumableAtkTimer -= dt;
+			if (player.consumableAtkTimer <= 0) { player.consumableAtkTimer = 0; player.consumableAtk = 0; refreshStatsUI(); log('⚔️ ATK buff faded.', 'sys'); }
+		}
+		// Consumable DEF buff
+		if (player.consumableDefTimer > 0) {
+			player.consumableDefTimer -= dt;
+			if (player.consumableDefTimer <= 0) { player.consumableDefTimer = 0; player.consumableDef = 0; refreshStatsUI(); log('🛡️ DEF buff faded.', 'sys'); }
+		}
+		// Consumable damage reduction
+		if (player.consumableDmgReduceTimer > 0) {
+			player.consumableDmgReduceTimer -= dt;
+			if (player.consumableDmgReduceTimer <= 0) { player.consumableDmgReduceTimer = 0; player.consumableDmgReduce = 0; log('🌑 Void Shroud faded.', 'sys'); }
 		}
 		// Fortitude: keep maxhp in sync with rank
 		const fortRank2 = talentRank('spirit_fortitude');
@@ -2124,6 +2800,144 @@
 			player.hp = Math.min(player.hp + Math.max(0, delta), player.maxhp);
 			player.fortitudeMaxhpApplied = fortBonus;
 			refreshHpUI();
+		}
+		// Magma Shell tick-down
+		if (player.magmaShellTimer > 0) {
+			player.magmaShellTimer -= dt;
+			if (player.magmaShellTimer <= 0) {
+				player.magmaShellTimer = 0; player.magmaShellAbsorb = 0;
+				log('🛡️ Magma Shell expired.', 'sys');
+			}
+		}
+		// Flame Wall tick
+		if (player.flameWallTimer > 0) {
+			player.flameWallTimer -= dt;
+			if (player.flameWallTimer <= 0) {
+				player.flameWallTimer = 0;
+				log('🔥 Flame Wall expired.', 'sys');
+			} else {
+				const pp = player.group ? player.group.position : new THREE.Vector3();
+				creatures.forEach(c => {
+					if (c.state !== 'dead' && c.group.position.distanceTo(pp) < 4) {
+						const wallDmg = player.flameWallDps * dt;
+						creatureTakeDamage(c, wallDmg, true);
+					}
+				});
+			}
+		}
+		// Glacial Armor tick-down
+		if (player.glacialArmorTimer > 0) {
+			player.glacialArmorTimer -= dt;
+			if (player.glacialArmorTimer <= 0) {
+				player.glacialArmorTimer = 0;
+				// explode on expiry
+				const expDmg = player.glacialArmorExplosionDmg;
+				const pp = player.group ? player.group.position : new THREE.Vector3();
+				spawnGroundRing(pp, 0x7dd3fc, 0.5, 5, 0.7, 0.08);
+				creatures.forEach(c => {
+					if (c.state !== 'dead' && c.group.position.distanceTo(pp) < 5) {
+						creatureTakeDamage(c, expDmg);
+						floatText('🧊 ' + expDmg, c.group.position.clone().add(new THREE.Vector3(0, 2, 0)), '#bae6fd', 1.1);
+					}
+				});
+				log('🧊 Glacial Armor shattered for ' + expDmg + ' ice damage!', 'dmgOut');
+				player.glacialArmorAbsorb = 0; player.glacialArmorExplosionDmg = 0;
+			}
+		}
+		// Ball Lightning tick
+		if (player.ballLightningObj) {
+			const bl = player.ballLightningObj;
+			bl.timer -= dt;
+			if (bl.timer <= 0) {
+				scene.remove(bl.mesh);
+				player.ballLightningObj = null;
+				log('🔵 Ball Lightning dissipated.', 'sys');
+			} else {
+				// float slowly upward
+				bl.mesh.position.y = (player.group ? player.group.position.y : 0) + 1.5 + Math.sin(bl.timer * 2) * 0.3;
+				creatures.forEach(c => {
+					if (c.state !== 'dead' && c.group.position.distanceTo(bl.mesh.position) < bl.radius) {
+						creatureTakeDamage(c, bl.dps * dt, true);
+					}
+				});
+			}
+		}
+		// Soul Leech tick
+		if (player.soulLeechCast) {
+			const sl = player.soulLeechCast;
+			sl.timer += dt;
+			if (sl.creature.state === 'dead' || sl.timer >= sl.duration) {
+				player.soulLeechCast = null;
+				log('🌀 Soul Leech ended.', 'sys');
+			} else {
+				const drain = sl.dps * dt;
+				creatureTakeDamage(sl.creature, drain, true);
+				player.hp = Math.min(player.maxhp, player.hp + drain);
+				setBar(player.bar, player.hp / player.maxhp); refreshHpUI();
+			}
+		}
+		// Spirit Walk tick-down
+		if (player.spiritWalkTimer > 0) {
+			player.spiritWalkTimer -= dt;
+			if (player.spiritWalkTimer <= 0) {
+				player.spiritWalkTimer = 0;
+				log('👻 Spirit Walk ended.', 'sys');
+			}
+		}
+		// Aegis tick-down
+		if (player.aegisTimer > 0) {
+			player.aegisTimer -= dt;
+			if (player.aegisTimer <= 0) {
+				player.aegisTimer = 0; player.aegisAbsorb = 0;
+				log('🔮 Aegis faded.', 'sys');
+			}
+		}
+		// Permafrost patches tick
+		for (let i = player.permafrostPatches.length - 1; i >= 0; i--) {
+			const patch = player.permafrostPatches[i];
+			patch.timer -= dt;
+			if (patch.timer <= 0) {
+				scene.remove(patch.mesh);
+				player.permafrostPatches.splice(i, 1);
+			} else if (patch.dps > 0) {
+				creatures.forEach(c => {
+					if (c.state !== 'dead' && c.group.position.distanceTo(patch.mesh.position) < patch.radius) {
+						creatureTakeDamage(c, patch.dps * dt, true);
+					}
+				});
+			}
+		}
+		// Flush accumulated DoT float text (throttled to ~0.6s intervals)
+		creatures.forEach(c => { if (c.state !== 'dead') flushDotFloatText(c, dt); });
+		// Phoenix Mark: auto-heal when low HP
+		if (!player.phoenixMarkUsed) {
+			const pmRank = talentRank('fire_phoenix_mark');
+			if (pmRank > 0) {
+				const threshold = [0, 0.20, 0.20, 0.25, 0.25, 0.30][pmRank];
+				const heal = [0, 25, 45, 70, 100, 140][pmRank];
+				if (player.hp / player.maxhp <= threshold) {
+					player.hp = Math.min(player.maxhp, player.hp + heal);
+					player.phoenixMarkUsed = true;
+					setBar(player.bar, player.hp / player.maxhp); refreshHpUI();
+					floatText('🦅 +' + heal + ' Phoenix!', headPos().add(new THREE.Vector3(0, 0.8, 0)), '#fbbf24', 1.3);
+					log('🦅 Phoenix Mark triggered: healed ' + heal + ' HP!', 'craft');
+				}
+			}
+		}
+		// Resurrection Mark: auto-Mend when very low HP
+		if (!player.resurrectionMarkUsed) {
+			const rmRank = talentRank('spirit_resurrection_mark');
+			if (rmRank > 0) {
+				const threshold = [0, 0.15, 0.15, 0.20, 0.20, 0.25][rmRank];
+				const heal = [0, 30, 55, 85, 120, 160][rmRank];
+				if (player.hp / player.maxhp <= threshold) {
+					player.hp = Math.min(player.maxhp, player.hp + heal);
+					player.resurrectionMarkUsed = true;
+					setBar(player.bar, player.hp / player.maxhp); refreshHpUI();
+					floatText('✨ +' + heal + ' Risen!', headPos().add(new THREE.Vector3(0, 0.8, 0)), '#e9d5ff', 1.3);
+					log('✨ Resurrection Mark triggered: healed ' + heal + ' HP!', 'craft');
+				}
+			}
 		}
 		// cooldowns
 		for (const id of Object.keys(player.skillCooldowns)) {
@@ -2173,6 +2987,64 @@
 		modal.classList.add('hidden');
 		modal.classList.remove('flex');
 	}
+	// Tracks which path tab is open in the talent tree UI
+	let _activePathTab = 'fire';
+	let _openRecipeTiers = null; // Set of tier names the user has opened; null = uninitialized
+
+	// Node layout: [x%, y%] within the constellation canvas (0-100 range)
+	const TALENT_NODE_LAYOUT = {
+		// Fire path — main chain goes left→right, branches drop down
+		fire_active:       [8,  30],
+		fire_passive:      [20, 30],
+		fire_backdraft:    [32, 30],
+		fire_wildfire:     [44, 30],
+		fire_cremation:    [56, 30],
+		fire_fireball:     [68, 30],
+		fire_inferno:      [80, 30],
+		fire_flame_wall:   [80, 55],
+		fire_magma_shell:  [80, 78],
+		fire_pyroclasm:    [56, 55],
+		fire_phoenix_mark: [68, 55],
+
+		// Lightning path
+		lightning_active:      [8,  30],
+		lightning_passive:     [20, 30],
+		lightning_conductor:   [32, 30],
+		lightning_aftershock:  [44, 30],
+		lightning_static_aura: [56, 30],
+		lightning_strike:      [68, 30],
+		lightning_storm:       [80, 30],
+		lightning_chain:       [80, 55],
+		lightning_discharge:   [80, 78],
+		lightning_overload:    [32, 55],
+		lightning_ball:        [80, 8],
+
+		// Ice path
+		ice_active:       [8,  30],
+		ice_passive:      [20, 30],
+		ice_shield:       [32, 30],
+		ice_brittle:      [44, 30],
+		ice_shatter:      [56, 30],
+		ice_lance:        [68, 30],
+		ice_blizzard:     [80, 30],
+		ice_frost_nova:   [80, 55],
+		ice_glacial_armor:[80, 78],
+		ice_cold_snap:    [80, 8],
+		ice_permafrost:   [44, 55],
+
+		// Spirit path
+		spirit_active:           [8,  35],
+		spirit_passive:          [20, 35],
+		spirit_hot:              [32, 35],
+		spirit_siphon:           [44, 35],
+		spirit_fortitude:        [56, 35],
+		spirit_healing_surge:    [68, 35],
+		spirit_soul_leech:       [80, 35],
+		spirit_spirit_walk:      [80, 60],
+		spirit_resurrection_mark:[32, 62],
+		spirit_aegis:            [56, 62],
+	};
+
 	function renderTalentTree() {
 		const ptDisplay = document.getElementById('talentPointsDisplay');
 		if (ptDisplay) ptDisplay.textContent = talentPointsAvailable();
@@ -2182,105 +3054,200 @@
 		const tooltip = document.getElementById('talentTooltip');
 		if (tooltip && tooltip.parentNode) tooltip.parentNode.removeChild(tooltip);
 		pathsEl.innerHTML = '';
-		pathsEl.style.cssText = 'display:flex;gap:0;padding:0;overflow:hidden;height:100%';
+		pathsEl.style.cssText = 'display:flex;flex-direction:column;gap:0;padding:0;overflow:hidden;height:100%';
 
-		function showTooltip(talent, path) {
-			if (!tooltip) return;
+		// ── Path tab bar ─────────────────────────────────────────────────
+		const tabBar = document.createElement('div');
+		tabBar.style.cssText = 'display:flex;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,0.08);background:rgba(0,0,0,0.25)';
+		pathsEl.appendChild(tabBar);
+
+		// ── Body: constellation canvas + tooltip sidebar ──────────────
+		const body = document.createElement('div');
+		body.style.cssText = 'display:flex;flex:1;overflow:hidden';
+		pathsEl.appendChild(body);
+
+		// ── Constellation area ────────────────────────────────────────
+		const canvas = document.createElement('div');
+		canvas.style.cssText = 'position:relative;flex:1;overflow:hidden;background:radial-gradient(ellipse at 50% 50%,rgba(30,20,60,0.95) 0%,rgba(5,5,15,0.98) 100%)';
+		body.appendChild(canvas);
+
+		// ── Tooltip sidebar ───────────────────────────────────────────
+		const sidebar = document.createElement('div');
+		sidebar.style.cssText = 'width:200px;flex-shrink:0;padding:14px 12px;border-left:1px solid rgba(255,255,255,0.07);background:rgba(0,0,0,0.4);font-size:11px;color:#d1d5db;overflow-y:auto';
+		sidebar.innerHTML = '<div style="color:#4b5563;font-size:11px">Hover a node</div>';
+		body.appendChild(sidebar);
+
+		// ── Star-field dots ───────────────────────────────────────────
+		const starSvg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+		starSvg.setAttribute('width','100%'); starSvg.setAttribute('height','100%');
+		starSvg.style.cssText = 'position:absolute;inset:0;pointer-events:none';
+		for (let s = 0; s < 70; s++) {
+			const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+			c.setAttribute('cx', (Math.random()*100)+'%'); c.setAttribute('cy', (Math.random()*100)+'%');
+			c.setAttribute('r', (Math.random()*1.2+0.3).toFixed(1));
+			c.setAttribute('fill','rgba(255,255,255,'+(Math.random()*0.25+0.05).toFixed(2)+')');
+			starSvg.appendChild(c);
+		}
+		canvas.appendChild(starSvg);
+
+		// ── SVG overlay for connector lines ───────────────────────────
+		const lineSvg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+		lineSvg.setAttribute('width','100%'); lineSvg.setAttribute('height','100%');
+		lineSvg.style.cssText = 'position:absolute;inset:0;pointer-events:none';
+		canvas.appendChild(lineSvg);
+
+		function showTalentTooltip(talent, path) {
 			const rank = talentRank(talent.id);
 			const maxed = rank >= talent.maxRank;
 			const prereqMet = talentPrereqMet(talent.id);
 			const cost = talentRankUpgradeCost(rank);
-			const prereq = TALENT_PREREQS[talent.id];
-			let html = '<div style="font-size:22px;margin-bottom:4px">' + talent.icon + ' <span style="font-size:13px;font-weight:700;color:#e2e8f0">' + talent.name + '</span></div>';
-			html += '<div style="font-size:10px;margin-bottom:6px;color:' + (talent.type === 'active' ? '#fdba74' : '#93c5fd') + '">' + (talent.type === 'active' ? '⚡ Active' : '🔰 Passive') + ' · Rank ' + rank + ' / ' + talent.maxRank + '</div>';
+			const prereqId = TALENT_PREREQS[talent.id];
+			const prereqTalent = prereqId ? path.talents.find(t => t.id === prereqId) || { name: prereqId.replace(/_/g,' ') } : null;
+
+			let html = '<div style="font-size:24px;text-align:center;margin-bottom:6px">' + talent.icon + '</div>';
+			html += '<div style="font-size:13px;font-weight:700;color:#f1f5f9;margin-bottom:2px">' + talent.name + '</div>';
+			html += '<div style="font-size:10px;margin-bottom:8px;color:' + (talent.type === 'active' ? '#fdba74' : '#93c5fd') + '">' + (talent.type === 'active' ? '⚡ Active Skill' : '🔰 Passive') + ' &nbsp;·&nbsp; Rank ' + rank + ' / ' + talent.maxRank + '</div>';
 			if (rank > 0) {
-				html += '<div style="font-size:11px;color:#d1d5db;margin-bottom:6px;line-height:1.4"><b>Current:</b> ' + talent.rankDescs[rank] + '</div>';
-				if (talent.type === 'active') html += '<div style="font-size:10px;color:#6b7280;margin-bottom:4px">⏱ Cooldown: ' + talent.cooldowns[rank] + 's</div>';
+				html += '<div style="font-size:10px;color:#9ca3af;font-style:italic;margin-bottom:6px;line-height:1.4">' + talent.rankDescs[rank] + '</div>';
+				if (talent.type === 'active') html += '<div style="font-size:10px;color:#6b7280;margin-bottom:6px">⏱ ' + talent.cooldowns[rank] + 's cooldown</div>';
+				html += '<div style="border-top:1px solid rgba(255,255,255,0.07);margin:6px 0"></div>';
 			}
-			// always show rank 1 (or next rank) description so the player knows what the skill does
 			if (maxed) {
-				html += '<div style="font-size:11px;color:#fbbf24;font-weight:700">★ Maxed Out</div>';
+				html += '<div style="font-size:11px;color:#fbbf24;font-weight:700;text-align:center">★ Maxed</div>';
 			} else {
-				const nextRank = rank + 1;
-				html += '<div style="font-size:11px;color:#c4b5fd;margin-bottom:4px;line-height:1.4">→ Rank ' + nextRank + ': ' + talent.rankDescs[nextRank] + '</div>';
-				if (talent.type === 'active' && nextRank <= talent.maxRank) html += '<div style="font-size:10px;color:#6b7280;margin-bottom:4px">⏱ Cooldown: ' + talent.cooldowns[nextRank] + 's</div>';
+				const nr = rank + 1;
+				html += '<div style="font-size:10px;color:#c4b5fd;line-height:1.4;margin-bottom:4px"><b>Rank ' + nr + ':</b> ' + talent.rankDescs[nr] + '</div>';
+				if (talent.type === 'active' && nr <= talent.maxRank) html += '<div style="font-size:10px;color:#6b7280;margin-bottom:6px">⏱ ' + talent.cooldowns[nr] + 's</div>';
 				if (!prereqMet) {
-					const prereqName = prereq ? prereq.replace(/_/g, ' ') : '?';
-					html += '<div style="font-size:10px;color:#9ca3af;margin-top:4px">🔒 Requires: ' + prereqName + '</div>';
+					html += '<div style="font-size:10px;color:#ef4444;margin-top:6px">🔒 Requires: ' + (prereqTalent ? prereqTalent.name : prereqId) + '</div>';
 				} else {
 					const avail = talentPointsAvailable();
 					if (avail >= cost) {
-						html += '<div style="font-size:11px;color:#a78bfa;font-weight:700;margin-top:6px">▲ Click to upgrade (' + cost + ' pt' + (cost > 1 ? 's' : '') + ')</div>';
+						html += '<div style="font-size:11px;color:#a78bfa;font-weight:700;margin-top:8px;text-align:center">▲ Click to upgrade<br><span style="font-size:10px;font-weight:400">(' + cost + ' pt' + (cost > 1 ? 's' : '') + ')</span></div>';
 					} else {
-						html += '<div style="font-size:11px;color:#ef4444;margin-top:6px">✗ Need ' + cost + ' pts (have ' + avail + ')</div>';
+						html += '<div style="font-size:11px;color:#ef4444;margin-top:6px;text-align:center">Need ' + cost + ' pts<br><span style="font-size:10px">(have ' + avail + ')</span></div>';
 					}
 				}
 			}
-			tooltip.innerHTML = html;
+			// hotbar assignment for known active skills
+			if (rank > 0 && talent.type === 'active') {
+				html += '<div style="border-top:1px solid rgba(255,255,255,0.07);margin:8px 0 4px;font-size:10px;color:#6b7280">Hotbar slots</div>';
+				html += '<div id="ttHotbarSlots" style="display:flex;gap:4px;flex-wrap:wrap">';
+				for (let si = 0; si < 5; si++) {
+					const assigned = player.hotbar[si] === talent.id;
+					html += '<div data-slot="' + si + '" data-tid="' + talent.id + '" style="width:24px;height:24px;border-radius:4px;border:1px solid ' +
+						(assigned ? path.color : 'rgba(255,255,255,0.15)') +
+						';background:' + (assigned ? 'rgba(139,92,246,0.3)' : 'rgba(0,0,0,0.3)') +
+						';color:' + (assigned ? '#e9d5ff' : '#6b7280') + ';display:flex;align-items:center;justify-content:center;font-size:10px;cursor:pointer">' + (si+1) + '</div>';
+				}
+				html += '</div>';
+			}
+			sidebar.innerHTML = html;
+			// wire hotbar slot clicks
+			sidebar.querySelectorAll('[data-slot]').forEach(btn => {
+				btn.addEventListener('click', () => {
+					const si = parseInt(btn.dataset.slot);
+					const tid = btn.dataset.tid;
+					player.hotbar[si] = player.hotbar[si] === tid ? null : tid;
+					saveGame(); renderTalentTree(); refreshHotbarUI();
+				});
+			});
 		}
 
-		function hideTooltip() {
-			// keep last content visible — don't hide
-		}
+		function renderConstellation(path) {
+			// clear canvas nodes (keep SVGs)
+			canvas.querySelectorAll('.tt-node').forEach(n => n.remove());
+			lineSvg.innerHTML = '';
 
-		for (const path of TALENT_PATHS) {
-			const col = document.createElement('div');
-			col.style.cssText = 'flex:1;display:flex;flex-direction:column;align-items:center;padding:12px 4px;overflow-y:auto;border-right:1px solid rgba(255,255,255,0.06)';
+			const NODE_SIZE = 46;
+			const HALF = NODE_SIZE / 2;
 
-			const header = document.createElement('div');
-			header.style.cssText = 'font-size:11px;font-weight:700;letter-spacing:0.1em;margin-bottom:10px;color:' + path.color;
-			header.textContent = path.icon + ' ' + path.name.toUpperCase();
-			col.appendChild(header);
+			// draw prereq connector lines first (behind nodes)
+			for (const talent of path.talents) {
+				const prereqId = TALENT_PREREQS[talent.id];
+				if (!prereqId) continue;
+				const fromPos = TALENT_NODE_LAYOUT[prereqId];
+				const toPos   = TALENT_NODE_LAYOUT[talent.id];
+				if (!fromPos || !toPos) continue;
+				const prereqRank = talentRank(prereqId);
+				const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+				line.setAttribute('x1', fromPos[0] + '%'); line.setAttribute('y1', fromPos[1] + '%');
+				line.setAttribute('x2', toPos[0] + '%');   line.setAttribute('y2', toPos[1] + '%');
+				line.setAttribute('stroke', prereqRank > 0 ? path.color : 'rgba(255,255,255,0.10)');
+				line.setAttribute('stroke-width', '2');
+				line.setAttribute('stroke-linecap','round');
+				if (prereqRank === 0) line.setAttribute('stroke-dasharray','4 4');
+				lineSvg.appendChild(line);
+			}
 
-			for (let ti = 0; ti < path.talents.length; ti++) {
-				const talent = path.talents[ti];
+			// draw nodes
+			for (const talent of path.talents) {
+				const pos = TALENT_NODE_LAYOUT[talent.id];
+				if (!pos) continue;
 				const rank = talentRank(talent.id);
 				const maxed = rank >= talent.maxRank;
 				const prereqMet = talentPrereqMet(talent.id);
 				const upgradeCost = talentRankUpgradeCost(rank);
 				const canUpgrade = !maxed && prereqMet && talentPointsAvailable() >= upgradeCost;
 
-				// connector line above (except first)
-				if (ti > 0) {
-					const line = document.createElement('div');
-					line.style.cssText = 'width:2px;height:14px;background:' + (rank > 0 ? path.color : 'rgba(255,255,255,0.12)') + ';border-radius:1px;margin:0 auto';
-					col.appendChild(line);
-				}
-
-				const node = document.createElement('div');
-				let borderColor, bgColor, opacity;
+				let borderColor, bgColor, glowColor = 'transparent';
 				if (maxed) {
-					borderColor = '#fbbf24'; bgColor = 'rgba(251,191,36,0.25)'; opacity = '1';
+					borderColor = '#fbbf24'; bgColor = 'rgba(251,191,36,0.22)'; glowColor = '#fbbf24';
 				} else if (rank > 0) {
-					borderColor = path.color; bgColor = 'rgba(0,0,0,0.4)'; opacity = '1';
+					borderColor = path.color; bgColor = 'rgba(0,0,0,0.5)'; glowColor = path.color;
 				} else if (prereqMet) {
-					borderColor = path.color; bgColor = 'rgba(0,0,0,0.2)'; opacity = '0.85';
+					borderColor = path.color; bgColor = 'rgba(0,0,0,0.3)';
+					if (canUpgrade) glowColor = path.color;
 				} else {
-					borderColor = 'rgba(255,255,255,0.12)'; bgColor = 'rgba(0,0,0,0.2)'; opacity = '0.4';
+					borderColor = 'rgba(255,255,255,0.10)'; bgColor = 'rgba(0,0,0,0.15)';
 				}
 
-				const isCircle = talent.type === 'passive';
-				node.style.cssText = 'position:relative;width:44px;height:44px;border:2px solid ' + borderColor +
-					';background:' + bgColor + ';border-radius:' + (isCircle ? '50%' : '8px') +
-					';display:flex;align-items:center;justify-content:center;font-size:20px;cursor:' + (prereqMet && !maxed ? 'pointer' : 'default') +
-					';opacity:' + opacity + ';transition:box-shadow 0.15s,border-color 0.15s;flex-shrink:0';
-
-				if (prereqMet && !maxed && canUpgrade) {
-					node.style.boxShadow = '0 0 8px ' + path.color;
-				}
-
+				const isPassive = talent.type === 'passive';
+				const node = document.createElement('div');
+				node.className = 'tt-node';
+				node.style.cssText =
+					'position:absolute;' +
+					'left:calc(' + pos[0] + '% - ' + HALF + 'px);' +
+					'top:calc(' + pos[1] + '% - ' + HALF + 'px);' +
+					'width:' + NODE_SIZE + 'px;height:' + NODE_SIZE + 'px;' +
+					'border:2px solid ' + borderColor + ';' +
+					'background:' + bgColor + ';' +
+					'border-radius:' + (isPassive ? '50%' : '10px') + ';' +
+					'display:flex;align-items:center;justify-content:center;' +
+					'font-size:20px;' +
+					'cursor:' + (prereqMet && !maxed ? 'pointer' : 'default') + ';' +
+					'opacity:' + (prereqMet || rank > 0 ? '1' : '0.35') + ';' +
+					'transition:box-shadow 0.15s,transform 0.1s;' +
+					'user-select:none;' +
+					(glowColor !== 'transparent' && canUpgrade ? 'box-shadow:0 0 10px 2px ' + glowColor + '44,0 0 3px ' + glowColor + ';' : '') +
+					(rank > 0 && !maxed ? 'box-shadow:0 0 6px ' + glowColor + '66;' : '') +
+					(maxed ? 'box-shadow:0 0 14px 3px #fbbf2466,0 0 4px #fbbf24;' : '');
 				node.textContent = talent.icon;
 
 				// rank badge
 				if (rank > 0) {
 					const badge = document.createElement('div');
-					badge.style.cssText = 'position:absolute;bottom:-1px;right:-1px;font-size:9px;font-weight:700;background:#1e1b4b;color:' + (maxed ? '#fbbf24' : '#c4b5fd') + ';border-radius:3px;padding:0 2px;line-height:14px;min-width:12px;text-align:center';
+					badge.style.cssText = 'position:absolute;bottom:-2px;right:-2px;font-size:8px;font-weight:700;' +
+						'background:#0f0a1e;color:' + (maxed ? '#fbbf24' : path.color) + ';' +
+						'border-radius:4px;padding:0 3px;line-height:13px;min-width:13px;text-align:center;' +
+						'border:1px solid ' + (maxed ? '#fbbf24' : borderColor);
 					badge.textContent = rank + '/' + talent.maxRank;
 					node.appendChild(badge);
 				}
 
-				node.addEventListener('mouseenter', () => showTooltip(talent, path));
-				node.addEventListener('mouseleave', hideTooltip);
+				// locked overlay indicator
+				if (!prereqMet) {
+					const lock = document.createElement('div');
+					lock.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;border-radius:inherit;background:rgba(0,0,0,0.45)';
+					lock.textContent = '🔒';
+					node.appendChild(lock);
+				}
+
+				node.addEventListener('mouseenter', () => {
+					if (prereqMet || rank > 0) node.style.transform = 'scale(1.12)';
+					showTalentTooltip(talent, path);
+				});
+				node.addEventListener('mouseleave', () => { node.style.transform = ''; });
 
 				if (prereqMet && !maxed) {
 					node.addEventListener('click', () => {
@@ -2289,12 +3256,12 @@
 						}
 						player.talents[talent.id] = (player.talents[talent.id] || 0) + 1;
 						const newRank = player.talents[talent.id];
-						log('✨ ' + talent.name + ' upgraded to Rank ' + newRank + '! ' + talentPointsAvailable() + ' pts remaining.', 'craft');
+						log('✨ ' + talent.name + ' → Rank ' + newRank + '! (' + talentPointsAvailable() + ' pts left)', 'craft');
 						if (talent.type === 'active' && newRank === 1) {
 							const emptySlot = player.hotbar.findIndex(s => s === null);
 							if (emptySlot !== -1) {
 								player.hotbar[emptySlot] = talent.id;
-								log('→ Assigned to hotbar slot ' + (emptySlot + 1) + '.', 'sys');
+								log('→ Hotbar slot ' + (emptySlot + 1) + '.', 'sys');
 							}
 						}
 						saveGame();
@@ -2303,45 +3270,29 @@
 					});
 				}
 
-				// hotbar slot assignment for learned actives (shown in tooltip area, not on node)
-				if (rank > 0 && talent.type === 'active') {
-					const slotRow = document.createElement('div');
-					slotRow.style.cssText = 'display:flex;gap:2px;margin-top:3px';
-					for (let si = 0; si < 5; si++) {
-						const isAssigned = player.hotbar[si] === talent.id;
-						const btn = document.createElement('div');
-						btn.style.cssText = 'font-size:8px;width:14px;height:14px;border-radius:2px;border:1px solid ' +
-							(isAssigned ? path.color : 'rgba(255,255,255,0.15)') +
-							';background:' + (isAssigned ? 'rgba(139,92,246,0.35)' : 'rgba(0,0,0,0.3)') +
-							';color:' + (isAssigned ? '#e9d5ff' : '#6b7280') + ';display:flex;align-items:center;justify-content:center;cursor:pointer';
-						btn.textContent = si + 1;
-						btn.title = 'Slot ' + (si + 1);
-						btn.addEventListener('click', (e) => {
-							e.stopPropagation();
-							player.hotbar[si] = isAssigned ? null : talent.id;
-							saveGame(); renderTalentTree(); refreshHotbarUI();
-						});
-						slotRow.appendChild(btn);
-					}
-					const nodeWrap = document.createElement('div');
-					nodeWrap.style.cssText = 'display:flex;flex-direction:column;align-items:center';
-					nodeWrap.appendChild(node);
-					nodeWrap.appendChild(slotRow);
-					col.appendChild(nodeWrap);
-					continue;
-				}
-
-				col.appendChild(node);
+				canvas.appendChild(node);
 			}
-			pathsEl.appendChild(col);
 		}
 
-		// tooltip panel (right side)
-		if (tooltip) {
-			tooltip.style.cssText = 'display:block;position:relative;width:190px;flex-shrink:0;padding:14px 12px;border-left:1px solid rgba(255,255,255,0.06);background:rgba(0,0,0,0.35);font-size:11px;color:#d1d5db;overflow-y:auto';
-			if (!tooltip.innerHTML.trim()) tooltip.innerHTML = '<div style="font-size:11px;color:#6b7280">Hover a node to inspect</div>';
-			pathsEl.appendChild(tooltip);
+		// ── Build tabs + render first / active path ───────────────────
+		for (const path of TALENT_PATHS) {
+			const tab = document.createElement('div');
+			const isActive = path.id === _activePathTab;
+			tab.style.cssText = 'flex:1;padding:9px 4px;text-align:center;font-size:11px;font-weight:700;letter-spacing:0.08em;cursor:pointer;' +
+				'border-bottom:2px solid ' + (isActive ? path.color : 'transparent') + ';' +
+				'color:' + (isActive ? path.color : '#6b7280') + ';' +
+				'background:' + (isActive ? 'rgba(255,255,255,0.04)' : 'transparent') + ';' +
+				'transition:color 0.15s,border-color 0.15s';
+			tab.textContent = path.icon + ' ' + path.name;
+			tab.addEventListener('click', () => {
+				_activePathTab = path.id;
+				renderTalentTree();
+			});
+			tabBar.appendChild(tab);
 		}
+
+		const activePath = TALENT_PATHS.find(p => p.id === _activePathTab) || TALENT_PATHS[0];
+		renderConstellation(activePath);
 	}
 
 	(function buildPlayer() {
@@ -2689,6 +3640,7 @@
 		const wAtk = player.equip.weapon ? ITEMS[player.equip.weapon].atk : 0;
 		let bonus = 0;
 		for (const s of ['medallion', 'ring']) { const it = player.equip[s]; if (it && ITEMS[it].atk) bonus += ITEMS[it].atk; }
+		if (player.consumableAtkTimer > 0) bonus += (player.consumableAtk || 0);
 		return Math.floor(playerBaseAtk() + wAtk * (1 + player.atkLvl * 0.07) + bonus);
 	}
 	function playerDef() {
@@ -2698,6 +3650,7 @@
 			if (it && ITEMS[it].def) d += ITEMS[it].def;
 		}
 		if (player.frostWardTimer > 0) d += (player.frostWardBonus || 0);
+		if (player.consumableDefTimer > 0) d += (player.consumableDef || 0);
 		return d;
 	}
 	function refreshStatsUI() {
@@ -3395,6 +4348,83 @@
 				return g;
 			},
 		},
+		// Legendary deep-end creatures — spawn only at the far northern tip of Eldenmere
+		'Infernal Titan': {
+			count: 2, hp: 14000, dmg: 320, speed: 1.8, hopper: false, aggro: 14, barW: 3.5, barY: 4.2, hitY: 2.0, level: 75, xp: 7500, tiers: [7], spawnInset: 8,
+			spawnZone: { x: 0, z: -310, r: 28 },
+			drops: [
+				{ item: 'Infernal Ember', p: 1.00 },
+				{ item: 'Enriched Fire Essence', p: 0.25 },
+				{ item: 'Ether Shard',    p: 0.60 },
+			],
+			build() {
+				const g = new THREE.Group();
+				const lavaM = new THREE.MeshStandardMaterial({ color: 0x8a1500, emissive: 0xff3300, emissiveIntensity: 1.2, flatShading: true, roughness: 0.7 });
+				const glowM = new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xff6600, emissiveIntensity: 4.0, flatShading: true });
+				const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 2.4, 1.2), lavaM);
+				body.position.y = 2.0; body.castShadow = true; g.add(body);
+				const head = new THREE.Mesh(new THREE.BoxGeometry(1.3, 1.1, 1.0), lavaM);
+				head.position.y = 3.7; head.castShadow = true; g.add(head);
+				// lava cracks on body (glowing stripes)
+				for (const ry of [1.2, 2.0, 2.8]) {
+					const crack = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.1, 0.1), glowM);
+					crack.position.set(0, ry, 0.62); g.add(crack);
+				}
+				for (const s of [-1, 1]) {
+					const eye = new THREE.Mesh(new THREE.SphereGeometry(0.15, 6, 6), glowM);
+					eye.position.set(0.3 * s, 3.82, 0.46); g.add(eye);
+					const arm = new THREE.Mesh(new THREE.BoxGeometry(0.55, 1.8, 0.55), lavaM);
+					arm.position.set(1.32 * s, 1.85, 0); arm.castShadow = true; g.add(arm);
+					const leg = new THREE.Mesh(new THREE.BoxGeometry(0.65, 1.1, 0.65), lavaM);
+					leg.position.set(0.55 * s, 0.55, 0); leg.castShadow = true; g.add(leg);
+				}
+				// molten shoulder pads
+				for (const s of [-1, 1]) {
+					const pad = new THREE.Mesh(new THREE.SphereGeometry(0.55, 7, 6), lavaM);
+					pad.position.set(1.1 * s, 3.1, 0); g.add(pad);
+					const padGlow = new THREE.Mesh(new THREE.SphereGeometry(0.25, 6, 5), glowM);
+					padGlow.position.set(1.1 * s, 3.1, 0.3); g.add(padGlow);
+				}
+				return g;
+			},
+		},
+		'Void Colossus': {
+			count: 2, hp: 16000, dmg: 360, speed: 1.4, hopper: false, aggro: 12, barW: 4.0, barY: 4.8, hitY: 2.2, level: 80, xp: 9000, tiers: [7], spawnInset: 8,
+			spawnZone: { x: 0, z: -295, r: 22 },
+			drops: [
+				{ item: 'Void Relic',     p: 1.00 },
+				{ item: 'Enriched Fire Essence', p: 0.20 },
+				{ item: 'Voidstone',      p: 0.70 },
+			],
+			build() {
+				const g = new THREE.Group();
+				const voidM  = new THREE.MeshStandardMaterial({ color: 0x080010, emissive: 0x5500aa, emissiveIntensity: 1.0, flatShading: true, transparent: true, opacity: 0.92 });
+				const rimM   = new THREE.MeshStandardMaterial({ color: 0xcc00ff, emissive: 0xcc00ff, emissiveIntensity: 5.0, flatShading: true });
+				const body = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 1.2, 2.8, 10), voidM);
+				body.position.y = 2.2; body.castShadow = true; g.add(body);
+				const head = new THREE.Mesh(new THREE.SphereGeometry(0.85, 10, 8), voidM);
+				head.position.y = 4.0; head.castShadow = true; g.add(head);
+				// void eye cluster
+				for (const [ex, ey, ez] of [[0, 4.1, 0.72], [-0.35, 3.85, 0.68], [0.35, 3.85, 0.68]]) {
+					const eye = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), rimM);
+					eye.position.set(ex, ey, ez); g.add(eye);
+				}
+				// glowing rings on body
+				for (const ry of [1.8, 2.8, 3.4]) {
+					const ring = new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.1, 6, 14), rimM);
+					ring.position.y = ry; ring.rotation.x = Math.PI / 2; g.add(ring);
+				}
+				for (const s of [-1, 1]) {
+					const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.2, 2.2, 8), voidM);
+					arm.position.set(1.55 * s, 2.5, 0); arm.rotation.z = 0.4 * s; arm.castShadow = true; g.add(arm);
+					const claw = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.8, 5), rimM);
+					claw.position.set(2.15 * s, 1.6, 0); claw.rotation.z = (s < 0 ? -1 : 1) * 1.8; g.add(claw);
+					const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.3, 1.4, 8), voidM);
+					leg.position.set(0.6 * s, 0.7, 0); leg.castShadow = true; g.add(leg);
+				}
+				return g;
+			},
+		},
 		'Ancient Golem': {
 			count: 2, hp: 8000, dmg: 150, speed: 2.2, hopper: false, aggro: 10, barW: 3.0, barY: 3.5, hitY: 1.8, level: 65, xp: 4500, tiers: [7], spawnInset: 12,
 			drops: [
@@ -3443,7 +4473,20 @@
 		// pick a random island that matches this creature's tier list
 		const validIsles = ISLES.filter(isle => def.tiers.includes(isle.tier));
 		const homeIsle = validIsles[Math.floor(Math.random() * validIsles.length)] || ISLES[0];
-		const p = findSpotIsleForced(homeIsle, def.spawnInset !== undefined ? def.spawnInset : (def.nearWater ? 2 : 6));
+		let p;
+		if (def.spawnZone) {
+			// spawn within a fixed zone (for deep-end legendary creatures)
+			const sz = def.spawnZone;
+			let found = false;
+			for (let t = 0; t < 300 && !found; t++) {
+				const a = rand(0, Math.PI * 2), r = Math.sqrt(Math.random()) * sz.r;
+				const x = sz.x + Math.cos(a) * r, z = sz.z + Math.sin(a) * r;
+				if (walkable(x, z)) { p = new THREE.Vector3(x, terrainHeight(x, z), z); found = true; }
+			}
+			if (!p) p = new THREE.Vector3(sz.x, terrainHeight(sz.x, sz.z), sz.z);
+		} else {
+			p = findSpotIsleForced(homeIsle, def.spawnInset !== undefined ? def.spawnInset : (def.nearWater ? 2 : 6));
+		}
 		const g = def.build();
 		g.position.set(p.x, terrainHeight(p.x, p.z), p.z);
 		const bar = makeHealthBar(g, def.barW, def.barY + 0.8, true);
@@ -3466,7 +4509,7 @@
 	for (const name of Object.keys(CREATURE_DEFS))
 		for (let i = 0; i < CREATURE_DEFS[name].count; i++) spawnCreature(name);
 
-	function creatureTakeDamage(c, dmg) {
+	function creatureTakeDamage(c, dmg, silent) {
 		// Conductor: shocked enemies take increased damage
 		const condRank = talentRank('lightning_conductor');
 		if (condRank > 0 && player.lightningStuns.some(s => s.creature === c)) {
@@ -3481,9 +4524,24 @@
 		}
 		c.hp -= dmg;
 		setBar(c.bar, c.hp / c.maxhp);
-		floatText('-' + dmg, c.group.position.clone().add(new THREE.Vector3(0, c.def.barY + 0.9, 0)), '#f87171');
+		if (!silent) {
+			floatText('-' + Math.ceil(dmg), c.group.position.clone().add(new THREE.Vector3(0, c.def.barY + 0.9, 0)), '#f87171');
+		} else {
+			if (!c._dotFloatAccum) c._dotFloatAccum = 0;
+			if (!c._dotFloatTimer) c._dotFloatTimer = 0;
+			c._dotFloatAccum += dmg;
+		}
 		if (c.hp <= 0) killCreature(c);
 		else if (c.state !== 'combat') { c.state = 'combat'; }
+	}
+	function flushDotFloatText(c, dt) {
+		if (!c._dotFloatTimer) c._dotFloatTimer = 0;
+		c._dotFloatTimer -= dt;
+		if (c._dotFloatTimer <= 0 && c._dotFloatAccum > 0) {
+			floatText('-' + Math.ceil(c._dotFloatAccum), c.group.position.clone().add(new THREE.Vector3(0, c.def.barY + 0.9, 0)), '#fb923c');
+			c._dotFloatAccum = 0;
+			c._dotFloatTimer = 0.6;
+		}
 	}
 	function killCreature(c) {
 		c.state = 'dead';
@@ -3509,6 +4567,20 @@
 		grantXp('def', defGain);
 		if (c.name === 'Dragon') { player.dragonKilled = true; saveGame(); }
 		if (player.action && player.action.type === 'attack' && player.action.creature === c) player.action = null;
+		// Overload: shocked enemies that die burst-stun nearby enemies
+		const overloadRank = talentRank('lightning_overload');
+		if (overloadRank > 0 && player.lightningStuns.some(s => s.creature === c)) {
+			const olRadius = [0, 4, 5, 6, 7, 8][overloadRank];
+			const olStunCycles = overloadRank >= 3 ? 2 : 1;
+			creatures.forEach(cc => {
+				if (cc !== c && cc.state !== 'dead' && cc.group.position.distanceTo(c.group.position) <= olRadius) {
+					if (!player.lightningStuns.some(s => s.creature === cc)) {
+						player.lightningStuns.push({ creature: cc, timer: olStunCycles * 2 });
+						floatText('⚡ Overload!', cc.group.position.clone().add(new THREE.Vector3(0, 2, 0)), '#fde047', 0.9);
+					}
+				}
+			});
+		}
 	}
 
 // ------------------------------------------------------------------ combat helpers
@@ -3536,6 +4608,11 @@
 		player.parts.armR.rotation.x = -1.9;
 	}
 	function creatureHit(c) {
+		// Spirit Walk: immune to damage
+		if (player.spiritWalkTimer > 0) {
+			floatText('👻 Ethereal!', headPos(), '#e9d5ff', 0.8);
+			return;
+		}
 		const raw = c.def.dmg + randInt(0, 2);
 		let dmg = Math.max(1, raw - playerDef());
 		// Fortitude: reduce incoming damage
@@ -3543,6 +4620,44 @@
 		if (fortRank > 0) {
 			const reduction = [0, 0.02, 0.04, 0.05, 0.06, 0.08][fortRank];
 			dmg = Math.max(1, Math.floor(dmg * (1 - reduction)));
+		}
+		// Void Shroud consumable: reduce incoming damage
+		if (player.consumableDmgReduceTimer > 0 && player.consumableDmgReduce) {
+			dmg = Math.max(1, Math.floor(dmg * (1 - player.consumableDmgReduce)));
+		}
+		// Aegis: absorb damage
+		if (player.aegisAbsorb > 0) {
+			const absorbed = Math.min(player.aegisAbsorb, dmg);
+			player.aegisAbsorb -= absorbed;
+			dmg -= absorbed;
+			floatText('🔮 -' + absorbed, headPos().add(new THREE.Vector3(0.4, 0.2, 0)), '#a78bfa', 0.8);
+			if (player.aegisAbsorb <= 0) { player.aegisAbsorb = 0; player.aegisTimer = 0; log('🔮 Aegis shattered.', 'sys'); }
+			if (dmg <= 0) return;
+		}
+		// Magma Shell: absorb damage and return fire
+		if (player.magmaShellAbsorb > 0) {
+			const absorbed = Math.min(player.magmaShellAbsorb, dmg);
+			player.magmaShellAbsorb -= absorbed;
+			dmg -= absorbed;
+			floatText('🛡️ -' + absorbed, headPos().add(new THREE.Vector3(-0.4, 0.2, 0)), '#f97316', 0.8);
+			if (player.magmaShellReturnDmg > 0) {
+				creatureTakeDamage(c, player.magmaShellReturnDmg);
+				floatText('🔥 ' + player.magmaShellReturnDmg, c.group.position.clone().add(new THREE.Vector3(0, 2, 0)), '#fb923c', 0.8);
+			}
+			if (player.magmaShellAbsorb <= 0) { player.magmaShellAbsorb = 0; player.magmaShellTimer = 0; log('🛡️ Magma Shell crumbled.', 'sys'); }
+			if (dmg <= 0) return;
+		}
+		// Glacial Armor: absorb damage
+		if (player.glacialArmorAbsorb > 0) {
+			const absorbed = Math.min(player.glacialArmorAbsorb, dmg);
+			player.glacialArmorAbsorb -= absorbed;
+			dmg -= absorbed;
+			floatText('🧊 -' + absorbed, headPos().add(new THREE.Vector3(0, 0.2, 0.4)), '#bae6fd', 0.8);
+			if (player.glacialArmorAbsorb <= 0) {
+				// manual expiry triggers explosion
+				player.glacialArmorTimer = 0.01;
+			}
+			if (dmg <= 0) return;
 		}
 		player.hp -= dmg;
 		player.lastHurt = elapsed;
@@ -3571,6 +4686,8 @@
 			player.hp = player.maxhp;
 			setBar(player.bar, 1); refreshHpUI();
 			player.dead = false;
+			player.phoenixMarkUsed = false;
+			player.resurrectionMarkUsed = false;
 			log('You feel restored.', 'sys');
 		}, 1200);
 	}
@@ -4087,7 +5204,19 @@
 			if (g.scale.y <= 0.02) g.visible = false;
 			c.respawn -= dt;
 			if (c.respawn <= 0) {
-				const p = findSpotIsleForced(c.homeIsle, c.def.spawnInset !== undefined ? c.def.spawnInset : (c.def.nearWater ? 2 : 6));
+				let p;
+				if (c.def.spawnZone) {
+					const sz = c.def.spawnZone;
+					let found = false;
+					for (let t = 0; t < 300 && !found; t++) {
+						const a = rand(0, Math.PI * 2), r = Math.sqrt(Math.random()) * sz.r;
+						const x = sz.x + Math.cos(a) * r, z = sz.z + Math.sin(a) * r;
+						if (walkable(x, z)) { p = new THREE.Vector3(x, terrainHeight(x, z), z); found = true; }
+					}
+					if (!p) p = new THREE.Vector3(sz.x, terrainHeight(sz.x, sz.z), sz.z);
+				} else {
+					p = findSpotIsleForced(c.homeIsle, c.def.spawnInset !== undefined ? c.def.spawnInset : (c.def.nearWater ? 2 : 6));
+				}
 				g.position.set(p.x, terrainHeight(p.x, p.z), p.z);
 				c.home.copy(g.position);
 				c.hp = c.maxhp; setBar(c.bar, 1);
@@ -4127,7 +5256,15 @@
 				c.state = 'wander';
 				c.hp = c.maxhp; setBar(c.bar, 1);
 			} else {
-				const isDragon = c.name === 'Dragon';
+				const isDragon      = c.name === 'Dragon';
+				const isCaveTroll   = c.name === 'Cave Troll';
+				const isFrostGolem  = c.name === 'Frost Golem';
+				const isLavaTitan   = c.name === 'Lava Titan';
+				const isShadowWraith= c.name === 'Shadow Wraith';
+				const isVoidStalker = c.name === 'Void Stalker';
+				const isAncientGolem= c.name === 'Ancient Golem';
+				const isInfernalTitan = c.name === 'Infernal Titan';
+				const isVoidColossus= c.name === 'Void Colossus';
 				const dv = player.group.position.clone().sub(g.position);
 				turnTowards(g, Math.atan2(dv.x, dv.z), dt, 10);
 				// freeze/stun checks
@@ -4145,6 +5282,36 @@
 							c.fireballTimer = rand(3.0, 5.0);
 							spawnDragonFireball(c, c.def.dmg + randInt(0, 20));
 						}
+					}
+				} else if ((isCaveTroll || isFrostGolem || isLavaTitan || isShadowWraith || isVoidStalker || isAncientGolem || isInfernalTitan || isVoidColossus) && distToPlayer > 3.5 && distToPlayer < 22) {
+					// Spellcasting creatures: move closer if very far, then cast when in range
+					if (distToPlayer > 9) {
+						c.moving = true;
+						moveEntityTowards(g, player.group.position, c.def.speed, dt);
+					} else {
+						c.moving = false;
+					}
+					if (!isFrozen && !isStunned) {
+						if (!c.spellTimer) c.spellTimer = isCaveTroll || isFrostGolem ? rand(4.5, 6.5) : rand(3.0, 5.0);
+						c.spellTimer -= dt;
+						if (c.spellTimer <= 0) {
+							let interval, color, label, dmgMult;
+							if (isCaveTroll)    { interval = rand(4.5, 6.5); color = 0x8B6914; label = '🪨 The Cave Troll hurls a boulder!'; dmgMult = 0.55; }
+							else if (isFrostGolem)  { interval = rand(4.0, 6.0); color = 0x7dd3fc; label = '❄️ The Frost Golem launches an ice shard!'; dmgMult = 0.60; }
+							else if (isLavaTitan)   { interval = rand(2.5, 4.0); color = 0xff4400; label = '🌋 The Lava Titan spews a lava ball!'; dmgMult = 0.80; }
+							else if (isShadowWraith){ interval = rand(2.0, 3.5); color = 0x6600cc; label = '🌑 The Shadow Wraith fires a shadow bolt!'; dmgMult = 0.85; }
+							else if (isVoidStalker) { interval = rand(2.0, 3.5); color = 0x330066; label = '🌀 The Void Stalker launches a void lance!'; dmgMult = 0.90; }
+							else if (isAncientGolem){ interval = rand(2.5, 4.0); color = 0x7c6a3b; label = '🗿 The Ancient Golem sends a shockwave!'; dmgMult = 0.70; }
+							else if (isInfernalTitan){ interval = rand(1.8, 3.0); color = 0xff1100; label = '🔥 The Infernal Titan unleashes an inferno burst!'; dmgMult = 0.95; }
+							else                    { interval = rand(1.5, 2.8); color = 0x220044; label = '💀 The Void Colossus fires a void pulse!'; dmgMult = 1.00; }
+							c.spellTimer = interval;
+							spawnCreatureProjectile(c, Math.ceil(c.def.dmg * dmgMult) + randInt(0, 10), color, label);
+						}
+					}
+					// still melee if close
+					if (distToPlayer <= 1.8 && !isFrozen && !isStunned) {
+						c.attackTimer -= dt;
+						if (c.attackTimer <= 0) { c.attackTimer = 1.6; creatureHit(c); }
 					}
 				} else if (distToPlayer > 1.8) {
 					c.moving = true;
@@ -4242,10 +5409,13 @@
 			if (!groupMap[r.tier]) { groupMap[r.tier] = []; groups.push(r.tier); }
 			groupMap[r.tier].push(r);
 		}
-		// decide which group is "current" (first tier that has any affordable recipe, fallback first)
-		let defaultOpen = groups[0];
-		for (const t of groups) {
-			if (groupMap[t].some(r => canAfford(r.req))) { defaultOpen = t; break; }
+		// initialize open-state tracking on first render only
+		if (_openRecipeTiers === null) {
+			let defaultOpen = groups[0];
+			for (const t of groups) {
+				if (groupMap[t].some(r => canAfford(r.req))) { defaultOpen = t; break; }
+			}
+			_openRecipeTiers = new Set([defaultOpen]);
 		}
 		for (const tier of groups) {
 			const recipes = groupMap[tier];
@@ -4254,13 +5424,14 @@
 			const header = document.createElement('button');
 			header.className = 'w-full flex items-center justify-between rounded-lg px-3 py-2 text-left text-[11px] font-bold uppercase tracking-widest transition ' +
 				(anyAfford ? 'text-amber-200 hover:bg-white/5' : 'text-zinc-500 hover:bg-white/5');
-			const isOpen = tier === defaultOpen;
+			const isOpen = _openRecipeTiers.has(tier);
 			header.innerHTML = '<span>' + tier + '</span><span class="accordion-caret">' + (isOpen ? '▲' : '▼') + '</span>';
 			const body = document.createElement('div');
 			body.className = 'space-y-2 mb-2' + (isOpen ? '' : ' hidden');
 			header.addEventListener('click', () => {
 				const nowHidden = body.classList.toggle('hidden');
 				header.querySelector('.accordion-caret').textContent = nowHidden ? '▼' : '▲';
+				if (nowHidden) _openRecipeTiers.delete(tier); else _openRecipeTiers.add(tier);
 			});
 			ui.recipeList.appendChild(header);
 			ui.recipeList.appendChild(body);
@@ -4354,6 +5525,15 @@
 					ui.mixHint.textContent = 'Success! You made a ' + recipe.out + '. (' + recipe.tag + ')';
 					log('You mixed a ' + recipe.out + '!', 'craft');
 					floatText('⚗️ ' + recipe.out + '!', headPos(), '#e879f9', 1.1);
+					// Enriched Fire Essence bonus roll when crafting a Fire Essence
+					if (recipe.out === 'Fire Essence') {
+						const enrichChance = 0.03 + (player.craftLvl - 1) * 0.002;
+						if (Math.random() < enrichChance) {
+							addItem('Enriched Fire Essence', 1);
+							log('✨ The essence surges — you also created an Enriched Fire Essence!', 'craft');
+							floatText('🔥✨ Enriched Essence!', headPos(), '#ff8800', 1.2);
+						}
+					}
 				} else {
 					// failure — you lose some materials, but salvage the rest (each item ~50%)
 					const saved = [];
@@ -4386,6 +5566,7 @@
 		ui.craftModal.classList.remove('hidden');
 		ui.craftModal.classList.add('flex');
 		ui.mixHint.textContent = 'Click items in your inventory to place them here.';
+		_openRecipeTiers = null; // reset so first render picks the best default
 		renderMix();
 	});
 	$('btnCraftClose').addEventListener('click', () => {
@@ -4586,6 +5767,7 @@
 		}
 
 		updateFireballs(dt);
+		updateBuffAuras(dt);
 		updateStatusSprites();
 		updateFloaters(dt);
 		updateEffects(dt);
@@ -4593,6 +5775,55 @@
 		updateLabels();
 		updateHoverCursor(dt);
 		renderer.render(scene, camera);
+	}
+
+	// ---- Persistent buff aura rings ----
+	// Each entry: { mesh, color, radius, speed, phase, type }
+	const buffAuraRings = [];
+	function getOrCreateBuffAura(type, color, radius) {
+		let entry = buffAuraRings.find(e => e.type === type);
+		if (!entry) {
+			const geo = new THREE.RingGeometry(radius * 0.82, radius, 40);
+			geo.rotateX(-Math.PI / 2);
+			const mat = new THREE.MeshBasicMaterial({
+				color, transparent: true, opacity: 0.0,
+				side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending
+			});
+			const mesh = new THREE.Mesh(geo, mat);
+			scene.add(mesh);
+			entry = { mesh, color, radius, speed: 0.9 + Math.random() * 0.4, phase: Math.random() * Math.PI * 2, type };
+			buffAuraRings.push(entry);
+		}
+		return entry;
+	}
+	function updateBuffAuras(dt) {
+		// Define which buffs show which aura ring
+		const AURA_DEFS = [
+			{ type: 'frostWard',    active: () => player.frostWardTimer > 0,    color: 0x7dd3fc, radius: 1.15 },
+			{ type: 'glacialArmor', active: () => player.glacialArmorTimer > 0,  color: 0xbae6fd, radius: 1.35 },
+			{ type: 'magmaShell',   active: () => player.magmaShellTimer > 0,    color: 0xff6600, radius: 1.25 },
+			{ type: 'aegis',        active: () => player.aegisTimer > 0,         color: 0xa78bfa, radius: 1.45 },
+			{ type: 'spiritWalk',   active: () => player.spiritWalkTimer > 0,    color: 0xe9d5ff, radius: 1.05 },
+			{ type: 'flameWall',    active: () => player.flameWallTimer > 0,     color: 0xff4400, radius: 3.8  },
+			{ type: 'staticAura',   active: () => player.staticAuraTimer > 0,    color: 0xfde047, radius: 5.5  },
+		];
+		const pp = player.group.position;
+		for (const def of AURA_DEFS) {
+			const isActive = def.active();
+			if (!isActive) {
+				// hide if exists
+				const existing = buffAuraRings.find(e => e.type === def.type);
+				if (existing) existing.mesh.material.opacity = 0;
+				continue;
+			}
+			const entry = getOrCreateBuffAura(def.type, def.color, def.radius);
+			entry.phase += dt * entry.speed;
+			const pulse = 0.28 + Math.sin(entry.phase) * 0.14;
+			entry.mesh.material.opacity = pulse;
+			entry.mesh.position.set(pp.x, pp.y + 0.12, pp.z);
+			// slow rotation
+			entry.mesh.rotation.z += dt * 0.5;
+		}
 	}
 
 	// ---- Fireball projectile update ----
@@ -4608,6 +5839,19 @@
 		scene.add(mesh);
 		dragonFireballs.push({ mesh, startPos, endPos, t: 0, damage });
 		log('🐉 The Dragon breathes fire!', 'dmgIn');
+	}
+	const creatureProjectiles = [];
+	function spawnCreatureProjectile(creature, damage, color, msg) {
+		const mat = new THREE.MeshBasicMaterial({ color });
+		const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 8), mat);
+		const light = new THREE.PointLight(color, 2.0, 5);
+		mesh.add(light);
+		const startPos = creature.group.position.clone().add(new THREE.Vector3(0, 2.2, 0));
+		const endPos = player.group.position.clone().add(new THREE.Vector3(0, 1.0, 0));
+		mesh.position.copy(startPos);
+		scene.add(mesh);
+		creatureProjectiles.push({ mesh, startPos, endPos, t: 0, damage });
+		log(msg, 'dmgIn');
 	}
 	function updateFireballs(dt) {
 		// ice lances
@@ -4668,6 +5912,7 @@
 					let dmg = Math.max(1, fb.damage - playerDef());
 					const fortRank = talentRank('spirit_fortitude');
 					if (fortRank > 0) dmg = Math.max(1, Math.floor(dmg * (1 - [0,0.02,0.04,0.05,0.06,0.08][fortRank])));
+					if (player.consumableDmgReduceTimer > 0 && player.consumableDmgReduce) dmg = Math.max(1, Math.floor(dmg * (1 - player.consumableDmgReduce)));
 					player.hp -= dmg;
 					player.lastHurt = elapsed;
 					setBar(player.bar, player.hp / player.maxhp);
@@ -4681,6 +5926,37 @@
 			}
 			const p = fb.startPos.clone().lerp(fb.endPos, fb.t);
 			p.y += Math.sin(fb.t * Math.PI) * 3.5;
+			fb.mesh.position.copy(p);
+		}
+		// creature projectiles (Cave Troll, Frost Golem, Lava Titan, etc.)
+		for (let i = creatureProjectiles.length - 1; i >= 0; i--) {
+			const fb = creatureProjectiles[i];
+			fb.t += dt / 1.4;
+			if (fb.t >= 1) {
+				scene.remove(fb.mesh);
+				creatureProjectiles.splice(i, 1);
+				if (!player.dead) {
+					let dmg = Math.max(1, fb.damage - playerDef());
+					const fortRank = talentRank('spirit_fortitude');
+					if (fortRank > 0) dmg = Math.max(1, Math.floor(dmg * (1 - [0,0.02,0.04,0.05,0.06,0.08][fortRank])));
+					if (player.consumableDmgReduceTimer > 0 && player.consumableDmgReduce) dmg = Math.max(1, Math.floor(dmg * (1 - player.consumableDmgReduce)));
+					if (player.aegisAbsorb > 0) {
+						const abs = Math.min(player.aegisAbsorb, dmg); player.aegisAbsorb -= abs; dmg -= abs;
+						if (player.aegisAbsorb <= 0) { player.aegisAbsorb = 0; player.aegisTimer = 0; log('🔮 Aegis shattered.', 'sys'); }
+					}
+					if (dmg > 0) {
+						player.hp -= dmg;
+						player.lastHurt = elapsed;
+						setBar(player.bar, player.hp / player.maxhp);
+						refreshHpUI();
+						floatText('-' + dmg, headPos(), '#c084fc');
+						if (player.hp <= 0) playerDeath();
+					}
+				}
+				continue;
+			}
+			const p = fb.startPos.clone().lerp(fb.endPos, fb.t);
+			p.y += Math.sin(fb.t * Math.PI) * 2.8;
 			fb.mesh.position.copy(p);
 		}
 	}
@@ -4721,8 +5997,16 @@
 		// player
 		const playerIcons = [];
 		if (player.frostWardTimer > 0) playerIcons.push('🛡️');
+		if (player.magmaShellTimer > 0) playerIcons.push('🌋');
+		if (player.glacialArmorTimer > 0) playerIcons.push('🧊');
+		if (player.aegisTimer > 0) playerIcons.push('🔮');
+		if (player.spiritWalkTimer > 0) playerIcons.push('👻');
+		if (player.flameWallTimer > 0) playerIcons.push('🔥');
 		if (player.hotTimer > 0) playerIcons.push('💚');
 		if (player.staticAuraTimer > 0) playerIcons.push('🌩️');
+		if (player.nextAttackFireBonus > 0) playerIcons.push('🔸');
+		if (player.nextAttackLightningBonus > 0) playerIcons.push('⚡');
+		if (player.nextAttackIceBonus > 0) playerIcons.push('❄️');
 		if (talentRank('spirit_passive') > 0) playerIcons.push('🌿');
 		const playerSprite = getOrCreateStatusSprite(player, player._statusYOff || 4.2);
 		if (playerIcons.length > 0) {
