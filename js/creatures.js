@@ -749,6 +749,7 @@ p = findSpotIsleForced(homeIsle, def.spawnInset !== undefined ? def.spawnInset :
 const g = def.build();
 g.position.set(p.x, terrainHeight(p.x, p.z), p.z);
 const bar = makeHealthBar(g, def.barW, def.barY + 0.8, true);
+bar.hp = def.hp; bar.maxhp = def.hp;
 const label = makeLabel(g, name, def.barY + 1.35, '#fca5a5', 'Lv ' + def.level);
 const c = {
 name, def, group: g, bar, label,
@@ -783,8 +784,11 @@ if (brittleRank > 0 && player.iceFreeze.some(f => f.creature === c)) {
 const brittleBonus = [0, 0.15, 0.25, 0.35, 0.42, 0.50][brittleRank];
 dmg = Math.ceil(dmg * (1 + brittleBonus));
 }
+// Forward hit to server (multiplayer authoritative HP); still subtract locally for
+// immediate feedback — the server will echo creature:damaged which may correct it.
+if (typeof netAttackCreature === 'function') netAttackCreature(c, dmg);
 c.hp -= dmg;
-setBar(c.bar, c.hp / c.maxhp);
+setBar(c.bar, c.hp / c.maxhp, c.hp, c.maxhp);
 if (!silent) {
 floatText('-' + Math.ceil(dmg), c.group.position.clone().add(new THREE.Vector3(0, c.def.barY + 0.9, 0)), '#f87171');
 } else {
@@ -847,162 +851,53 @@ floatText('⚡ Overload!', cc.group.position.clone().add(new THREE.Vector3(0, 2,
 // ------------------------------------------------------------------ creature update
 function updateCreature(c, dt) {
 const g = c.group;
+
+// Apply state from server. Never downgrade combat → wander while actively fighting.
+if (c.netState) {
+  if (c.netState === 'dead' && c.state !== 'dead') {
+    c.state = 'dead';
+    c.respawn = 9999;
+  } else if (c.netState !== 'dead') {
+    if (!(c.netState === 'wander' && c.state === 'combat')) {
+      c.state = c.netState;
+    }
+  }
+  c.netState = null;
+}
+
+// Death animation
 if (c.state === 'dead') {
-g.scale.y = Math.max(0.01, g.scale.y - dt * 2.2);
-g.position.y = terrainHeight(g.position.x, g.position.z);
-if (g.scale.y <= 0.02) g.visible = false;
-c.respawn -= dt;
-if (c.respawn <= 0) {
-let p;
-if (c.def.spawnZone) {
-const sz = c.def.spawnZone;
-let found = false;
-for (let t = 0; t < 300 && !found; t++) {
-const a = rand(0, Math.PI * 2), r = Math.sqrt(_rng()) * sz.r;
-const x = sz.x + Math.cos(a) * r, z = sz.z + Math.sin(a) * r;
-if (walkable(x, z)) { p = new THREE.Vector3(x, terrainHeight(x, z), z); found = true; }
-}
-if (!p) p = new THREE.Vector3(sz.x, terrainHeight(sz.x, sz.z), sz.z);
-} else {
-p = findSpotIsleForced(c.homeIsle, c.def.spawnInset !== undefined ? c.def.spawnInset : (c.def.nearWater ? 2 : 6));
-}
-g.position.set(p.x, terrainHeight(p.x, p.z), p.z);
-c.home.copy(g.position);
-c.hp = c.maxhp; setBar(c.bar, 1);
-g.scale.y = 1; g.visible = true;
-c.state = 'wander'; c.wTarget = null; c.wTimer = rand(1, 3);
-}
-return;
+  g.scale.y = Math.max(0.01, g.scale.y - dt * 2.2);
+  g.position.y = terrainHeight(g.position.x, g.position.z);
+  if (g.scale.y <= 0.02) g.visible = false;
+  return;
 }
 
-const distToPlayer = g.position.distanceTo(player.group.position);
-c.moving = false;
-
-if (c.state === 'wander') {
-// wolves are territorial
-if (c.def.aggro > 0 && !player.dead && distToPlayer < c.def.aggro) {
-c.state = 'combat';
-log('A ' + c.name + ' lunges at you!', 'warn');
-} else {
-c.wTimer -= dt;
-if (c.wTimer <= 0 && !c.wTarget) {
-for (let t = 0; t < 10; t++) {
-const nx = c.home.x + rand(-6, 6), nz = c.home.z + rand(-6, 6);
-if (walkable(nx, nz)) { c.wTarget = new THREE.Vector3(nx, 0, nz); break; }
-}
-c.wTimer = rand(2, 5.5);
-}
-if (c.wTarget) {
-c.moving = true;
-if (moveEntityTowards(g, c.wTarget, c.def.speed * 0.55, dt)) c.wTarget = null;
-turnTowards(g, g.userData._angle, dt, 8);
-}
-}
+// Always lerp toward server position — server is the single authority.
+if (c.netPos) {
+  const dx = c.netPos.x - g.position.x, dz = c.netPos.z - g.position.z;
+  const dist = Math.sqrt(dx * dx + dz * dz);
+  if (dist < 0.05) {
+    g.position.x = c.netPos.x; g.position.z = c.netPos.z;
+    c.netPos = null;
+  } else {
+    const alpha = Math.min(1, dt * 12);
+    g.position.x += dx * alpha;
+    g.position.z += dz * alpha;
+    g.userData._angle = Math.atan2(dx, dz);
+  }
 }
 
-if (c.state === 'combat') {
-if (player.dead || distToPlayer > (c.name === 'Cave Worm' ? 30 : 15)) {
-c.state = 'wander';
-c.hp = c.maxhp; setBar(c.bar, 1);
-} else {
-const isDragon      = c.name === 'Dragon';
-const isCaveTroll   = c.name === 'Cave Troll';
-const isFrostGolem  = c.name === 'Frost Golem';
-const isLavaTitan   = c.name === 'Lava Titan';
-const isShadowWraith= c.name === 'Shadow Wraith';
-const isVoidStalker = c.name === 'Void Stalker';
-const isAncientGolem= c.name === 'Ancient Golem';
-const isInfernalTitan = c.name === 'Infernal Titan';
-const isVoidColossus= c.name === 'Void Colossus';
-const isCaveWorm    = c.name === 'Cave Worm';
-const dv = player.group.position.clone().sub(g.position);
-turnTowards(g, Math.atan2(dv.x, dv.z), dt, 10);
-// freeze/stun checks
-const freeze = player.iceFreeze.find(f => f.creature === c);
-if (freeze) { freeze.turnsLeft -= dt / 1.6; }
-const isFrozen = freeze && freeze.turnsLeft > 0;
-const isStunned = player.lightningStuns.some(s => s.creature === c);
-if (isDragon && distToPlayer > 4.5) {
-// Dragon: hold position and hurl fireballs when player is far
-c.moving = false;
-if (!isFrozen && !isStunned) {
-if (!c.fireballTimer) c.fireballTimer = 3.5;
-c.fireballTimer -= dt;
-if (c.fireballTimer <= 0) {
-c.fireballTimer = rand(3.0, 5.0);
-spawnDragonFireball(c, Math.ceil(c.def.dmg * 3.0) + randInt(0, 20));
-}
-}
-} else if (isCaveWorm && distToPlayer > 3.0) {
-// Cave Worm: charge to melee; spit acid if player is beyond melee range
-if (distToPlayer > 3.0) {
-c.moving = true;
-moveEntityTowards(g, player.group.position, c.def.speed, dt);
-}
-if (!isFrozen && !isStunned && distToPlayer > 3.0) {
-if (!c.spellTimer) c.spellTimer = rand(2.5, 4.5);
-c.spellTimer -= dt;
-if (c.spellTimer <= 0) {
-c.spellTimer = rand(2.5, 4.5);
-spawnCreatureProjectile(c, Math.ceil(c.def.dmg * 3.0) + randInt(0, 15), 0x39d353, '🧪 The Cave Worm spits a glob of acid!');
-}
-}
-// melee when close
-if (distToPlayer <= 3.0 && !isFrozen && !isStunned) {
-c.moving = false;
-c.attackTimer -= dt;
-if (c.attackTimer <= 0) { c.attackTimer = 1.6; creatureHit(c); }
-}
-} else if ((isCaveTroll || isFrostGolem || isLavaTitan || isShadowWraith || isVoidStalker || isAncientGolem || isInfernalTitan || isVoidColossus) && distToPlayer > 3.5 && distToPlayer < 22) {
-// Spellcasting creatures: move closer if very far, then cast when in range
-if (distToPlayer > 9) {
-c.moving = true;
-moveEntityTowards(g, player.group.position, c.def.speed, dt);
-} else {
-c.moving = false;
-}
-if (!isFrozen && !isStunned) {
-if (!c.spellTimer) c.spellTimer = isCaveTroll || isFrostGolem ? rand(4.5, 6.5) : rand(3.0, 5.0);
-c.spellTimer -= dt;
-if (c.spellTimer <= 0) {
-let interval, color, label, dmgMult;
-if (isCaveTroll)    { interval = rand(4.5, 6.5); color = 0x8B6914; label = '🪨 The Cave Troll hurls a boulder!'; dmgMult = 3.0; }
-else if (isFrostGolem)  { interval = rand(4.0, 6.0); color = 0x7dd3fc; label = '❄️ The Frost Golem launches an ice shard!'; dmgMult = 3.0; }
-else if (isLavaTitan)   { interval = rand(2.5, 4.0); color = 0xff4400; label = '🌋 The Lava Titan spews a lava ball!'; dmgMult = 3.2; }
-else if (isShadowWraith){ interval = rand(2.0, 3.5); color = 0x6600cc; label = '🌑 The Shadow Wraith fires a shadow bolt!'; dmgMult = 3.2; }
-else if (isVoidStalker) { interval = rand(2.0, 3.5); color = 0x330066; label = '🌀 The Void Stalker launches a void lance!'; dmgMult = 3.3; }
-else if (isAncientGolem){ interval = rand(2.5, 4.0); color = 0x7c6a3b; label = '🗿 The Ancient Golem sends a shockwave!'; dmgMult = 3.1; }
-else if (isInfernalTitan){ interval = rand(1.8, 3.0); color = 0xff1100; label = '🔥 The Infernal Titan unleashes an inferno burst!'; dmgMult = 3.4; }
-else                    { interval = rand(1.5, 2.8); color = 0x220044; label = '💀 The Void Colossus fires a void pulse!'; dmgMult = 3.5; }
-c.spellTimer = interval;
-spawnCreatureProjectile(c, Math.ceil(c.def.dmg * dmgMult) + randInt(0, 10), color, label);
-}
-}
-// still melee if close
-if (distToPlayer <= 1.8 && !isFrozen && !isStunned) {
-c.attackTimer -= dt;
-if (c.attackTimer <= 0) { c.attackTimer = 1.6; creatureHit(c); }
-}
-} else if (distToPlayer > 1.8) {
-c.moving = true;
-moveEntityTowards(g, player.group.position, c.def.speed, dt);
-} else {
-c.moving = false;
-// melee attack
-if (!isFrozen && !isStunned) {
-c.attackTimer -= dt;
-if (c.attackTimer <= 0) {
-c.attackTimer = 1.6;
-creatureHit(c);
-}
-}
-}
-}
-}
-
-// hop / bob animation
+// Keep Y on terrain + hop/bob animation
+c.moving = c.state === 'combat' || !!c.netPos;
 c.phase += dt * (c.moving ? (c.def.hopper ? 9 : 7) : 2);
 const baseY = terrainHeight(g.position.x, g.position.z);
 if (c.def.hopper) g.position.y = baseY + (c.moving ? Math.abs(Math.sin(c.phase)) * 0.28 : Math.abs(Math.sin(c.phase * 0.6)) * 0.05);
 else g.position.y = baseY + (c.moving ? Math.abs(Math.sin(c.phase)) * 0.08 : Math.sin(c.phase * 0.5) * 0.02);
+if (g.userData._angle !== undefined) {
+  let a = g.userData._angle - g.rotation.y;
+  while (a > Math.PI) a -= Math.PI * 2;
+  while (a < -Math.PI) a += Math.PI * 2;
+  g.rotation.y += a * Math.min(1, 8 * dt);
+}
 }

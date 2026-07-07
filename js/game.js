@@ -1404,7 +1404,7 @@
 		player.lastEat = elapsed;
 		if (hasHeal) {
 			player.hp = Math.min(player.maxhp, player.hp + info.heal);
-			setBar(player.bar, player.hp / player.maxhp); refreshHpUI();
+			setBar(player.bar, player.hp / player.maxhp, player.hp, player.maxhp); refreshHpUI();
 			floatText('+' + info.heal + ' HP', headPos(), '#4ade80', 0.9);
 		}
 		if (info.hotHeal) {
@@ -1610,8 +1610,18 @@
 			roundRect(cx, 4, 4, fw, H - 8, (H - 8) * 0.5); cx.fill();
 		}
 		// border
-		cx.lineWidth = 2; cx.strokeStyle = 'rgba(255,255,255,0.25)';
+		cx.lineWidth = 2.5; cx.strokeStyle = 'rgba(255,255,255,0.30)';
 		roundRect(cx, 1, 1, W - 2, H - 2, r); cx.stroke();
+		// HP number text — always show on bars that have hp/maxhp set
+		if (bar.hp !== undefined && bar.maxhp !== undefined) {
+			const txt = Math.ceil(bar.hp) + ' / ' + bar.maxhp;
+			cx.font = 'bold 26px system-ui, sans-serif';
+			cx.textAlign = 'center'; cx.textBaseline = 'middle';
+			cx.lineWidth = 5; cx.strokeStyle = 'rgba(0,0,0,0.9)';
+			cx.strokeText(txt, W / 2, H / 2);
+			cx.fillStyle = 'rgba(255,255,255,1.0)';
+			cx.fillText(txt, W / 2, H / 2);
+		}
 		bar.tex.needsUpdate = true;
 	}
 	function roundRect(cx, x, y, w, h, r) {
@@ -1625,10 +1635,10 @@
 		cx.closePath();
 	}
 	function makeHealthBar(entity, width, yOff, alwaysShow) {
-		const cv = document.createElement('canvas'); cv.width = 140; cv.height = 22;
+		const cv = document.createElement('canvas'); cv.width = 256; cv.height = 52;
 		const tex = new THREE.CanvasTexture(cv);
 		const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false }));
-		sp.scale.set(width, width * 0.157, 1);
+		sp.scale.set(width, width * 0.203, 1);
 		sp.renderOrder = 30;
 		scene.add(sp);
 		const bar = { sprite: sp, cv, tex, ctx: cv.getContext('2d'), entity, yOff, width, pct: 1, always: !!alwaysShow, show: alwaysShow ? 1 : 0, timer: 0 };
@@ -1636,8 +1646,10 @@
 		healthBars.push(bar);
 		return bar;
 	}
-	function setBar(bar, pct) {
+	function setBar(bar, pct, hp, maxhp) {
 		bar.pct = clamp(pct, 0, 1);
+		if (hp !== undefined) bar.hp = hp;
+		if (maxhp !== undefined) bar.maxhp = maxhp;
 		if (!bar.always) bar.timer = 4.5; // reveal creature bars for a few seconds after a hit
 		drawBar(bar);
 	}
@@ -2229,6 +2241,7 @@
 			spawnSparkBurst(headPos(), 0xff4400, 18, 2.2, 3.5);
 			spawnPillar(player.group.position.clone(), 0xff6600, 0.5);
 			floatText('🔥 +' + bonus + ' Fire!', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#fb923c', 1.0);
+			if (typeof netCastEffect === 'function') netCastEffect(0xff4400, { spark: true, pillar: true });
 			log('🔥 ' + def.name + ' (Rank ' + rank + '): Your weapon blazes! Next attack +' + bonus + ' fire.', 'craft');
 		} else if (id === 'lightning_active') {
 			const bonus = Math.ceil(playerAtk() * [0, 0.9, 1.4, 1.9, 2.5, 3.1, 3.8, 4.7, 5.8][rank]);
@@ -2236,6 +2249,7 @@
 			spawnSparkBurst(headPos(), 0xfacc15, 18, 2.2, 3.5);
 			spawnPillar(player.group.position.clone(), 0xfde047, 0.5);
 			floatText('⚡ +' + bonus + ' Lightning!', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#facc15', 1.0);
+			if (typeof netCastEffect === 'function') netCastEffect(0xfacc15, { spark: true, pillar: true });
 			log('⚡ ' + def.name + ' (Rank ' + rank + '): Your weapon crackles! Next attack +' + bonus + ' lightning.', 'craft');
 		} else if (id === 'ice_active') {
 			const bonus = Math.ceil(playerAtk() * [0, 0.9, 1.4, 1.9, 2.5, 3.1, 3.8, 4.7, 5.8][rank]);
@@ -2243,6 +2257,7 @@
 			spawnSparkBurst(headPos(), 0x7dd3fc, 18, 2.2, 3.5);
 			spawnPillar(player.group.position.clone(), 0xbae6fd, 0.5);
 			floatText('❄️ +' + bonus + ' Ice!', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#7dd3fc', 1.0);
+			if (typeof netCastEffect === 'function') netCastEffect(0x7dd3fc, { spark: true, pillar: true });
 			log('❄️ ' + def.name + ' (Rank ' + rank + '): Your weapon frosts over! Next attack +' + bonus + ' ice.', 'craft');
 		} else if (id === 'ice_shield') {
 			const bonus = Math.ceil(playerDef() * [0, 0.5, 0.8, 1.1, 1.5, 2.0, 2.6, 3.3, 4.2][rank] + 3);
@@ -2253,12 +2268,14 @@
 			spawnSparkBurst(headPos(), 0xbae6fd, 16, 1.6, 2.8);
 			floatText('🧊 +' + bonus + ' Armor', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#7dd3fc', 1.0);
 			refreshStatsUI();
+			if (typeof netCastEffect === 'function') netCastEffect(0x7dd3fc, { ring: true, spark: true, radius: 2.4 });
 			log('🧊 Frost Ward (Rank ' + rank + '): Ice encases you — +' + bonus + ' armor for ' + dur + ' seconds.', 'craft');
 		} else if (id === 'spirit_active') {
 			const heal = Math.ceil(player.maxhp * [0, 0.12, 0.20, 0.28, 0.38, 0.50, 0.65, 0.82, 1.0][rank]);
 			player.hp = Math.min(player.maxhp, player.hp + heal);
-			setBar(player.bar, player.hp / player.maxhp); refreshHpUI();
+			setBar(player.bar, player.hp / player.maxhp, player.hp, player.maxhp); refreshHpUI();
 			floatText('+' + heal + ' HP', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#86efac', 1.0);
+			if (typeof netCastEffect === 'function') netCastEffect(0x86efac, { spark: true });
 			log('💚 Mend (Rank ' + rank + '): You recover ' + heal + ' HP.', 'craft');
 		} else if (id === 'spirit_hot') {
 			const hp  = Math.ceil(player.maxhp * [0, 0.10, 0.17, 0.25, 0.35, 0.48, 0.63, 0.80, 1.0][rank]);
@@ -2267,6 +2284,7 @@
 			player.hotHealTotal = hp;
 			spawnSparkBurst(headPos(), 0x86efac, 16, 1.6, 3.0);
 			floatText('💚 Renewal +' + hp + 'hp', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#86efac', 1.0);
+			if (typeof netCastEffect === 'function') netCastEffect(0x86efac, { spark: true });
 			log('✨ Renewal (Rank ' + rank + '): A healing aura — ' + hp + ' HP over ' + dur + 's.', 'craft');
 		} else if (id === 'fire_fireball') {
 			player.fireballMode = true;
@@ -2280,38 +2298,46 @@
 		} else if (id === 'fire_inferno') {
 			const dmg = Math.ceil(playerAtk() * [0, 0.40, 0.75, 1.20, 1.80, 2.60][rank]);
 			player.infernoCast = { timer: 0, duration: 2.5, dmg, rank };
+			if (typeof netCastEffect === 'function') netCastEffect(0xff4400, { ring: true, spark: true, radius: 5 });
 			log('🌋 Inferno — channeling… stand your ground!', 'craft');
 		} else if (id === 'ice_blizzard') {
 			const dmg = Math.ceil(playerAtk() * [0, 0.30, 0.55, 0.85, 1.25, 1.75][rank]);
 			player.blizzardCast = { timer: 0, duration: 2.5, dmg, rank };
+			if (typeof netCastEffect === 'function') netCastEffect(0x7dd3fc, { ring: true, spark: true, radius: 6 });
 			log('🌨️ Blizzard — channeling… the air turns arctic!', 'craft');
 		} else if (id === 'lightning_storm') {
 			const dmgPerHit = Math.ceil(playerAtk() * [0, 0.14, 0.24, 0.37, 0.55, 0.78][rank]);
 			player.lightningStormCast = { timer: 0, duration: 2.5, dmgPerHit, rank, hitsLeft: 4, hitTimer: 0 };
+			if (typeof netCastEffect === 'function') netCastEffect(0xfacc15, { ring: true, spark: true, radius: 5 });
 			log('🌪️ Lightning Storm — channeling… the sky blackens!', 'craft');
 		} else if (id === 'spirit_healing_surge') {
 			const heal = Math.ceil(player.maxhp * [0, 0.07, 0.12, 0.18, 0.26, 0.35][rank]);
 			player.healingSurge = { hitsLeft: 3, healPerPulse: heal, timer: 0 };
 			floatText('💫 Surge!', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#86efac', 1.0);
+			if (typeof netCastEffect === 'function') netCastEffect(0x86efac, { spark: true, ring: true, radius: 2 });
 			log('💫 Healing Surge (Rank ' + rank + '): 3 pulses of ' + heal + ' HP over 4s.', 'craft');
 		} else if (id === 'lightning_static_aura') {
 			const dmg = Math.ceil(playerAtk() * [0, 0.15, 0.22, 0.30, 0.38, 0.48][rank]);
 			player.staticAuraTimer = 10;
 			player.staticAuraDmg = dmg;
 			floatText('🌩️ Aura +' + dmg + '/s', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#facc15', 1.0);
+			if (typeof netCastEffect === 'function') netCastEffect(0xfacc15, { ring: true, spark: true, radius: 5 });
 			log('🌩️ Static Aura (Rank ' + rank + '): ' + dmg + ' lightning/s to all nearby for 10s.', 'craft');
 		} else if (id === 'ice_shatter') {
 			const dmg = Math.ceil(playerAtk() * [0, 0.55, 0.95, 1.45, 2.05, 2.80][rank]);
 			let shattered = 0;
+			const shatteredCreatures = [];
 			for (let i = player.iceFreeze.length - 1; i >= 0; i--) {
 				const f = player.iceFreeze[i];
 				if (f.creature.state !== 'dead') {
 					creatureTakeDamage(f.creature, dmg);
 					floatText('💎 ' + dmg, f.creature.group.position.clone().add(new THREE.Vector3(0, 2, 0)), '#7dd3fc', 1.1);
+					shatteredCreatures.push(f.creature);
 					shattered++;
 				}
 				player.iceFreeze.splice(i, 1);
 			}
+			if (shatteredCreatures.length && typeof netCastCreatureHit === 'function') netCastCreatureHit(shatteredCreatures, 0x7dd3fc);
 			if (shattered === 0) log('❄️ No frozen enemies to shatter.', 'warn');
 			else log('💎 Shatter (Rank ' + rank + '): Shattered ' + shattered + ' frozen enemy/ies for ' + dmg + ' damage!', 'craft');
 		} else if (id === 'ice_frost_nova') {
@@ -2328,6 +2354,7 @@
 			}
 			spawnGroundRing(player.group.position.clone(), radius, 0x7dd3fc, 0.7);
 			floatText('❄️ Nova!', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#7dd3fc', 1.1);
+			if (typeof netCastEffect === 'function') netCastEffect(0x7dd3fc, { ring: true, spark: true, radius: radius });
 			log('❄️ Frost Nova (Rank ' + rank + '): Froze ' + frozen + ' enemies for ' + freeze + ' turns!', 'craft');
 		} else if (id === 'ice_glacial_armor') {
 			const absorbs = [0, 40, 70, 105, 145, 190][rank];
@@ -2338,6 +2365,7 @@
 			spawnGroundRing(player.group.position.clone(), 0x7dd3fc, 0.3, 2.2, 0.8, 0.08);
 			spawnSparkBurst(headPos(), 0xbae6fd, 22, 1.8, 2.8);
 			floatText('🧊 Glacial +' + absorbs, headPos().add(new THREE.Vector3(0, 0.5, 0)), '#bae6fd', 1.0);
+			if (typeof netCastEffect === 'function') netCastEffect(0x7dd3fc, { ring: true, spark: true, radius: 2.2 });
 			log('🧊 Glacial Armor (Rank ' + rank + '): Absorbs ' + absorbs + ' damage. Shatters for ' + explDmg + '.', 'craft');
 		} else if (id === 'fire_flame_wall') {
 			const dps = [0, 8, 14, 20, 28, 38][rank];
@@ -2346,6 +2374,7 @@
 			player.flameWallDps = dps;
 			spawnGroundRing(player.group.position.clone(), 4, 0xff4400, 0.8);
 			floatText('🔥 Wall!', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#fb923c', 1.0);
+			if (typeof netCastEffect === 'function') netCastEffect(0xff4400, { ring: true, spark: true, radius: 4 });
 			log('🔥 Flame Wall (Rank ' + rank + '): ' + dps + ' dmg/s for ' + dur + 's to enemies at your feet.', 'craft');
 		} else if (id === 'fire_magma_shell') {
 			const absorbs = [0, 30, 55, 85, 120, 160][rank];
@@ -2357,6 +2386,7 @@
 			spawnSparkBurst(headPos(), 0xff4400, 22, 1.8, 2.8);
 			spawnPillar(player.group.position.clone(), 0xff4400, 0.6);
 			floatText('🛡️ Shell +' + absorbs, headPos().add(new THREE.Vector3(0, 0.5, 0)), '#f97316', 1.0);
+			if (typeof netCastEffect === 'function') netCastEffect(0xff6600, { ring: true, spark: true, pillar: true, radius: 2.2 });
 			log('🛡️ Magma Shell (Rank ' + rank + '): Absorbs ' + absorbs + ' damage, returns ' + retDmg + ' fire to attackers.', 'craft');
 		} else if (id === 'lightning_chain') {
 			const primaryDmg = [0, 18, 30, 45, 65, 90][rank];
@@ -2374,10 +2404,13 @@
 				creatureTakeDamage(arc, arcDmg);
 				floatText('⚡ ' + arcDmg, arc.group.position.clone().add(new THREE.Vector3(0, 2, 0)), '#fde047', 1.0);
 			}
+			const chainTargets = [primary].concat(arcs);
+			if (typeof netCastCreatureHit === 'function') netCastCreatureHit(chainTargets, 0xfacc15);
 			log('⚡ Chain Lightning (Rank ' + rank + '): ' + primaryDmg + ' primary, ' + arcDmg + ' to ' + arcs.length + ' arc targets.', 'craft');
 		} else if (id === 'lightning_discharge') {
 			const dmgPerEffect = [0, 20, 25, 32, 42, 55][rank];
 			let total = 0;
+			const discharged = [];
 			for (const c of creatures) {
 				if (c.state === 'dead') continue;
 				let effects = 0;
@@ -2389,8 +2422,10 @@
 					creatureTakeDamage(c, d);
 					floatText('💥 ' + d, c.group.position.clone().add(new THREE.Vector3(0, 2, 0)), '#facc15', 1.1);
 					spawnSparkBurst(c.group.position.clone().add(new THREE.Vector3(0, 1, 0)), 0xfacc15);
+					discharged.push(c);
 				}
 			}
+			if (discharged.length && typeof netCastCreatureHit === 'function') netCastCreatureHit(discharged, 0xfacc15);
 			if (total === 0) log('💥 No shocked/stunned targets to discharge.', 'warn');
 			else log('💥 Discharge (Rank ' + rank + '): Released ' + total + ' total lightning damage!', 'craft');
 		} else if (id === 'lightning_ball') {
@@ -2405,6 +2440,7 @@
 			scene.add(ballMesh);
 			player.ballLightningObj = { mesh: ballMesh, timer: dur, dps, radius };
 			floatText('🔵 Ball!', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#38bdf8', 1.0);
+			if (typeof netCastEffect === 'function') netCastEffect(0x38bdf8, { spark: true, ring: true, radius: 3 });
 			log('🔵 Ball Lightning (Rank ' + rank + '): ' + dps + ' dmg/s to nearby enemies for ' + dur + 's.', 'craft');
 		} else if (id === 'spirit_soul_leech') {
 			const nearby = [...creatures].filter(c => c.state !== 'dead').sort((a, b) =>
@@ -2414,6 +2450,7 @@
 			const dur = [0, 5, 6, 7, 8, 10][rank];
 			player.soulLeechCast = { creature: nearby[0], timer: 0, duration: dur, dps };
 			floatText('🌀 Leeching!', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#c084fc', 1.0);
+			if (typeof netCastCreatureHit === 'function') netCastCreatureHit([nearby[0]], 0xc084fc);
 			log('🌀 Soul Leech (Rank ' + rank + '): Draining ' + dps + ' HP/s from ' + nearby[0].def.name + ' for ' + dur + 's.', 'craft');
 		} else if (id === 'spirit_spirit_walk') {
 			const dur = [0, 2, 2.5, 3, 3.5, 4][rank];
@@ -2421,6 +2458,7 @@
 			spawnSparkBurst(headPos(), 0xe9d5ff, 20, 1.4, 3.5);
 			spawnPillar(player.group.position.clone(), 0xc4b5fd, 0.5);
 			floatText('👻 Ethereal!', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#e9d5ff', 1.1);
+			if (typeof netCastEffect === 'function') netCastEffect(0xe9d5ff, { spark: true, pillar: true });
 			log('👻 Spirit Walk (Rank ' + rank + '): Untargetable for ' + dur + 's.', 'craft');
 		} else if (id === 'spirit_aegis') {
 			const absorbs = [0, 50, 90, 135, 185, 240][rank];
@@ -2431,6 +2469,7 @@
 			spawnSparkBurst(headPos(), 0xc4b5fd, 22, 1.8, 3.0);
 			spawnPillar(player.group.position.clone(), 0x8b5cf6, 0.6);
 			floatText('🔮 Aegis +' + absorbs, headPos().add(new THREE.Vector3(0, 0.5, 0)), '#a78bfa', 1.0);
+			if (typeof netCastEffect === 'function') netCastEffect(0xa78bfa, { ring: true, spark: true, pillar: true, radius: 2.4 });
 			log('🔮 Aegis (Rank ' + rank + '): Spirit shield absorbs ' + absorbs + ' damage for ' + dur + 's.', 'craft');
 		}
 		refreshHotbarUI();
@@ -2485,7 +2524,7 @@
 			const siphonHeal   = Math.max(1, Math.ceil(playerAtk() * ([0, 0.12, 0.20, 0.28, 0.36, 0.46][siphonRank])));
 			if (Math.random() < siphonChance) {
 				player.hp = Math.min(player.maxhp, player.hp + siphonHeal);
-				setBar(player.bar, player.hp / player.maxhp); refreshHpUI();
+				setBar(player.bar, player.hp / player.maxhp, player.hp, player.maxhp); refreshHpUI();
 				floatText('+' + siphonHeal + ' siphon', headPos().add(new THREE.Vector3(0.3, 0.3, 0)), '#86efac', 0.75);
 			}
 		}
@@ -2741,7 +2780,7 @@
 				hs.timer = 2.0;
 				const heal = hs.healPerPulse;
 				player.hp = Math.min(player.maxhp, player.hp + heal);
-				setBar(player.bar, player.hp / player.maxhp); refreshHpUI();
+				setBar(player.bar, player.hp / player.maxhp, player.hp, player.maxhp); refreshHpUI();
 				floatText('+' + heal + ' 💫', headPos().add(new THREE.Vector3(0, 0.6, 0)), '#86efac', 1.0);
 				log('💫 Healing Surge pulse: +' + heal + ' HP.', 'craft');
 				hs.hitsLeft--;
@@ -2787,7 +2826,7 @@
 			player.hotTimer -= dt;
 			const healRate = dt * (totalHp / (totalDur));
 			player.hp = Math.min(player.maxhp, player.hp + healRate);
-			setBar(player.bar, player.hp / player.maxhp); refreshHpUI();
+			setBar(player.bar, player.hp / player.maxhp, player.hp, player.maxhp); refreshHpUI();
 			if (player.hotTimer <= 0) player.hotTimer = 0;
 		}
 		// Consumable HoT (Moonbloom Salve, Starbloom Brew, etc.)
@@ -2797,7 +2836,7 @@
 			player.consumableHotTimer -= dt;
 			const rate = dt * (totalHp / totalDur);
 			player.hp = Math.min(player.maxhp, player.hp + rate);
-			setBar(player.bar, player.hp / player.maxhp); refreshHpUI();
+			setBar(player.bar, player.hp / player.maxhp, player.hp, player.maxhp); refreshHpUI();
 			if (player.consumableHotTimer <= 0) { player.consumableHotTimer = 0; player.consumableHotTotal = 0; }
 		}
 		// Consumable ATK buff
@@ -2897,7 +2936,7 @@
 				const drain = sl.dps * dt;
 				creatureTakeDamage(sl.creature, drain, true);
 				player.hp = Math.min(player.maxhp, player.hp + drain);
-				setBar(player.bar, player.hp / player.maxhp); refreshHpUI();
+				setBar(player.bar, player.hp / player.maxhp, player.hp, player.maxhp); refreshHpUI();
 			}
 		}
 		// Spirit Walk tick-down
@@ -2942,7 +2981,7 @@
 				if (player.hp / player.maxhp <= threshold) {
 					player.hp = Math.min(player.maxhp, player.hp + heal);
 					player.phoenixMarkUsed = true;
-					setBar(player.bar, player.hp / player.maxhp); refreshHpUI();
+					setBar(player.bar, player.hp / player.maxhp, player.hp, player.maxhp); refreshHpUI();
 					floatText('🦅 +' + heal + ' Phoenix!', headPos().add(new THREE.Vector3(0, 0.8, 0)), '#fbbf24', 1.3);
 					log('🦅 Phoenix Mark triggered: healed ' + heal + ' HP!', 'craft');
 				}
@@ -2957,7 +2996,7 @@
 				if (player.hp / player.maxhp <= threshold) {
 					player.hp = Math.min(player.maxhp, player.hp + heal);
 					player.resurrectionMarkUsed = true;
-					setBar(player.bar, player.hp / player.maxhp); refreshHpUI();
+					setBar(player.bar, player.hp / player.maxhp, player.hp, player.maxhp); refreshHpUI();
 					floatText('✨ +' + heal + ' Risen!', headPos().add(new THREE.Vector3(0, 0.8, 0)), '#e9d5ff', 1.3);
 					log('✨ Resurrection Mark triggered: healed ' + heal + ' HP!', 'craft');
 				}
@@ -3856,7 +3895,7 @@
 		}
 		player.hp -= dmg;
 		player.lastHurt = elapsed;
-		setBar(player.bar, player.hp / player.maxhp);
+		setBar(player.bar, player.hp / player.maxhp, player.hp, player.maxhp);
 		refreshHpUI();
 		floatText('-' + dmg, headPos(), '#fb923c');
 		log('The ' + c.name + ' hits you for ' + dmg + '.', 'dmgIn');
@@ -3875,11 +3914,11 @@
 		player.action = null; player.moveTarget = null; player.harvesting = null;
 		hideProgress();
 		log('You died! You awaken back at the beach…', 'warn');
-		for (const c of creatures) if (c.state === 'combat') { c.state = 'wander'; c.hp = c.maxhp; setBar(c.bar, 1); }
+		for (const c of creatures) if (c.state === 'combat') { c.state = 'wander'; c.hp = c.maxhp; setBar(c.bar, 1, c.hp, c.maxhp); }
 		setTimeout(() => {
 			player.group.position.set(0, terrainHeight(0, 4), 4);
 			player.hp = player.maxhp;
-			setBar(player.bar, 1); refreshHpUI();
+			setBar(player.bar, 1, player.hp, player.maxhp); refreshHpUI();
 			player.dead = false;
 			player.phoenixMarkUsed = false;
 			player.resurrectionMarkUsed = false;
@@ -3972,6 +4011,7 @@
 						scene.add(mesh);
 						player.fireballs.push({ mesh, target: it.creature, startPos, endPos, t: 0, damage: dmg });
 						log('🔮 Fireball launched at ' + it.creature.name + '!', 'craft');
+						if (typeof netCastSpell === 'function') netCastSpell('fireball', it.creature, 0xff4400, dmg);
 						return;
 					}
 					// Ice Lance targeting mode
@@ -3990,6 +4030,7 @@
 						scene.add(mesh);
 						player.iceLances.push({ mesh, target: it.creature, startPos, endPos, t: 0, damage: dmg });
 						log('🧊 Ice Lance launched at ' + it.creature.name + '!', 'craft');
+						if (typeof netCastSpell === 'function') netCastSpell('iceLance', it.creature, 0x7dd3fc, dmg);
 						return;
 					}
 					// Lightning Strike targeting mode
@@ -3999,6 +4040,7 @@
 						const dmg = Math.ceil(playerAtk() * ([0, 0.45, 0.70, 1.05, 1.55, 2.10][rank]));
 						player.lightningStrikes.push({ creature: it.creature, hitsLeft: 5, interval: 1.6, timer: 0, damage: dmg });
 						log('🗲 Lightning Strike locked on ' + it.creature.name + ' — 5 bolts incoming!', 'craft');
+						if (typeof netCastSpell === 'function') netCastSpell('lightning', it.creature, 0xffd700, dmg);
 						return;
 					}
 					stopHarvest();
@@ -4382,7 +4424,7 @@
 			if (player.regenTimer <= 0) {
 				player.regenTimer = spiritTick;
 				player.hp = Math.min(player.maxhp, player.hp + spiritHeal);
-				setBar(player.bar, player.hp / player.maxhp);
+				setBar(player.bar, player.hp / player.maxhp, player.hp, player.maxhp);
 				refreshHpUI();
 			}
 		}
@@ -4683,6 +4725,8 @@
 	function beginGame() {
 		const nameEl = $('nameInput');
 		let nm = (nameEl ? nameEl.value : '').trim();
+		// in multiplayer the auth form already set player.name via _applySave; fall back to that
+		if (!nm && typeof getUsername === 'function' && getUsername()) nm = getUsername();
 		if (!nm) nm = 'Adventurer';
 		nm = nm.slice(0, 16).replace(/[<>]/g, '');
 		player.name = nm;
@@ -4716,6 +4760,7 @@
 			refreshHotbarUI();
 			log('✨ Talents reset — all points refunded.', 'sys');
 		});
+		_seed = WORLD_SEED;  // reset so creature positions are identical on every client
 		spawnAllCreatures();
 		netOnCreaturesSpawned();
 		started = true;
@@ -4877,30 +4922,34 @@
 
 	// ---- Fireball projectile update ----
 	const dragonFireballs = []; // { mesh, light, startPos, endPos, t, damage }
-	function spawnDragonFireball(dragon, damage) {
+	function spawnDragonFireball(dragon, damage, overrideTarget) {
 		const mat = new THREE.MeshBasicMaterial({ color: 0xff2200 });
 		const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 8), mat);
 		const light = new THREE.PointLight(0xff4400, 2.5, 6);
 		mesh.add(light);
 		const startPos = dragon.group.position.clone().add(new THREE.Vector3(0, 2.8, 0));
-		const endPos = player.group.position.clone().add(new THREE.Vector3(0, 1.0, 0));
+		const baseEnd = overrideTarget
+			? new THREE.Vector3(overrideTarget.x, terrainHeight(overrideTarget.x, overrideTarget.z) + 1.0, overrideTarget.z)
+			: player.group.position.clone().add(new THREE.Vector3(0, 1.0, 0));
 		mesh.position.copy(startPos);
 		scene.add(mesh);
-		dragonFireballs.push({ mesh, startPos, endPos, t: 0, damage });
-		log('🐉 The Dragon breathes fire!', 'dmgIn');
+		dragonFireballs.push({ mesh, startPos, endPos: baseEnd, t: 0, damage });
+		if (!overrideTarget) log('🐉 The Dragon breathes fire!', 'dmgIn');
 	}
 	const creatureProjectiles = [];
-	function spawnCreatureProjectile(creature, damage, color, msg) {
+	function spawnCreatureProjectile(creature, damage, color, msg, overrideTarget) {
 		const mat = new THREE.MeshBasicMaterial({ color });
 		const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 8), mat);
 		const light = new THREE.PointLight(color, 2.0, 5);
 		mesh.add(light);
 		const startPos = creature.group.position.clone().add(new THREE.Vector3(0, 2.2, 0));
-		const endPos = player.group.position.clone().add(new THREE.Vector3(0, 1.0, 0));
+		const baseEnd = overrideTarget
+			? new THREE.Vector3(overrideTarget.x, terrainHeight(overrideTarget.x, overrideTarget.z) + 1.0, overrideTarget.z)
+			: player.group.position.clone().add(new THREE.Vector3(0, 1.0, 0));
 		mesh.position.copy(startPos);
 		scene.add(mesh);
-		creatureProjectiles.push({ mesh, startPos, endPos, t: 0, damage });
-		log(msg, 'dmgIn');
+		creatureProjectiles.push({ mesh, startPos, endPos: baseEnd, t: 0, damage });
+		if (!overrideTarget) log(msg, 'dmgIn');
 	}
 	function updateFireballs(dt) {
 		// ice lances
@@ -4964,7 +5013,7 @@
 					if (player.consumableDmgReduceTimer > 0 && player.consumableDmgReduce) dmg = Math.max(1, Math.floor(dmg * (1 - player.consumableDmgReduce)));
 					player.hp -= dmg;
 					player.lastHurt = elapsed;
-					setBar(player.bar, player.hp / player.maxhp);
+					setBar(player.bar, player.hp / player.maxhp, player.hp, player.maxhp);
 					refreshHpUI();
 					floatText('🔥 -' + dmg, headPos(), '#ff4400');
 					log('The Dragon\'s fireball hits you for ' + dmg + '!', 'dmgIn');
@@ -4996,7 +5045,7 @@
 					if (dmg > 0) {
 						player.hp -= dmg;
 						player.lastHurt = elapsed;
-						setBar(player.bar, player.hp / player.maxhp);
+						setBar(player.bar, player.hp / player.maxhp, player.hp, player.maxhp);
 						refreshHpUI();
 						floatText('-' + dmg, headPos(), '#c084fc');
 						if (player.hp <= 0) playerDeath();
@@ -5090,3 +5139,20 @@
 	}
 
 	animate();
+
+	// Keep game logic ticking when the tab is hidden (RAF pauses in background tabs).
+	// Only runs updatePlayer + creature updates + netTick — no rendering.
+	let _lastHiddenTick = 0;
+	function _hiddenTick() {
+		if (!started || !document.hidden) return;
+		const now = performance.now();
+		const dt = Math.min((now - _lastHiddenTick) / 1000, 0.05);
+		_lastHiddenTick = now;
+		updatePlayer(dt);
+		for (const c of creatures) updateCreature(c, dt);
+		netTick();
+	}
+	document.addEventListener('visibilitychange', () => {
+		if (document.hidden) _lastHiddenTick = performance.now();
+	});
+	setInterval(_hiddenTick, 50); // 20 Hz logic tick when hidden
