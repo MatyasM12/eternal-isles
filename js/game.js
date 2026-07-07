@@ -907,7 +907,7 @@
 	const ffBase = new Float32Array(FIREFLY_N * 3);
 	const ffPhase = new Float32Array(FIREFLY_N);
 	for (let i = 0; i < FIREFLY_N; i++) {
-		const a = rand(0, Math.PI * 2), r = Math.sqrt(Math.random()) * (ISLAND_R - 4);
+		const a = rand(0, Math.PI * 2), r = Math.sqrt(_rng()) * (ISLAND_R - 4);
 		const x = Math.cos(a) * r, z = Math.sin(a) * r;
 		const y = Math.max(terrainHeight(x, z), WATER_Y) + rand(0.8, 3.2);
 		ffBase[i * 3] = x; ffBase[i * 3 + 1] = y; ffBase[i * 3 + 2] = z;
@@ -1541,7 +1541,7 @@
 			const sp = new THREE.Sprite(new THREE.SpriteMaterial({ color, map: softTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
 			const s = rand(0.16, 0.3); sp.scale.set(s, s, 1);
 			grp.add(sp);
-			bits.push({ sp, ang: rand(0, Math.PI * 2), rad: rand(0.6, 1.0), yb: rand(0.2, 1.9), spd: rand(2, 4) * (Math.random() < 0.5 ? 1 : -1) });
+			bits.push({ sp, ang: rand(0, Math.PI * 2), rad: rand(0.6, 1.0), yb: rand(0.2, 1.9), spd: rand(2, 4) * (_rng() < 0.5 ? 1 : -1) });
 		}
 		scene.add(grp);
 		effects.push({ type: 'swirl', grp, bits, t: 0, life });

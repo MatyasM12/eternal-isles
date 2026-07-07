@@ -238,7 +238,7 @@ function _moveOtherPlayer(id, username, x, z) {
   if (!entry) { _addOtherPlayer(id, username); entry = _otherPlayers.get(id); }
   if (!entry) return;
   const y = (typeof terrainHeight === 'function') ? terrainHeight(x, z) : 0;
-  entry.mesh.position.set(x, y + 0.6, z);
+  entry.mesh.position.set(x, y, z);
 }
 
 // ─── Server-authoritative creature sync ───────────────────────────────────────

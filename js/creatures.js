@@ -731,14 +731,14 @@ function spawnCreature(name) {
 const def = CREATURE_DEFS[name];
 // pick a random island that matches this creature's tier list
 const validIsles = ISLES.filter(isle => def.tiers.includes(isle.tier));
-const homeIsle = validIsles[Math.floor(Math.random() * validIsles.length)] || ISLES[0];
+const homeIsle = validIsles[Math.floor(_rng() * validIsles.length)] || ISLES[0];
 let p;
 if (def.spawnZone) {
 // spawn within a fixed zone (for deep-end legendary creatures)
 const sz = def.spawnZone;
 let found = false;
 for (let t = 0; t < 300 && !found; t++) {
-const a = rand(0, Math.PI * 2), r = Math.sqrt(Math.random()) * sz.r;
+const a = rand(0, Math.PI * 2), r = Math.sqrt(_rng()) * sz.r;
 const x = sz.x + Math.cos(a) * r, z = sz.z + Math.sin(a) * r;
 if (walkable(x, z)) { p = new THREE.Vector3(x, terrainHeight(x, z), z); found = true; }
 }
@@ -858,7 +858,7 @@ if (c.def.spawnZone) {
 const sz = c.def.spawnZone;
 let found = false;
 for (let t = 0; t < 300 && !found; t++) {
-const a = rand(0, Math.PI * 2), r = Math.sqrt(Math.random()) * sz.r;
+const a = rand(0, Math.PI * 2), r = Math.sqrt(_rng()) * sz.r;
 const x = sz.x + Math.cos(a) * r, z = sz.z + Math.sin(a) * r;
 if (walkable(x, z)) { p = new THREE.Vector3(x, terrainHeight(x, z), z); found = true; }
 }
