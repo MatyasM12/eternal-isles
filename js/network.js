@@ -65,6 +65,12 @@ function _connectSocket(username) {
     }
   });
 
+  _socket.on('kicked', ({ reason }) => {
+    alert('You have been disconnected: ' + reason);
+    _removeAllOtherPlayers();
+    location.reload();
+  });
+
   _socket.on('disconnect', () => {
     console.log('[net] disconnected');
     _removeAllOtherPlayers();
@@ -109,11 +115,91 @@ function _connectSocket(username) {
 }
 
 // ─── Other-player ghost avatars ───────────────────────────────────────────────
+function _buildOtherPlayerMesh() {
+  const g = new THREE.Group();
+  const M = THREE.MeshStandardMaterial;
+  const add = m => { m.castShadow = true; return m; };
+
+  const cloth   = new M({ color: 0x8b3a3a, flatShading: true, roughness: 0.72, metalness: 0.06 }); // red tint to distinguish
+  const steel   = new M({ color: 0xc9cfda, flatShading: true, roughness: 0.28, metalness: 0.9 });
+  const steelDk = new M({ color: 0x8a92a1, flatShading: true, roughness: 0.4,  metalness: 0.85 });
+  const gold    = new M({ color: 0xe8c266, flatShading: true, roughness: 0.35, metalness: 0.8 });
+  const leather = new M({ color: 0x5a3d26, flatShading: true, roughness: 0.85 });
+  const capeMat = new M({ color: 0x1e3a8a, flatShading: true, roughness: 0.9, side: THREE.DoubleSide });
+
+  // pelvis
+  const pelvis = add(new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.24, 0.24, 12), leather));
+  pelvis.position.y = 0.66; g.add(pelvis);
+
+  // torso
+  const torso = add(new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.29, 0.78, 12), cloth));
+  torso.position.y = 1.16; g.add(torso);
+
+  // chest plate
+  const plate = add(new THREE.Mesh(new THREE.SphereGeometry(0.35, 14, 12, 0, Math.PI, 0, Math.PI * 0.62), steel));
+  plate.scale.set(1, 1.15, 0.75); plate.position.set(0, 1.2, 0.02); plate.rotation.y = Math.PI; g.add(plate);
+
+  // belt
+  const belt = add(new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.05, 6, 16), leather));
+  belt.rotation.x = Math.PI / 2; belt.position.y = 0.79; g.add(belt);
+
+  // cape
+  const cape = add(new THREE.Mesh(new THREE.PlaneGeometry(0.66, 1.15, 3, 4), capeMat));
+  cape.position.set(0, 1.05, -0.28); cape.rotation.x = 0.14; g.add(cape);
+
+  // gorget
+  const gorget = add(new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.24, 0.16, 12), steelDk));
+  gorget.position.y = 1.6; g.add(gorget);
+
+  // head
+  const headG = new THREE.Group(); headG.position.y = 1.86; g.add(headG);
+  headG.add(add(new THREE.Mesh(new THREE.SphereGeometry(0.27, 16, 14), steel)));
+  const brow = add(new THREE.Mesh(new THREE.CylinderGeometry(0.275, 0.275, 0.1, 16), steelDk));
+  brow.position.y = 0.02; headG.add(brow);
+  const visorMat = new M({ color: 0x06222c, emissive: 0xff3333, emissiveIntensity: 1.5, roughness: 0.3 }); // red visor for other players
+  const visor = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.075, 0.12), visorMat);
+  visor.position.set(0, 0.03, 0.22); headG.add(visor);
+  const crestBase = add(new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.1, 0.3), gold));
+  crestBase.position.set(0, 0.28, -0.02); headG.add(crestBase);
+  const plume = add(new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.34, 8), capeMat));
+  plume.position.set(0, 0.42, -0.08); plume.rotation.x = -0.5; headG.add(plume);
+
+  // pauldrons
+  for (const s of [-1, 1]) {
+    const pa = add(new THREE.Mesh(new THREE.SphereGeometry(0.17, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.6), steel));
+    pa.scale.set(1.1, 0.8, 1.1); pa.position.set(0.4 * s, 1.5, 0); g.add(pa);
+  }
+
+  // arms
+  for (const s of [-1, 1]) {
+    const armG = new THREE.Group(); armG.position.set(0.4 * s, 1.48, 0);
+    const upper = add(new THREE.Mesh(new THREE.CylinderGeometry(0.088, 0.078, 0.4, 8), cloth));
+    upper.position.y = -0.24; armG.add(upper);
+    const fore = add(new THREE.Mesh(new THREE.CylinderGeometry(0.082, 0.07, 0.34, 8), steelDk));
+    fore.position.y = -0.56; armG.add(fore);
+    const gaunt = add(new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), steel));
+    gaunt.position.y = -0.74; armG.add(gaunt);
+    g.add(armG);
+  }
+
+  // legs
+  for (const s of [-1, 1]) {
+    const legG = new THREE.Group(); legG.position.set(0.15 * s, 0.66, 0);
+    const thigh = add(new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.1, 0.36, 8), steelDk));
+    thigh.position.y = -0.2; legG.add(thigh);
+    const shin = add(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.085, 0.34, 8), steel));
+    shin.position.y = -0.52; legG.add(shin);
+    const boot = add(new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.12, 0.28), leather));
+    boot.position.set(0, -0.72, 0.05); legG.add(boot);
+    g.add(legG);
+  }
+
+  return g;
+}
+
 function _addOtherPlayer(id, username) {
   if (_otherPlayers.has(id) || typeof scene === 'undefined') return;
-  const geo  = new THREE.CylinderGeometry(0.25, 0.25, 1.2, 8);
-  const mat  = new THREE.MeshLambertMaterial({ color: 0x88aaff, transparent: true, opacity: 0.7 });
-  const mesh = new THREE.Mesh(geo, mat);
+  const mesh = _buildOtherPlayerMesh();
   mesh.position.set(0, -100, 0);  // hidden until first move
   scene.add(mesh);
 
@@ -123,14 +209,14 @@ function _addOtherPlayer(id, username) {
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, 256, 64);
   ctx.font = 'bold 28px sans-serif';
-  ctx.fillStyle = '#aaddff';
+  ctx.fillStyle = '#ffaaaa';
   ctx.textAlign = 'center';
   ctx.fillText(username, 128, 40);
   const tex   = new THREE.CanvasTexture(canvas);
   const lGeo  = new THREE.PlaneGeometry(1.6, 0.4);
   const lMat  = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false });
   const label = new THREE.Mesh(lGeo, lMat);
-  label.position.set(0, 1.2, 0);
+  label.position.set(0, 2.6, 0);
   mesh.add(label);
 
   _otherPlayers.set(id, { username, mesh });

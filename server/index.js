@@ -141,6 +141,18 @@ io.on('connection', (socket) => {
   // Client sends after successful login: { username }
   socket.on('player:join', ({ username }) => {
     if (!username) return;
+
+    // Kick any existing session for the same username
+    for (const [sid, p] of onlinePlayers) {
+      if (p.username.toLowerCase() === username.toLowerCase() && sid !== socket.id) {
+        console.log(`[join] kicking old session for ${username}`);
+        p.socket.emit('kicked', { reason: 'Logged in from another location.' });
+        p.socket.disconnect(true);
+        onlinePlayers.delete(sid);
+        break;
+      }
+    }
+
     onlinePlayers.set(socket.id, { username, socket });
     console.log(`[join] ${username}`);
 
