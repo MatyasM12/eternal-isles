@@ -443,6 +443,15 @@ io.on('connection', (socket) => {
     socket.broadcast.emit('player:spell', data);
   });
 
+  // ── chat:message — relay to all clients (including sender for confirmation) ─
+  socket.on('chat:message', (data) => {
+    const player = players.get(socket.id);
+    if (!player || !data || typeof data.msg !== 'string') return;
+    const msg = data.msg.trim().slice(0, 200);
+    if (!msg) return;
+    socket.broadcast.emit('chat:message', { username: player.username, msg });
+  });
+
   socket.on('creature:init', (defs) => {
     if (defs && typeof defs === 'object') {
       initCreatures(defs);

@@ -1346,6 +1346,92 @@
 		ui.log.scrollTop = ui.log.scrollHeight;
 	}
 
+	// ── Tab switching (global so onclick in HTML can reach it) ─────────────────
+	window.switchLogTab = function(tab) {
+		const logBox   = document.getElementById('logBox');
+		const chatPane = document.getElementById('chatPane');
+		const tabCombat = document.getElementById('tabCombat');
+		const tabChat   = document.getElementById('tabChat');
+		if (!logBox || !chatPane) return;
+		if (tab === 'chat') {
+			logBox.classList.add('hidden');
+			chatPane.classList.remove('hidden');
+			chatPane.classList.add('flex');
+			tabChat.classList.remove('text-zinc-400');
+			tabChat.classList.add('text-amber-200', 'bg-white/5');
+			tabCombat.classList.remove('bg-white/5', 'text-amber-200');
+			tabCombat.classList.add('text-zinc-400');
+			const chatBox = document.getElementById('chatBox');
+			if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+			const chatInput = document.getElementById('chatInput');
+			if (chatInput) chatInput.focus();
+		} else {
+			chatPane.classList.add('hidden');
+			chatPane.classList.remove('flex');
+			logBox.classList.remove('hidden');
+			tabCombat.classList.remove('text-zinc-400');
+			tabCombat.classList.add('text-amber-200', 'bg-white/5');
+			tabChat.classList.remove('text-amber-200', 'bg-white/5');
+			tabChat.classList.add('text-zinc-400');
+		}
+	};
+
+	// ── Chat send (global so network.js can call appendChatMessage) ────────────
+	window.appendChatMessage = function(username, msg, isSelf) {
+		const chatBox = document.getElementById('chatBox');
+		if (!chatBox) return;
+		const row = document.createElement('div');
+		row.className = 'leading-snug';
+		const name = document.createElement('span');
+		name.className = isSelf ? 'font-bold text-amber-300' : 'font-bold text-sky-300';
+		name.textContent = (username || 'Unknown') + ': ';
+		const text = document.createElement('span');
+		text.className = 'text-zinc-200';
+		text.textContent = msg;
+		row.appendChild(name);
+		row.appendChild(text);
+		chatBox.appendChild(row);
+		while (chatBox.children.length > 120) chatBox.removeChild(chatBox.firstChild);
+		chatBox.scrollTop = chatBox.scrollHeight;
+		// Flash the chat tab if not currently on it
+		const tabChat = document.getElementById('tabChat');
+		if (tabChat && !tabChat.classList.contains('text-amber-200')) {
+			tabChat.classList.add('text-cyan-300');
+			setTimeout(function() {
+				if (!tabChat.classList.contains('text-amber-200')) {
+					tabChat.classList.remove('text-cyan-300');
+					tabChat.classList.add('text-zinc-400');
+				}
+			}, 2000);
+		}
+	};
+
+	// Wire up chat input after DOM is ready
+	(function() {
+		function _initChat() {
+			const input  = document.getElementById('chatInput');
+			const sendBtn = document.getElementById('chatSend');
+			if (!input || !sendBtn) return;
+			function sendChat() {
+				const msg = input.value.trim();
+				if (!msg) return;
+				input.value = '';
+				if (typeof netSendChat === 'function') netSendChat(msg);
+				if (typeof appendChatMessage === 'function') {
+					var name = (typeof getUsername === 'function' && getUsername()) || player.name || 'You';
+					appendChatMessage(name, msg, true);
+				}
+			}
+			sendBtn.addEventListener('click', sendChat);
+			input.addEventListener('keydown', function(e) {
+				if (e.key === 'Enter') { e.preventDefault(); sendChat(); }
+				e.stopPropagation(); // prevent game hotkeys while typing
+			});
+		}
+		if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _initChat);
+		else _initChat();
+	})();
+
 	function renderInventory() {
 		ui.invGrid.innerHTML = '';
 		let used = 0;

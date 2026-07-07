@@ -113,6 +113,13 @@ function _connectSocket(username) {
     }
   });
 
+  // ── Chat ──────────────────────────────────────────────────────────────────
+  _socket.on('chat:message', function(data) {
+    if (typeof appendChatMessage === 'function') {
+      appendChatMessage(data.username, data.msg, false);
+    }
+  });
+
   // ── Other players ──────────────────────────────────────────────────────────
   _socket.on('players:online', (list) => {
     for (const p of list) _addOtherPlayer(p.id, p.username);
@@ -577,6 +584,12 @@ function netCastCreatureHit(creatureList, color) {
     creatureIds: ids, color: color,
     fromX: player.group.position.x, fromZ: player.group.position.z,
   });
+}
+
+// ─── Send a chat message to all players ──────────────────────────────────────
+function netSendChat(msg) {
+  if (!isMultiplayer() || !_socket || !msg) return;
+  _socket.emit('chat:message', { msg: msg });
 }
 
 // ─── Called by saveGame() to also persist to server ──────────────────────────

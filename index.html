@@ -128,10 +128,31 @@
         <div class="mt-2 text-center text-[10px] text-zinc-500">Click gear to equip · food to eat · items to load the mix box</div>
     </div>
 
-    <!-- Combat / event log (bottom-left) -->
+    <!-- Combat / Chat log panel (bottom-left) -->
     <div class="pointer-events-auto absolute bottom-4 left-4 w-96 rounded-2xl border border-white/10 bg-black/40 shadow-2xl backdrop-blur-md panel-in">
-        <div class="border-b border-white/10 px-4 py-2 font-display text-xs font-bold tracking-widest text-amber-200">CHANNEL LOG</div>
+        <!-- Tab bar -->
+        <div class="flex border-b border-white/10">
+            <button id="tabCombat" onclick="switchLogTab('combat')"
+                class="flex-1 rounded-tl-2xl px-4 py-2 font-display text-xs font-bold tracking-widest text-amber-200 bg-white/5 border-r border-white/10 transition hover:bg-white/10">
+                COMBAT LOG
+            </button>
+            <button id="tabChat" onclick="switchLogTab('chat')"
+                class="flex-1 rounded-tr-2xl px-4 py-2 font-display text-xs font-bold tracking-widest text-zinc-400 transition hover:bg-white/10">
+                CHAT
+            </button>
+        </div>
+        <!-- Combat log pane -->
         <div id="logBox" class="thin-scroll h-40 space-y-0.5 overflow-y-auto px-4 py-2 text-[12px] leading-snug"></div>
+        <!-- Chat pane (hidden by default) -->
+        <div id="chatPane" class="hidden flex-col h-40">
+            <div id="chatBox" class="thin-scroll flex-1 space-y-0.5 overflow-y-auto px-4 py-2 text-[12px] leading-snug" style="height:108px"></div>
+            <div class="flex gap-2 border-t border-white/10 px-3 py-2">
+                <input id="chatInput" maxlength="200" placeholder="Say something…"
+                    class="flex-1 rounded-lg border border-white/15 bg-black/40 px-3 py-1 text-[12px] text-amber-100 outline-none focus:border-amber-300/40 focus:bg-black/60"
+                    autocomplete="off" />
+                <button id="chatSend" class="rounded-lg border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold text-zinc-200 transition hover:bg-white/20">↵</button>
+            </div>
+        </div>
     </div>
 
     <!-- Harvest progress (bottom-center) -->
@@ -273,7 +294,7 @@
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script src="js/persistence.js?v=1"></script>
 <script src="js/creatures.js?v=9"></script>
-<script src="js/network.js?v=13"></script>
-<script src="js/game.js?v=46"></script>
+<script src="js/network.js?v=14"></script>
+<script src="js/game.js?v=47"></script>
 </body>
 </html>
