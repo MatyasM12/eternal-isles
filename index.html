@@ -132,27 +132,27 @@
     <div class="pointer-events-auto absolute bottom-4 left-4 w-96 rounded-2xl border border-white/10 bg-black/40 shadow-2xl backdrop-blur-md panel-in">
         <!-- Tab bar -->
         <div class="flex border-b border-white/10">
-            <button id="tabCombat" onclick="switchLogTab('combat')"
-                class="flex-1 rounded-tl-2xl px-4 py-2 font-display text-xs font-bold tracking-widest text-amber-200 bg-white/5 border-r border-white/10 transition hover:bg-white/10">
-                COMBAT LOG
-            </button>
             <button id="tabChat" onclick="switchLogTab('chat')"
-                class="flex-1 rounded-tr-2xl px-4 py-2 font-display text-xs font-bold tracking-widest text-zinc-400 transition hover:bg-white/10">
+                class="flex-1 rounded-tl-2xl px-4 py-2 font-display text-xs font-bold tracking-widest text-amber-200 bg-white/5 border-r border-white/10 transition hover:bg-white/10">
                 CHAT
             </button>
+            <button id="tabCombat" onclick="switchLogTab('combat')"
+                class="flex-1 rounded-tr-2xl px-4 py-2 font-display text-xs font-bold tracking-widest text-zinc-400 transition hover:bg-white/10">
+                COMBAT LOG
+            </button>
         </div>
-        <!-- Combat log pane -->
-        <div id="logBox" class="thin-scroll h-40 space-y-0.5 overflow-y-auto px-4 py-2 text-[12px] leading-snug"></div>
-        <!-- Chat pane (hidden by default) -->
-        <div id="chatPane" class="hidden flex-col h-40">
-            <div id="chatBox" class="thin-scroll flex-1 space-y-0.5 overflow-y-auto px-4 py-2 text-[12px] leading-snug" style="height:108px"></div>
-            <div class="flex gap-2 border-t border-white/10 px-3 py-2">
+        <!-- Chat pane (visible by default) -->
+        <div id="chatPane" class="flex flex-col h-40">
+            <div id="chatBox" class="thin-scroll flex-1 min-h-0 space-y-0.5 overflow-y-auto px-4 py-2 text-[12px] leading-snug"></div>
+            <div class="flex gap-2 border-t border-white/10 px-3 py-2 shrink-0">
                 <input id="chatInput" maxlength="200" placeholder="Say something…"
                     class="flex-1 rounded-lg border border-white/15 bg-black/40 px-3 py-1 text-[12px] text-amber-100 outline-none focus:border-amber-300/40 focus:bg-black/60"
                     autocomplete="off" />
                 <button id="chatSend" class="rounded-lg border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold text-zinc-200 transition hover:bg-white/20">↵</button>
             </div>
         </div>
+        <!-- Combat log pane (hidden by default) -->
+        <div id="logBox" class="hidden thin-scroll h-40 space-y-0.5 overflow-y-auto px-4 py-2 text-[12px] leading-snug"></div>
     </div>
 
     <!-- Harvest progress (bottom-center) -->
@@ -170,8 +170,30 @@
     <!-- Action buttons (bottom-right) -->
     <div class="pointer-events-auto absolute bottom-4 right-4 flex gap-2 panel-in">
         <button id="btnHelp" class="rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm font-semibold text-zinc-200 shadow-xl backdrop-blur-md transition hover:border-cyan-300/40 hover:bg-black/60">❔ Help</button>
+        <button id="btnOnline" class="rounded-xl border border-cyan-400/30 bg-black/40 px-4 py-3 text-sm font-bold tracking-wide text-cyan-200 shadow-xl backdrop-blur-md transition hover:border-cyan-400/60 hover:bg-black/60">👥 Players</button>
         <button id="btnTalents" class="rounded-xl border border-violet-400/30 bg-black/40 px-4 py-3 text-sm font-bold tracking-wide text-violet-200 shadow-xl backdrop-blur-md transition hover:border-violet-400/60 hover:bg-black/60">✨ Talents</button>
         <button id="btnCraft" class="rounded-xl border border-amber-300/30 bg-black/40 px-5 py-3 text-sm font-bold tracking-wide text-amber-200 shadow-xl backdrop-blur-md transition hover:border-amber-300/60 hover:bg-black/60">⚗️ Craft</button>
+    </div>
+
+    <!-- Online Players panel -->
+    <div id="onlinePanel" class="pointer-events-auto absolute bottom-20 right-4 hidden w-72 rounded-2xl border border-cyan-300/20 bg-black/70 shadow-2xl backdrop-blur-md panel-in">
+        <div class="flex items-center justify-between border-b border-white/10 px-4 py-3">
+            <span class="font-display text-xs font-bold tracking-widest text-cyan-200">ONLINE PLAYERS</span>
+            <button id="btnOnlineClose" class="text-zinc-400 hover:text-white transition text-sm">✕</button>
+        </div>
+        <div class="px-2 py-2 max-h-64 overflow-y-auto thin-scroll">
+            <table class="w-full text-[11px]">
+                <thead>
+                    <tr class="text-zinc-500 border-b border-white/10">
+                        <th class="text-left px-2 py-1">Name</th>
+                        <th class="text-center px-2 py-1">⚔️ Atk</th>
+                        <th class="text-center px-2 py-1">🛡️ Def</th>
+                        <th class="text-center px-2 py-1">⚗️ Mfg</th>
+                    </tr>
+                </thead>
+                <tbody id="onlineTableBody"></tbody>
+            </table>
+        </div>
     </div>
 
     <!-- Tribute footer -->
@@ -294,7 +316,7 @@
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script src="js/persistence.js?v=1"></script>
 <script src="js/creatures.js?v=9"></script>
-<script src="js/network.js?v=14"></script>
-<script src="js/game.js?v=47"></script>
+<script src="js/network.js?v=15"></script>
+<script src="js/game.js?v=48"></script>
 </body>
 </html>

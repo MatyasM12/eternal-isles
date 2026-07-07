@@ -373,7 +373,7 @@ io.on('connection', (socket) => {
   console.log(`[socket] connect ${socket.id}`);
 
   // ── player:join ────────────────────────────────────────────────────────────
-  socket.on('player:join', ({ username }) => {
+  socket.on('player:join', ({ username, atkLvl, defLvl, craftLvl }) => {
     if (!username) return;
 
     // Kick any existing session for the same username
@@ -387,14 +387,23 @@ io.on('connection', (socket) => {
       }
     }
 
-    onlinePlayers.set(socket.id, { username, socket, x: 0, z: 0, dead: false });
+    onlinePlayers.set(socket.id, {
+      username, socket, x: 0, z: 0, dead: false,
+      atkLvl: atkLvl || 1, defLvl: defLvl || 1, craftLvl: craftLvl || 1,
+    });
     console.log(`[join] ${username}`);
 
-    socket.broadcast.emit('player:joined', { id: socket.id, username });
+    socket.broadcast.emit('player:joined', {
+      id: socket.id, username,
+      atkLvl: atkLvl || 1, defLvl: defLvl || 1, craftLvl: craftLvl || 1,
+    });
 
     const others = [];
     for (const [sid, p] of onlinePlayers) {
-      if (sid !== socket.id) others.push({ id: sid, username: p.username });
+      if (sid !== socket.id) others.push({
+        id: sid, username: p.username,
+        atkLvl: p.atkLvl || 1, defLvl: p.defLvl || 1, craftLvl: p.craftLvl || 1,
+      });
     }
     socket.emit('players:online', others);
 
@@ -445,7 +454,7 @@ io.on('connection', (socket) => {
 
   // ── chat:message — relay to all clients (including sender for confirmation) ─
   socket.on('chat:message', (data) => {
-    const player = players.get(socket.id);
+    const player = onlinePlayers.get(socket.id);
     if (!player || !data || typeof data.msg !== 'string') return;
     const msg = data.msg.trim().slice(0, 200);
     if (!msg) return;

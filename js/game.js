@@ -4807,6 +4807,50 @@
 		ui.helpModal.classList.remove('flex');
 	});
 
+	// Online players panel
+	(function() {
+		var panel = document.getElementById('onlinePanel');
+		var btn   = document.getElementById('btnOnline');
+		var close = document.getElementById('btnOnlineClose');
+		var tbody = document.getElementById('onlineTableBody');
+		if (!panel || !btn || !close || !tbody) return;
+
+		function populateOnlineTable() {
+			tbody.innerHTML = '';
+			var list = (typeof netGetOnlinePlayers === 'function') ? netGetOnlinePlayers() : [];
+			if (list.length === 0) {
+				var tr = document.createElement('tr');
+				tr.innerHTML = '<td colspan="4" class="text-center py-3 text-zinc-500">No players online</td>';
+				tbody.appendChild(tr);
+				return;
+			}
+			list.forEach(function(p) {
+				var tr = document.createElement('tr');
+				tr.className = 'border-t border-white/5 hover:bg-white/5 transition';
+				var nameClass = p.isSelf ? 'text-amber-200 font-bold' : 'text-zinc-200';
+				tr.innerHTML =
+					'<td class="px-2 py-1.5 ' + nameClass + '">' + (p.username || '?') + (p.isSelf ? ' (you)' : '') + '</td>' +
+					'<td class="text-center px-2 py-1.5 text-cyan-300">' + (p.atkLvl || 1) + '</td>' +
+					'<td class="text-center px-2 py-1.5 text-emerald-300">' + (p.defLvl || 1) + '</td>' +
+					'<td class="text-center px-2 py-1.5 text-amber-300">' + (p.craftLvl || 1) + '</td>';
+				tbody.appendChild(tr);
+			});
+		}
+
+		btn.addEventListener('click', function() {
+			var open = !panel.classList.contains('hidden');
+			if (open) {
+				panel.classList.add('hidden');
+			} else {
+				populateOnlineTable();
+				panel.classList.remove('hidden');
+			}
+		});
+		close.addEventListener('click', function() {
+			panel.classList.add('hidden');
+		});
+	})();
+
 // ------------------------------------------------------------------ intro
 	function beginGame() {
 		const nameEl = $('nameInput');

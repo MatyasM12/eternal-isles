@@ -52,7 +52,12 @@ function _connectSocket(username) {
 
   _socket.on('connect', () => {
     console.log('[net] socket connected');
-    _socket.emit('player:join', { username });
+    _socket.emit('player:join', {
+      username,
+      atkLvl:   player.atkLvl   || 1,
+      defLvl:   player.defLvl   || 1,
+      craftLvl: player.craftLvl || 1,
+    });
 
     // Send creature definitions so server can build authoritative AI state
     // (only the first client does real work; server ignores if already inited)
@@ -122,11 +127,11 @@ function _connectSocket(username) {
 
   // ── Other players ──────────────────────────────────────────────────────────
   _socket.on('players:online', (list) => {
-    for (const p of list) _addOtherPlayer(p.id, p.username);
+    for (const p of list) _addOtherPlayer(p.id, p.username, p.atkLvl, p.defLvl, p.craftLvl);
   });
 
-  _socket.on('player:joined', ({ id, username: uname }) => {
-    _addOtherPlayer(id, uname);
+  _socket.on('player:joined', ({ id, username: uname, atkLvl, defLvl, craftLvl }) => {
+    _addOtherPlayer(id, uname, atkLvl, defLvl, craftLvl);
     if (typeof log === 'function') log(uname + ' joined the isle.', 'sys');
   });
 
@@ -324,7 +329,7 @@ function _buildOtherPlayerMesh() {
   return g;
 }
 
-function _addOtherPlayer(id, username) {
+function _addOtherPlayer(id, username, atkLvl, defLvl, craftLvl) {
   if (_otherPlayers.has(id) || typeof scene === 'undefined') return;
   const mesh = _buildOtherPlayerMesh();
   mesh.position.set(0, -100, 0);  // hidden until first move
@@ -350,7 +355,10 @@ function _addOtherPlayer(id, username) {
   label.position.set(0, 2.6, 0);
   mesh.add(label);
 
-  _otherPlayers.set(id, { username, mesh, animT: 0, moving: false, lastPos: null, lastAnimTime: performance.now() });
+  _otherPlayers.set(id, {
+    username, mesh, animT: 0, moving: false, lastPos: null, lastAnimTime: performance.now(),
+    atkLvl: atkLvl || 1, defLvl: defLvl || 1, craftLvl: craftLvl || 1,
+  });
   // Draw initial HP bar at full health so number is visible immediately
   _updateOtherPlayerHp(id, 100, 100);
 }
@@ -590,6 +598,29 @@ function netCastCreatureHit(creatureList, color) {
 function netSendChat(msg) {
   if (!isMultiplayer() || !_socket || !msg) return;
   _socket.emit('chat:message', { msg: msg });
+}
+
+function netGetOnlinePlayers() {
+  var list = [];
+  if (typeof player !== 'undefined') {
+    list.push({
+      username: player.username || 'You',
+      atkLvl: player.atkLvl || 1,
+      defLvl: player.defLvl || 1,
+      craftLvl: player.craftLvl || 1,
+      isSelf: true,
+    });
+  }
+  _otherPlayers.forEach(function(entry) {
+    list.push({
+      username: entry.username,
+      atkLvl: entry.atkLvl || 1,
+      defLvl: entry.defLvl || 1,
+      craftLvl: entry.craftLvl || 1,
+      isSelf: false,
+    });
+  });
+  return list;
 }
 
 // ─── Called by saveGame() to also persist to server ──────────────────────────
