@@ -1127,7 +1127,7 @@
 	// rate = base success chance (raised by your Manufacture skill).  tier groups the book.
 	const RECIPES = [
 		// --- reagents (the crafting chain) ---
-		{ out: 'Fire Essence',   req: { 'Sulphur': 2, 'Red Rose': 1, 'Lilac': 1 },       tag: 'reagent', rate: 0.85, tier: 'Reagents' },
+		{ out: 'Fire Essence',   req: { 'Sulphur': 1, 'Red Rose': 1, 'Lilac': 1 },       tag: 'reagent', rate: 0.85, tier: 'Reagents' },
 		{ out: 'Tanned Leather', req: { 'Deer Fur': 2 },                                  tag: 'reagent', rate: 0.90, tier: 'Reagents' },
 		{ out: 'Iron Bar',       req: { 'Iron Ore': 2, 'Coal': 1, 'Fire Essence': 1 },     tag: 'reagent', rate: 0.85, tier: 'Reagents' },
 		{ out: 'Silver Bar',     req: { 'Silver Ore': 2, 'Fire Essence': 1 },             tag: 'reagent', rate: 0.80, tier: 'Reagents' },
@@ -4714,6 +4714,13 @@
 							addItem('Enriched Fire Essence', 1);
 							log('✨ The essence surges — you also created an Enriched Fire Essence!', 'craft');
 							floatText('🔥✨ Enriched Essence!', headPos(), '#ff8800', 1.2);
+						}
+						// Chance to create multiple fire essences
+						const multiCraftChance = 0.03 + (player.craftLvl - 1) * 0.008;
+						if (Math.random() < multiCraftChance) {
+							addItem('Fire Essence', 1 + Math.random(3));
+							log('✨ Luck is on your side, you created multiple fire essences!!', 'craft');
+							floatText('🔥✨ Multiple Fire Essences!', headPos(), '#ff8800', 1.2);
 						}
 					}
 				} else {
