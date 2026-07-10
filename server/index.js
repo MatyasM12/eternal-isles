@@ -101,16 +101,20 @@ let   nextCreatureId = 1;
 
 // Spellcaster profiles — determines spell behaviour in AI loop
 const SPELL_PROFILES = {
-  'Dragon':         { meleeRange: 4.5, spellRange: [4.5, 99], spellInterval: [3.0, 5.0], color: 0xff2200, dmgMult: 3.0, msg: '🐉 The Dragon breathes fire!' },
-  'Cave Worm':      { meleeRange: 3.0, spellRange: [3.0, 99], spellInterval: [2.5, 4.5], color: 0x39d353, dmgMult: 3.0, msg: '🧪 The Cave Worm spits a glob of acid!' },
-  'Cave Troll':     { meleeRange: 1.8, spellRange: [3.5, 22], spellInterval: [4.5, 6.5], color: 0x8B6914, dmgMult: 3.0, msg: '🪨 The Cave Troll hurls a boulder!' },
-  'Frost Golem':    { meleeRange: 1.8, spellRange: [3.5, 22], spellInterval: [4.0, 6.0], color: 0x7dd3fc, dmgMult: 3.0, msg: '❄️ The Frost Golem launches an ice shard!' },
-  'Lava Titan':     { meleeRange: 1.8, spellRange: [3.5, 22], spellInterval: [2.5, 4.0], color: 0xff4400, dmgMult: 3.2, msg: '🌋 The Lava Titan spews a lava ball!' },
-  'Shadow Wraith':  { meleeRange: 1.8, spellRange: [3.5, 22], spellInterval: [2.0, 3.5], color: 0x6600cc, dmgMult: 3.2, msg: '🌑 The Shadow Wraith fires a shadow bolt!' },
-  'Void Stalker':   { meleeRange: 1.8, spellRange: [3.5, 22], spellInterval: [2.0, 3.5], color: 0x330066, dmgMult: 1.8, msg: '🌀 The Void Stalker launches a void lance!' },
-  'Ancient Golem':  { meleeRange: 1.8, spellRange: [3.5, 22], spellInterval: [2.5, 4.0], color: 0x7c6a3b, dmgMult: 3.1, msg: '🗿 The Ancient Golem sends a shockwave!' },
-  'Infernal Titan': { meleeRange: 1.8, spellRange: [3.5, 22], spellInterval: [1.8, 3.0], color: 0xff1100, dmgMult: 2.0, msg: '🔥 The Infernal Titan unleashes an inferno burst!' },
-  'Void Colossus':  { meleeRange: 1.8, spellRange: [3.5, 22], spellInterval: [1.5, 2.8], color: 0x220044, dmgMult: 1.9, msg: '💀 The Void Colossus fires a void pulse!' },
+  // tier 3-4 (mid): cast every ~8-12 s
+  'Cave Troll':     { meleeRange: 1.8, spellRange: [3.5, 22], spellInterval: [8.0, 12.0], color: 0x8B6914, dmgMult: 3.0, msg: '🪨 The Cave Troll hurls a boulder!' },
+  'Frost Golem':    { meleeRange: 1.8, spellRange: [3.5, 22], spellInterval: [9.0, 14.0], color: 0x7dd3fc, dmgMult: 3.0, msg: '❄️ The Frost Golem launches an ice shard!' },
+  // tier 5 (high): cast every ~12-18 s
+  'Cave Worm':      { meleeRange: 3.0, spellRange: [3.0, 99], spellInterval: [12.0, 18.0], color: 0x39d353, dmgMult: 3.0, msg: '🧪 The Cave Worm spits a glob of acid!' },
+  'Lava Titan':     { meleeRange: 1.8, spellRange: [3.5, 22], spellInterval: [12.0, 18.0], color: 0xff4400, dmgMult: 3.2, msg: '🌋 The Lava Titan spews a lava ball!' },
+  // tier 6 dragon boss: cast every ~10-15 s
+  'Dragon':         { meleeRange: 4.5, spellRange: [4.5, 99], spellInterval: [10.0, 15.0], color: 0xff2200, dmgMult: 3.0, msg: '🐉 The Dragon breathes fire!' },
+  // tier 7 (Eldenmere): cast every ~14-22 s — powerful but telegraphed
+  'Shadow Wraith':  { meleeRange: 1.8, spellRange: [3.5, 22], spellInterval: [14.0, 22.0], color: 0x6600cc, dmgMult: 3.2, msg: '🌑 The Shadow Wraith fires a shadow bolt!' },
+  'Void Stalker':   { meleeRange: 1.8, spellRange: [3.5, 22], spellInterval: [14.0, 20.0], color: 0x330066, dmgMult: 1.8, msg: '🌀 The Void Stalker launches a void lance!' },
+  'Ancient Golem':  { meleeRange: 1.8, spellRange: [3.5, 22], spellInterval: [16.0, 24.0], color: 0x7c6a3b, dmgMult: 3.1, msg: '🗿 The Ancient Golem sends a shockwave!' },
+  'Infernal Titan': { meleeRange: 1.8, spellRange: [3.5, 22], spellInterval: [18.0, 28.0], color: 0xff1100, dmgMult: 2.0, msg: '🔥 The Infernal Titan unleashes an inferno burst!' },
+  'Void Colossus':  { meleeRange: 1.8, spellRange: [3.5, 22], spellInterval: [20.0, 30.0], color: 0x220044, dmgMult: 1.9, msg: '💀 The Void Colossus fires a void pulse!' },
 };
 function _randRange(lo, hi) { return lo + Math.random() * (hi - lo); }
 
@@ -628,7 +632,7 @@ io.on('connection', (socket) => {
       }
 
       // Equip: only known slots and known items
-      const EQUIP_SLOTS = ['weapon','shield','helm','armor','cuisses','greaves','ring','medallion'];
+      const EQUIP_SLOTS = ['weapon','shield','helm','armor','cuisses','greaves','ring','ring2','belt','medallion'];
       const equip = {};
       if (data.equip && typeof data.equip === 'object') {
         for (const slot of EQUIP_SLOTS) {

@@ -1217,6 +1217,15 @@
 		'Infernoplate':           { icon: '🛡️', type: 'armor', def: 80, desc: 'Legendary armor radiating infernal heat. +80 DEF.' },
 		'Volcanic Warblade':      { icon: '⚔️', type: 'weapon', atk: 90, desc: 'A blade erupting with volcanic power. +90 ATK.' },
 		'Emberveil Ring':         { icon: '💍', type: 'ring', atk: 25, def: 15, desc: 'A ring shimmering with enriched fire. +25 ATK, +15 DEF.' },
+		// ---- belts ----
+		'Leather Belt':     { icon: '🟤', type: 'belt', def: 2,  desc: 'A simple leather belt. +2 DEF.' },
+		'Iron Belt':        { icon: '⬛', type: 'belt', def: 4,  desc: 'A studded iron belt. +4 DEF.' },
+		'Steel Belt':       { icon: '🔩', type: 'belt', def: 7,  desc: 'A reinforced steel belt. +7 DEF.' },
+		'Silver Belt':      { icon: '🪬', type: 'belt', def: 9,  atk: 2, desc: 'A silver-linked belt. +9 DEF, +2 ATK.' },
+		'Titanium Belt':    { icon: '🔶', type: 'belt', def: 14, atk: 3, desc: 'A heavyweight titanium belt. +14 DEF, +3 ATK.' },
+		'Dragon Scale Belt':{ icon: '🐲', type: 'belt', def: 22, atk: 5, desc: 'A belt of dragon scales. +22 DEF, +5 ATK.' },
+		'Void Belt':        { icon: '🌑', type: 'belt', def: 30, atk: 8, desc: 'A belt woven from void crystal. +30 DEF, +8 ATK.' },
+		'Emberveil Belt':   { icon: '🔥', type: 'belt', def: 40, atk: 12, desc: 'A legendary belt imbued with enriched fire. +40 DEF, +12 ATK.' },
 	};
 	// rate = base success chance (raised by your Manufacture skill).  tier groups the book.
 	const RECIPES = [
@@ -1284,45 +1293,45 @@
 		{ out: 'Quartz Ring',      req: { 'Quartz Crystal': 1, 'Silver Bar': 1 },                   tag: '+3 ATK +2 DEF', rate: 0.60, tier: 'Rings' },
 		{ out: 'Gold Ring',        req: { 'Gold Bar': 1, 'Quartz Crystal': 1 },                     tag: '+4 ATK +3 DEF', rate: 0.50, tier: 'Rings' },
 		// --- titanium-tier (tier 4-5) ---
-		{ out: 'Titanium Bar',          req: { 'Titanium Ore': 2, 'Coal': 1, 'Fire Essence': 1 },            tag: 'reagent',     rate: 0.75, tier: 'Titanium Forge' },
-		{ out: 'Titanium Sword',        req: { 'Titanium Bar': 2, 'Steel Bar': 1 },                          tag: '+22 ATK',     rate: 0.45, tier: 'Titanium Forge' },
-		{ out: 'Titanium Shield',       req: { 'Titanium Bar': 3 },                                          tag: '+12 DEF',     rate: 0.45, tier: 'Titanium Forge' },
-		{ out: 'Titanium Helm',         req: { 'Titanium Bar': 2, 'Tanned Leather': 1 },                     tag: '+12 DEF',     rate: 0.42, tier: 'Titanium Forge' },
-		{ out: 'Titanium Plate',        req: { 'Titanium Bar': 5, 'Tanned Leather': 2 },                     tag: '+22 DEF',     rate: 0.38, tier: 'Titanium Forge' },
-		{ out: 'Titanium Cuisses',      req: { 'Titanium Bar': 3, 'Tanned Leather': 1 },                     tag: '+10 DEF',     rate: 0.42, tier: 'Titanium Forge' },
-		{ out: 'Titanium Greaves',      req: { 'Titanium Bar': 2 },                                          tag: '+9 DEF',      rate: 0.45, tier: 'Titanium Forge' },
+		{ out: 'Titanium Bar',          req: { 'Titanium Ore': 2, 'Coal': 1, 'Fire Essence': 1 },            tag: 'reagent',     rate: 0.60, minCraftLvl: 10, tier: 'Titanium Forge' },
+		{ out: 'Titanium Sword',        req: { 'Titanium Bar': 2, 'Steel Bar': 1 },                          tag: '+22 ATK',     rate: 0.30, minCraftLvl: 12, tier: 'Titanium Forge' },
+		{ out: 'Titanium Shield',       req: { 'Titanium Bar': 3 },                                          tag: '+12 DEF',     rate: 0.30, minCraftLvl: 12, tier: 'Titanium Forge' },
+		{ out: 'Titanium Helm',         req: { 'Titanium Bar': 2, 'Tanned Leather': 1 },                     tag: '+12 DEF',     rate: 0.28, minCraftLvl: 12, tier: 'Titanium Forge' },
+		{ out: 'Titanium Plate',        req: { 'Titanium Bar': 5, 'Tanned Leather': 2 },                     tag: '+22 DEF',     rate: 0.22, minCraftLvl: 14, tier: 'Titanium Forge' },
+		{ out: 'Titanium Cuisses',      req: { 'Titanium Bar': 3, 'Tanned Leather': 1 },                     tag: '+10 DEF',     rate: 0.28, minCraftLvl: 12, tier: 'Titanium Forge' },
+		{ out: 'Titanium Greaves',      req: { 'Titanium Bar': 2 },                                          tag: '+9 DEF',      rate: 0.30, minCraftLvl: 12, tier: 'Titanium Forge' },
 		// --- dragon-tier (tier 5) ---
-		{ out: 'Dragonbone Sword',      req: { 'Dragon Bone': 3, 'Dragon Fang': 2, 'Steel Bar': 2 },           tag: '+35 ATK', rate: 0.18, tier: 'Dragon Forge' },
-		{ out: 'Dragon Scale Shield',   req: { 'Dragon Scale': 4, 'Steel Bar': 2 },                            tag: '+18 DEF', rate: 0.18, tier: 'Dragon Forge' },
-		{ out: 'Dragon Skull Helm',     req: { 'Dragon Bone': 2, 'Dragon Scale': 2 },                          tag: '+16 DEF', rate: 0.18, tier: 'Dragon Forge' },
-		{ out: 'Dragon Scale Hauberk',  req: { 'Dragon Scale': 6, 'Dragon Heart': 1, 'Steel Bar': 2 },         tag: '+30 DEF', rate: 0.15, tier: 'Dragon Forge' },
-		{ out: 'Dragon Bone Cuisses',   req: { 'Dragon Bone': 3, 'Dragon Scale': 1 },                          tag: '+14 DEF', rate: 0.18, tier: 'Dragon Forge' },
-		{ out: 'Dragon Bone Greaves',   req: { 'Dragon Bone': 2, 'Dragon Fang': 1 },                           tag: '+12 DEF', rate: 0.18, tier: 'Dragon Forge' },
-		{ out: 'Dragon Heart Medallion', req: { 'Dragon Heart': 1, 'Gold Bar': 2, 'Dragon Fang': 1 },         tag: '+15 DEF +8 ATK', rate: 0.15, tier: 'Dragon Forge' },
-		{ out: 'Dragon Fang Ring',       req: { 'Dragon Fang': 2, 'Gold Bar': 1 },                            tag: '+10 ATK +5 DEF', rate: 0.18, tier: 'Dragon Forge' },
+		{ out: 'Dragonbone Sword',      req: { 'Dragon Bone': 3, 'Dragon Fang': 2, 'Steel Bar': 2 },           tag: '+35 ATK', rate: 0.14, minCraftLvl: 18, tier: 'Dragon Forge' },
+		{ out: 'Dragon Scale Shield',   req: { 'Dragon Scale': 4, 'Steel Bar': 2 },                            tag: '+18 DEF', rate: 0.14, minCraftLvl: 18, tier: 'Dragon Forge' },
+		{ out: 'Dragon Skull Helm',     req: { 'Dragon Bone': 2, 'Dragon Scale': 2 },                          tag: '+16 DEF', rate: 0.14, minCraftLvl: 18, tier: 'Dragon Forge' },
+		{ out: 'Dragon Scale Hauberk',  req: { 'Dragon Scale': 6, 'Dragon Heart': 1, 'Steel Bar': 2 },         tag: '+30 DEF', rate: 0.10, minCraftLvl: 20, tier: 'Dragon Forge' },
+		{ out: 'Dragon Bone Cuisses',   req: { 'Dragon Bone': 3, 'Dragon Scale': 1 },                          tag: '+14 DEF', rate: 0.14, minCraftLvl: 18, tier: 'Dragon Forge' },
+		{ out: 'Dragon Bone Greaves',   req: { 'Dragon Bone': 2, 'Dragon Fang': 1 },                           tag: '+12 DEF', rate: 0.14, minCraftLvl: 18, tier: 'Dragon Forge' },
+		{ out: 'Dragon Heart Medallion', req: { 'Dragon Heart': 1, 'Gold Bar': 2, 'Dragon Fang': 1 },         tag: '+15 DEF +8 ATK', rate: 0.10, minCraftLvl: 20, tier: 'Dragon Forge' },
+		{ out: 'Dragon Fang Ring',       req: { 'Dragon Fang': 2, 'Gold Bar': 1 },                            tag: '+10 ATK +5 DEF', rate: 0.14, minCraftLvl: 18, tier: 'Dragon Forge' },
 		// ---- Arcane Forge (tier 6) — intermediate reagents ----
-		{ out: 'Aether Bar',            req: { 'Aether Crystal': 3 },                                        tag: 'Reagent',        rate: 0.70, tier: 'Arcane Forge' },
-		{ out: 'Void Ingot',            req: { 'Voidstone': 3 },                                             tag: 'Reagent',        rate: 0.70, tier: 'Arcane Forge' },
-		{ out: 'Star Alloy',            req: { 'Starstone': 2, 'Aether Crystal': 1 },                        tag: 'Reagent',        rate: 0.60, tier: 'Arcane Forge' },
+		{ out: 'Aether Bar',            req: { 'Aether Crystal': 3 },                                        tag: 'Reagent',        rate: 0.55, minCraftLvl: 22, tier: 'Arcane Forge' },
+		{ out: 'Void Ingot',            req: { 'Voidstone': 3 },                                             tag: 'Reagent',        rate: 0.55, minCraftLvl: 22, tier: 'Arcane Forge' },
+		{ out: 'Star Alloy',            req: { 'Starstone': 2, 'Aether Crystal': 1 },                        tag: 'Reagent',        rate: 0.45, minCraftLvl: 24, tier: 'Arcane Forge' },
 		// ---- Arcane Forge — weapons ----
-		{ out: 'Aether Blade',          req: { 'Aether Bar': 4, 'Void Ingot': 1 },                           tag: '+45 ATK',        rate: 0.25, tier: 'Arcane Forge' },
-		{ out: 'Void Scythe',           req: { 'Void Ingot': 4, 'Aether Bar': 2, 'Shadow Essence': 2 },      tag: '+52 ATK',        rate: 0.20, tier: 'Arcane Forge' },
-		{ out: 'Starforged Warblade',   req: { 'Star Alloy': 4, 'Void Fang': 2, 'Aether Bar': 2 },           tag: '+60 ATK',        rate: 0.15, tier: 'Arcane Forge' },
+		{ out: 'Aether Blade',          req: { 'Aether Bar': 4, 'Void Ingot': 1 },                           tag: '+45 ATK',        rate: 0.18, minCraftLvl: 26, tier: 'Arcane Forge' },
+		{ out: 'Void Scythe',           req: { 'Void Ingot': 4, 'Aether Bar': 2, 'Shadow Essence': 2 },      tag: '+52 ATK',        rate: 0.14, minCraftLvl: 28, tier: 'Arcane Forge' },
+		{ out: 'Starforged Warblade',   req: { 'Star Alloy': 4, 'Void Fang': 2, 'Aether Bar': 2 },           tag: '+60 ATK',        rate: 0.10, minCraftLvl: 30, tier: 'Arcane Forge' },
 		// ---- Arcane Forge — shields ----
-		{ out: 'Aether Ward',           req: { 'Aether Bar': 3, 'Starstone': 1 },                            tag: '+25 DEF',        rate: 0.28, tier: 'Arcane Forge' },
-		{ out: 'Void Bulwark',          req: { 'Void Ingot': 4, 'Ancient Core': 1 },                         tag: '+32 DEF',        rate: 0.22, tier: 'Arcane Forge' },
+		{ out: 'Aether Ward',           req: { 'Aether Bar': 3, 'Starstone': 1 },                            tag: '+25 DEF',        rate: 0.20, minCraftLvl: 26, tier: 'Arcane Forge' },
+		{ out: 'Void Bulwark',          req: { 'Void Ingot': 4, 'Ancient Core': 1 },                         tag: '+32 DEF',        rate: 0.16, minCraftLvl: 28, tier: 'Arcane Forge' },
 		// ---- Arcane Forge — helms ----
-		{ out: 'Aether Crown',          req: { 'Aether Bar': 2, 'Star Alloy': 1 },                           tag: '+22 DEF',        rate: 0.30, tier: 'Arcane Forge' },
-		{ out: 'Void Helm',             req: { 'Void Ingot': 2, 'Shadow Essence': 1, 'Aether Bar': 1 },      tag: '+28 DEF',        rate: 0.25, tier: 'Arcane Forge' },
+		{ out: 'Aether Crown',          req: { 'Aether Bar': 2, 'Star Alloy': 1 },                           tag: '+22 DEF',        rate: 0.22, minCraftLvl: 26, tier: 'Arcane Forge' },
+		{ out: 'Void Helm',             req: { 'Void Ingot': 2, 'Shadow Essence': 1, 'Aether Bar': 1 },      tag: '+28 DEF',        rate: 0.18, minCraftLvl: 28, tier: 'Arcane Forge' },
 		// ---- Arcane Forge — body armor ----
-		{ out: 'Aether Vestment',       req: { 'Aether Bar': 5, 'Star Alloy': 2 },                           tag: '+38 DEF',        rate: 0.22, tier: 'Arcane Forge' },
-		{ out: 'Void Plate',            req: { 'Void Ingot': 6, 'Ancient Core': 2, 'Aether Bar': 2 },        tag: '+50 DEF',        rate: 0.18, tier: 'Arcane Forge' },
+		{ out: 'Aether Vestment',       req: { 'Aether Bar': 5, 'Star Alloy': 2 },                           tag: '+38 DEF',        rate: 0.16, minCraftLvl: 28, tier: 'Arcane Forge' },
+		{ out: 'Void Plate',            req: { 'Void Ingot': 6, 'Ancient Core': 2, 'Aether Bar': 2 },        tag: '+50 DEF',        rate: 0.12, minCraftLvl: 30, tier: 'Arcane Forge' },
 		// ---- Arcane Forge — cuisses & greaves ----
-		{ out: 'Aether Cuisses',        req: { 'Aether Bar': 3, 'Void Ingot': 1 },                           tag: '+18 DEF',        rate: 0.28, tier: 'Arcane Forge' },
-		{ out: 'Aether Greaves',        req: { 'Aether Bar': 2, 'Void Ingot': 1 },                           tag: '+16 DEF',        rate: 0.30, tier: 'Arcane Forge' },
+		{ out: 'Aether Cuisses',        req: { 'Aether Bar': 3, 'Void Ingot': 1 },                           tag: '+18 DEF',        rate: 0.20, minCraftLvl: 26, tier: 'Arcane Forge' },
+		{ out: 'Aether Greaves',        req: { 'Aether Bar': 2, 'Void Ingot': 1 },                           tag: '+16 DEF',        rate: 0.22, minCraftLvl: 26, tier: 'Arcane Forge' },
 		// ---- Arcane Forge — medallions & rings ----
-		{ out: 'Starstone Medallion',   req: { 'Star Alloy': 2, 'Ancient Core': 1, 'Aether Bar': 1 },        tag: '+25 DEF +15 ATK', rate: 0.20, tier: 'Arcane Forge' },
-		{ out: 'Void Ring',             req: { 'Void Fang': 2, 'Void Ingot': 1 },                            tag: '+18 ATK +10 DEF', rate: 0.22, tier: 'Arcane Forge' },
+		{ out: 'Starstone Medallion',   req: { 'Star Alloy': 2, 'Ancient Core': 1, 'Aether Bar': 1 },        tag: '+25 DEF +15 ATK', rate: 0.14, minCraftLvl: 30, tier: 'Arcane Forge' },
+		{ out: 'Void Ring',             req: { 'Void Fang': 2, 'Void Ingot': 1 },                            tag: '+18 ATK +10 DEF', rate: 0.16, minCraftLvl: 28, tier: 'Arcane Forge' },
 		// ---- Botanica (flower-based consumables) ----
 		{ out: 'Moonbloom Draught',  req: { 'Moonbloom': 2, 'Blue Star Flower': 1 },                             tag: '+60 HP',                 rate: 0.90, tier: 'Botanica' },
 		{ out: 'Sunfire Tonic',      req: { 'Sunfire Lily': 2, 'Fire Essence': 1 },                              tag: '+8 ATK 60s',             rate: 0.85, tier: 'Botanica' },
@@ -1333,14 +1342,23 @@
 		{ out: 'Void Shroud',        req: { 'Voidpetal': 3, 'Moonbloom': 1, 'Tanned Leather': 2 },              tag: '+18 DEF -10% dmg 45s',   rate: 0.65, tier: 'Botanica' },
 		{ out: 'Celestial Brew',     req: { 'Starbloom': 3, 'Moonbloom': 2, 'Sunfire Lily': 1, 'Voidpetal': 1 }, tag: '+80 HP +10 ATK +8 DEF', rate: 0.55, tier: 'Botanica' },
 		// ---- Legendary Forge (requires Enriched Fire Essence) ----
-		{ out: 'Emberforged Blade',     req: { 'Enriched Fire Essence': 2, 'Infernal Ember': 4 },             tag: '+75 ATK',          rate: 0.12, tier: 'Legendary Forge' },
-		{ out: 'Volcanic Warblade',     req: { 'Enriched Fire Essence': 3, 'Infernal Ember': 5, 'Void Relic': 2 }, tag: '+90 ATK',       rate: 0.08, tier: 'Legendary Forge' },
-		{ out: 'Phoenixweave Vestment', req: { 'Enriched Fire Essence': 2, 'Void Relic': 3, 'Infernal Ember': 2 }, tag: '+65 DEF',       rate: 0.12, tier: 'Legendary Forge' },
-		{ out: 'Infernoplate',          req: { 'Enriched Fire Essence': 3, 'Void Relic': 5 },                   tag: '+80 DEF',          rate: 0.08, tier: 'Legendary Forge' },
-		{ out: 'Embercrown',            req: { 'Enriched Fire Essence': 2, 'Infernal Ember': 2, 'Void Relic': 2 }, tag: '+40 DEF +10 ATK', rate: 0.14, tier: 'Legendary Forge' },
-		{ out: 'Emberveil Ring',        req: { 'Enriched Fire Essence': 1, 'Infernal Ember': 2 },               tag: '+25 ATK +15 DEF',  rate: 0.18, tier: 'Legendary Forge' },
+		{ out: 'Emberforged Blade',     req: { 'Enriched Fire Essence': 2, 'Infernal Ember': 4 },             tag: '+75 ATK',          rate: 0.10, minCraftLvl: 35, tier: 'Legendary Forge' },
+		{ out: 'Volcanic Warblade',     req: { 'Enriched Fire Essence': 3, 'Infernal Ember': 5, 'Void Relic': 2 }, tag: '+90 ATK',       rate: 0.06, minCraftLvl: 40, tier: 'Legendary Forge' },
+		{ out: 'Phoenixweave Vestment', req: { 'Enriched Fire Essence': 2, 'Void Relic': 3, 'Infernal Ember': 2 }, tag: '+65 DEF',       rate: 0.10, minCraftLvl: 35, tier: 'Legendary Forge' },
+		{ out: 'Infernoplate',          req: { 'Enriched Fire Essence': 3, 'Void Relic': 5 },                   tag: '+80 DEF',          rate: 0.06, minCraftLvl: 40, tier: 'Legendary Forge' },
+		{ out: 'Embercrown',            req: { 'Enriched Fire Essence': 2, 'Infernal Ember': 2, 'Void Relic': 2 }, tag: '+40 DEF +10 ATK', rate: 0.10, minCraftLvl: 35, tier: 'Legendary Forge' },
+		{ out: 'Emberveil Ring',        req: { 'Enriched Fire Essence': 1, 'Infernal Ember': 2 },               tag: '+25 ATK +15 DEF',  rate: 0.14, minCraftLvl: 32, tier: 'Legendary Forge' },
+		{ out: 'Emberveil Belt',        req: { 'Enriched Fire Essence': 1, 'Void Relic': 2 },                  tag: '+40 DEF +12 ATK',  rate: 0.14, minCraftLvl: 32, tier: 'Legendary Forge' },
+		// --- belts ---
+		{ out: 'Leather Belt',  req: { 'Tanned Leather': 1 },                                    tag: '+2 DEF',          rate: 0.90, tier: 'Belts' },
+		{ out: 'Iron Belt',     req: { 'Iron Bar': 1, 'Tanned Leather': 1 },                     tag: '+4 DEF',          rate: 0.72, tier: 'Belts' },
+		{ out: 'Steel Belt',    req: { 'Steel Bar': 1, 'Tanned Leather': 1 },                    tag: '+7 DEF',          rate: 0.52, tier: 'Belts' },
+		{ out: 'Silver Belt',   req: { 'Silver Bar': 1, 'Steel Bar': 1 },                        tag: '+9 DEF +2 ATK',   rate: 0.44, tier: 'Belts' },
+		{ out: 'Titanium Belt', req: { 'Titanium Bar': 1, 'Steel Bar': 1 },                      tag: '+14 DEF +3 ATK',  rate: 0.26, minCraftLvl: 12, tier: 'Belts' },
+		{ out: 'Dragon Scale Belt', req: { 'Dragon Scale': 3, 'Titanium Bar': 1 },               tag: '+22 DEF +5 ATK',  rate: 0.14, minCraftLvl: 18, tier: 'Belts' },
+		{ out: 'Void Belt',     req: { 'Void Ingot': 2, 'Aether Bar': 1 },                       tag: '+30 DEF +8 ATK',  rate: 0.14, minCraftLvl: 28, tier: 'Belts' },
 	];
-	const EQUIP_SLOTS = ['weapon', 'shield', 'helm', 'armor', 'cuisses', 'greaves', 'medallion', 'ring'];
+	const EQUIP_SLOTS = ['weapon', 'shield', 'helm', 'armor', 'cuisses', 'greaves', 'medallion', 'ring', 'ring2', 'belt'];
 
 	// ------------------------------------------------------------------ inventory
 	const INV_SLOTS = 28;
@@ -1387,7 +1405,7 @@
 		progressLabel: $('progressLabel'), progressIcon: $('progressIcon'),
 		craftModal: $('craftModal'), recipeList: $('recipeList'), mixSlots: $('mixSlots'),
 		mixHint: $('mixHint'), helpModal: $('helpModal'),
-		eq: { weapon: $('eqWeapon'), shield: $('eqShield'), helm: $('eqHelm'), armor: $('eqArmor'), cuisses: $('eqCuisses'), greaves: $('eqGreaves'), medallion: $('eqMedallion'), ring: $('eqRing') },
+		eq: { weapon: $('eqWeapon'), shield: $('eqShield'), helm: $('eqHelm'), armor: $('eqArmor'), cuisses: $('eqCuisses'), greaves: $('eqGreaves'), medallion: $('eqMedallion'), ring: $('eqRing'), ring2: $('eqRing2'), belt: $('eqBelt') },
 	};
 
 	// ------------------------------------------------------------------ instant tooltip
@@ -2001,7 +2019,7 @@
 		hp: 50, maxhp: 50, baseAtk: 3, baseDef: 0, fortitudeMaxhpApplied: 0,
 		speed: 4.4,
 		name: 'Adventurer',
-		equip: { weapon: null, shield: null, helm: null, armor: null, cuisses: null, greaves: null, medallion: null, ring: null },
+		equip: { weapon: null, shield: null, helm: null, armor: null, cuisses: null, greaves: null, medallion: null, ring: null, ring2: null, belt: null },
 		moveTarget: null,       // Vector3
 		action: null,           // {type:'attack'|'harvest'|'fish', ...}
 		harvesting: null,       // {node, t}
@@ -4074,13 +4092,13 @@
 	function playerAtk() {
 		const wAtk = player.equip.weapon ? ITEMS[player.equip.weapon].atk : 0;
 		let bonus = 0;
-		for (const s of ['medallion', 'ring']) { const it = player.equip[s]; if (it && ITEMS[it].atk) bonus += ITEMS[it].atk; }
+		for (const s of ['medallion', 'ring', 'ring2', 'belt']) { const it = player.equip[s]; if (it && ITEMS[it].atk) bonus += ITEMS[it].atk; }
 		if (player.consumableAtkTimer > 0) bonus += (player.consumableAtk || 0);
 		return Math.floor(playerBaseAtk() + wAtk * (1 + player.atkLvl * 0.07) + bonus);
 	}
 	function playerDef() {
 		let d = playerBaseDef();
-		for (const s of ['shield', 'helm', 'armor', 'cuisses', 'greaves', 'medallion', 'ring']) {
+		for (const s of ['shield', 'helm', 'armor', 'cuisses', 'greaves', 'medallion', 'ring', 'ring2', 'belt']) {
 			const it = player.equip[s];
 			if (it && ITEMS[it].def) d += ITEMS[it].def;
 		}
@@ -4168,7 +4186,9 @@
 	}
 	function equipItem(name) {
 		const info = ITEMS[name];
-		const slot = info.type;
+		let slot = info.type;
+		// For rings: use ring2 if ring is occupied and ring2 is free
+		if (slot === 'ring' && player.equip.ring && !player.equip.ring2) slot = 'ring2';
 		if (!removeItem(name, 1)) return;
 		if (player.equip[slot]) addItem(player.equip[slot], 1);
 		player.equip[slot] = name;
@@ -4997,7 +5017,10 @@
 		for (const k of Object.keys(req)) if (invCount(k) < req[k]) return false;
 		return true;
 	}
-	function effectiveRate(r) { return clamp(r.rate + (player.craftLvl - 1) * 0.03, 0.1, 0.98); }
+	function effectiveRate(r) {
+		if (r.minCraftLvl && player.craftLvl < r.minCraftLvl) return 0;
+		return clamp(r.rate + (player.craftLvl - 1) * 0.03, 0.1, 0.98);
+	}
 	function renderRecipes() {
 		ui.recipeList.innerHTML = '';
 		// group by tier, preserving insertion order
@@ -5035,24 +5058,30 @@
 			ui.recipeList.appendChild(body);
 			for (const r of recipes) {
 				const afford = canAfford(r.req);
-				const pct = Math.round(effectiveRate(r) * 100);
+				const craftOk = !r.minCraftLvl || player.craftLvl >= r.minCraftLvl;
+				const canLoad = afford && craftOk;
+				const pct = craftOk ? Math.round(effectiveRate(r) * 100) : 0;
 				const row = document.createElement('div');
 				row.className = 'rounded-xl border p-2.5 transition ' +
-					(afford ? 'border-emerald-300/30 bg-emerald-400/5' : 'border-white/10 bg-white/[0.03] opacity-60');
+					(canLoad ? 'border-emerald-300/30 bg-emerald-400/5' : 'border-white/10 bg-white/[0.03] opacity-60');
 				const ing = Object.entries(r.req)
 					.map(([k, v]) => ITEMS[k].icon + '×' + v + ' <span class="text-zinc-400">' + k + '</span>')
 					.join(' · ');
+				const lvlTag = r.minCraftLvl
+					? ' <span class="ml-1 rounded bg-black/40 px-1.5 py-0.5 text-[10px] ' + (craftOk ? 'text-yellow-300' : 'text-red-400') + '">Craft Lv ' + r.minCraftLvl + '</span>'
+					: '';
 				row.innerHTML =
 					'<div class="flex items-center justify-between">' +
 					'<div class="flex items-center gap-2">' +
 					'<span class="text-xl">' + ITEMS[r.out].icon + '</span>' +
 					'<div><div class="text-sm font-semibold text-zinc-100">' + r.out +
 					' <span class="ml-1 rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-cyan-200">' + r.tag + '</span>' +
-					' <span class="ml-1 rounded bg-black/40 px-1.5 py-0.5 text-[10px] text-emerald-300">' + pct + '%</span></div>' +
+					' <span class="ml-1 rounded bg-black/40 px-1.5 py-0.5 text-[10px] text-emerald-300">' + pct + '%</span>' +
+					lvlTag + '</div>' +
 					'<div class="mt-0.5 text-[11px] leading-tight">' + ing + '</div></div>' +
 					'</div>' +
 					'<button class="load-btn shrink-0 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition ' +
-					(afford
+					(canLoad
 						? 'border-emerald-300/50 bg-emerald-400/15 text-emerald-200 hover:bg-emerald-400/30'
 						: 'border-white/10 bg-white/5 text-zinc-500 cursor-not-allowed') +
 					'">Load</button>' +
@@ -5060,6 +5089,7 @@
 				const btn = row.querySelector('.load-btn');
 				btn.addEventListener('click', () => {
 					clearMixToInventory();
+					if (r.minCraftLvl && player.craftLvl < r.minCraftLvl) { ui.mixHint.textContent = 'You need Crafting level ' + r.minCraftLvl + ' to attempt this recipe.'; return; }
 					if (!canAfford(r.req)) { ui.mixHint.textContent = 'You are missing ingredients for that.'; return; }
 					let i = 0;
 					for (const [item, count] of Object.entries(r.req)) {
@@ -5095,6 +5125,10 @@
 		const agg = mixAggregate();
 		if (Object.keys(agg).length === 0) { ui.mixHint.textContent = 'The mix box is empty.'; return; }
 		const recipe = RECIPES.find((r) => reqMatches(agg, r.req));
+		if (recipe && recipe.minCraftLvl && player.craftLvl < recipe.minCraftLvl) {
+			ui.mixHint.textContent = 'You need Crafting level ' + recipe.minCraftLvl + ' to attempt this recipe.';
+			return;
+		}
 		if (!recipe) {
 			ui.mixHint.textContent = 'You mash it all together… nothing happens. Wrong combination.';
 			log('That combination makes nothing.', 'warn');

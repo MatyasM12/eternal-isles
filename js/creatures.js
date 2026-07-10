@@ -747,7 +747,7 @@ const CREATURE_DEFS = {
     },
 // ---- Eldenmere tier-6 creatures ----
     'Shadow Wraith': {
-        count: 3, hp: 8750, dmg: 180, speed: 4.5, hopper: false, aggro: 14, barW: 2.2, barY: 2.8, hitY: 1.4, level: 60, xp: 3200, tiers: [7], spawnInset: 10,
+        count: 7, hp: 8750, dmg: 180, speed: 4.5, hopper: false, aggro: 14, barW: 2.2, barY: 2.8, hitY: 1.4, level: 60, xp: 3200, tiers: [7], spawnInset: 10,
         drops: [
             {item: 'Shadow Essence', p: 1.00},
             {item: 'Ether Shard', p: 0.60},
@@ -783,7 +783,7 @@ const CREATURE_DEFS = {
         },
     },
     'Void Stalker': {
-        count: 3, hp: 7875, dmg: 200, speed: 5.2, hopper: false, aggro: 16, barW: 2.0, barY: 2.4, hitY: 1.2, level: 62, xp: 3500, tiers: [7], spawnInset: 10,
+        count: 7, hp: 7875, dmg: 200, speed: 5.2, hopper: false, aggro: 16, barW: 2.0, barY: 2.4, hitY: 1.2, level: 62, xp: 3500, tiers: [7], spawnInset: 10,
         drops: [
             {item: 'Void Fang', p: 1.00},
             {item: 'Voidstone', p: 0.70},
@@ -823,7 +823,7 @@ const CREATURE_DEFS = {
     },
 // Legendary deep-end creatures — spawn only at the far northern tip of Eldenmere
     'Infernal Titan': {
-        count: 2, hp: 24500, dmg: 320, speed: 1.8, hopper: false, aggro: 14, barW: 3.5, barY: 4.2, hitY: 2.0, level: 75, xp: 7500, tiers: [7], spawnInset: 8,
+        count: 4, hp: 24500, dmg: 320, speed: 1.8, hopper: false, aggro: 14, barW: 3.5, barY: 4.2, hitY: 2.0, level: 75, xp: 7500, tiers: [7], spawnInset: 8,
         spawnZone: {x: 0, z: -310, r: 28},
         drops: [
             {item: 'Infernal Ember', p: 1.00},
@@ -874,7 +874,7 @@ const CREATURE_DEFS = {
         },
     },
     'Void Colossus': {
-        count: 2, hp: 28000, dmg: 360, speed: 1.4, hopper: false, aggro: 12, barW: 4.0, barY: 4.8, hitY: 2.2, level: 80, xp: 9000, tiers: [7], spawnInset: 8,
+        count: 3, hp: 28000, dmg: 360, speed: 1.4, hopper: false, aggro: 12, barW: 4.0, barY: 4.8, hitY: 2.2, level: 80, xp: 9000, tiers: [7], spawnInset: 8,
         spawnZone: {x: 0, z: -295, r: 22},
         drops: [
             {item: 'Void Relic', p: 1.00},
@@ -925,7 +925,7 @@ const CREATURE_DEFS = {
         },
     },
     'Ancient Golem': {
-        count: 2, hp: 14000, dmg: 150, speed: 2.2, hopper: false, aggro: 10, barW: 3.0, barY: 3.5, hitY: 1.8, level: 65, xp: 4500, tiers: [7], spawnInset: 12,
+        count: 5, hp: 14000, dmg: 150, speed: 2.2, hopper: false, aggro: 10, barW: 3.0, barY: 3.5, hitY: 1.8, level: 65, xp: 4500, tiers: [7], spawnInset: 12,
         drops: [
             {item: 'Ancient Core', p: 1.00},
             {item: 'Starstone', p: 0.80},
