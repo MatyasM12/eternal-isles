@@ -106,10 +106,10 @@ const SPELL_PROFILES = {
   'Frost Golem':    { meleeRange: 1.8, spellRange: [3.5, 22], spellInterval: [4.0, 6.0], color: 0x7dd3fc, dmgMult: 3.0, msg: '❄️ The Frost Golem launches an ice shard!' },
   'Lava Titan':     { meleeRange: 1.8, spellRange: [3.5, 22], spellInterval: [2.5, 4.0], color: 0xff4400, dmgMult: 3.2, msg: '🌋 The Lava Titan spews a lava ball!' },
   'Shadow Wraith':  { meleeRange: 1.8, spellRange: [3.5, 22], spellInterval: [2.0, 3.5], color: 0x6600cc, dmgMult: 3.2, msg: '🌑 The Shadow Wraith fires a shadow bolt!' },
-  'Void Stalker':   { meleeRange: 1.8, spellRange: [3.5, 22], spellInterval: [2.0, 3.5], color: 0x330066, dmgMult: 3.3, msg: '🌀 The Void Stalker launches a void lance!' },
+  'Void Stalker':   { meleeRange: 1.8, spellRange: [3.5, 22], spellInterval: [2.0, 3.5], color: 0x330066, dmgMult: 1.8, msg: '🌀 The Void Stalker launches a void lance!' },
   'Ancient Golem':  { meleeRange: 1.8, spellRange: [3.5, 22], spellInterval: [2.5, 4.0], color: 0x7c6a3b, dmgMult: 3.1, msg: '🗿 The Ancient Golem sends a shockwave!' },
-  'Infernal Titan': { meleeRange: 1.8, spellRange: [3.5, 22], spellInterval: [1.8, 3.0], color: 0xff1100, dmgMult: 3.4, msg: '🔥 The Infernal Titan unleashes an inferno burst!' },
-  'Void Colossus':  { meleeRange: 1.8, spellRange: [3.5, 22], spellInterval: [1.5, 2.8], color: 0x220044, dmgMult: 3.5, msg: '💀 The Void Colossus fires a void pulse!' },
+  'Infernal Titan': { meleeRange: 1.8, spellRange: [3.5, 22], spellInterval: [1.8, 3.0], color: 0xff1100, dmgMult: 2.0, msg: '🔥 The Infernal Titan unleashes an inferno burst!' },
+  'Void Colossus':  { meleeRange: 1.8, spellRange: [3.5, 22], spellInterval: [1.5, 2.8], color: 0x220044, dmgMult: 1.9, msg: '💀 The Void Colossus fires a void pulse!' },
 };
 function _randRange(lo, hi) { return lo + Math.random() * (hi - lo); }
 
@@ -213,6 +213,9 @@ function _aiTick() {
           c.state = 'combat';
           c.targetSocketId = nearest;
           c.attackTimer = 1.6;
+          // pre-initialize spellTimer so the creature fires immediately on first interval
+          const _sp = SPELL_PROFILES[c.name];
+          if (_sp) c.spellTimer = _randRange(_sp.spellInterval[0], _sp.spellInterval[1]);
         }
       }
 
@@ -267,8 +270,8 @@ function _aiTick() {
           if (walkable(nx, nz)) { c.x = nx; c.z = nz; }
         }
 
-        // melee attack
-        if (dist <= meleeRange + 1.0) {
+        // melee attack — use meleeRange directly (no +1 gap that could skip attacks)
+        if (dist <= meleeRange) {
           c.attackTimer -= AI_DT;
           if (c.attackTimer <= 0) {
             c.attackTimer = 1.6 + Math.random() * 0.4;
@@ -277,8 +280,8 @@ function _aiTick() {
         }
 
         // spell attack (spellcasters only)
+        // spellTimer is initialized when entering combat (see above); never lazy
         if (sp && dist >= sp.spellRange[0] && dist <= sp.spellRange[1]) {
-          if (c.spellTimer === undefined) c.spellTimer = _randRange(sp.spellInterval[0], sp.spellInterval[1]);
           c.spellTimer -= AI_DT;
           if (c.spellTimer <= 0) {
             c.spellTimer = _randRange(sp.spellInterval[0], sp.spellInterval[1]);
@@ -473,19 +476,126 @@ io.on('connection', (socket) => {
     const p = onlinePlayers.get(socket.id);
     if (!p) return;
     try {
+      // --- server-side save validation (prevent stat hacking) ---
+      const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v || lo));
+      const intClamp = (v, lo, hi) => Math.round(clamp(v, lo, hi));
+
+      // Fetch the current DB record so we can enforce monotonic-only increases
+      const current = await Player.findOne({ username: p.username }).lean();
+      if (!current) return;
+
+      // Levels may only go UP and no higher than 100
+      const atkLvl   = intClamp(data.atkLvl,   current.atkLvl  || 1, 100);
+      const defLvl   = intClamp(data.defLvl,   current.defLvl  || 1, 100);
+      const craftLvl = intClamp(data.craftLvl, current.craftLvl|| 1, 100);
+
+      // XP must be non-negative and below the theoretical xp-for-next-level
+      const xpForLevel = l => Math.floor(40 * Math.pow(1.28, l - 1));
+      const atkXp   = clamp(data.atkXp,   0, xpForLevel(atkLvl)   - 1);
+      const defXp   = clamp(data.defXp,   0, xpForLevel(defLvl)   - 1);
+      const craftXp = clamp(data.craftXp, 0, xpForLevel(craftLvl) - 1);
+
+      // HP must be within [0, maxhp]; maxhp is derived from gear so allow a
+      // generous range but cap at a hard maximum
+      const maxhp = intClamp(data.maxhp, 50, 2000);
+      const hp    = intClamp(data.hp,     0, maxhp);
+
+      // Talents: only allow known IDs with rank in [0, maxRank]
+      const VALID_TALENTS = {
+        fire_active:8, fire_passive:8, fire_backdraft:5, fire_wildfire:5,
+        fire_cremation:5, fire_fireball:5, fire_inferno:5, fire_flame_wall:5,
+        fire_magma_shell:5, fire_pyroclasm:5, fire_phoenix_mark:5,
+        lightning_active:8, lightning_passive:8, lightning_conductor:5,
+        lightning_aftershock:5, lightning_static_aura:5, lightning_strike:5,
+        lightning_storm:5, lightning_chain:5, lightning_discharge:5,
+        lightning_overload:5, lightning_ball:5,
+        ice_active:8, ice_passive:8, ice_shield:8, ice_brittle:5,
+        ice_shatter:5, ice_lance:5, ice_blizzard:5, ice_frost_nova:5,
+        ice_glacial_armor:5, ice_cold_snap:5, ice_permafrost:5,
+        spirit_active:8, spirit_passive:8, spirit_hot:8, spirit_siphon:5,
+        spirit_fortitude:5, spirit_healing_surge:5, spirit_soul_leech:5,
+        spirit_spirit_walk:5, spirit_resurrection_mark:5, spirit_aegis:5,
+        fire_crit:5, lightning_crit:5, ice_crit:5, spirit_crit:5,
+      };
+      const talentTotalCost = rank => { let n = 0; for (let r = 1; r <= rank; r++) n += Math.min(r, 5); return n; };
+      const maxTalentPoints = (atkLvl - 1) + (defLvl - 1);
+      const talents = {};
+      let spentTotal = 0;
+      if (data.talents && typeof data.talents === 'object') {
+        for (const [id, rank] of Object.entries(data.talents)) {
+          const maxRank = VALID_TALENTS[id];
+          if (!maxRank) continue; // unknown talent id — drop it
+          const r = intClamp(rank, 0, maxRank);
+          if (r > 0) { talents[id] = r; spentTotal += talentTotalCost(r); }
+        }
+      }
+      // If client somehow spent more points than they earned, scale back
+      // (simplest safe approach: if over budget, strip the save; it'll re-sync on reload)
+      if (spentTotal > maxTalentPoints) {
+        console.warn(`[save] ${p.username} talent overspend (${spentTotal}>${maxTalentPoints}) — keeping DB talents`);
+        Object.assign(talents, current.talents || {});
+      }
+
+      // Inventory: allow only known item names and reasonable stack sizes
+      const VALID_ITEMS = new Set([
+        'Wood','Bark','Iron Ore','Coal','Gold Ore','Stone','Clay','Bone',
+        'Leather Hide','Beaver Fur','Wolf Pelt','Scale','Fiber','Vines',
+        'Flower','Root','Herb','Mushroom','Acorn','Pine Cone','Lily Pad',
+        'Crimson Berry','Shadow Seed','Aether Crystal','Starleaf',
+        'Iron Bar','Gold Bar','Steel Bar','Troll Bone',
+        'Wood Staff','Iron Staff','Gold Staff','Steel Staff','Troll Staff','Aether Staff',
+        'Wood Shield','Iron Shield','Gold Shield','Steel Shield','Troll Shield','Aether Shield',
+        'Leather Vest','Iron Vest','Gold Vest','Steel Vest','Troll Vest','Aether Vest',
+        'Leather Legs','Iron Legs','Gold Legs','Steel Legs','Troll Legs','Aether Legs',
+        'Leather Boots','Iron Boots','Gold Boots','Steel Boots','Troll Boots','Aether Boots',
+        'Healing Potion','Mana Potion','Strength Potion','Defense Potion',
+        'Silver Ring','Gold Ring','Platinum Ring','Iron Medallion','Gold Medallion','Aether Medallion',
+        'Void Essence','Voidstone','Void Fang','Void Relic','Void Core',
+        'Firefly Wing','Snake Venom','Bear Claw','Wolf Tooth','Troll Hide',
+        'Dragon Scale','Dragon Claw','Dragon Eye','Dragon Heart',
+        'Cave Worm Slime','Cave Worm Fang','Worm Acid Flask',
+        'Fire Essence','Frost Shard','Storm Crystal','Spirit Dust',
+      ]);
+      const inventory = [];
+      if (Array.isArray(data.inventory)) {
+        for (let i = 0; i < Math.min(data.inventory.length, 30); i++) {
+          const slot = data.inventory[i];
+          if (!slot) { inventory.push(null); continue; }
+          if (VALID_ITEMS.has(slot.item) && Number.isInteger(slot.count) && slot.count > 0 && slot.count <= 9999) {
+            inventory.push({ item: slot.item, count: slot.count });
+          } else {
+            console.warn(`[save] ${p.username} invalid item slot ${i}: ${JSON.stringify(slot)}`);
+            inventory.push(null);
+          }
+        }
+      }
+
+      // Equip: only known slots and known items
+      const EQUIP_SLOTS = ['weapon','head','chest','legs','feet','ring','medallion'];
+      const equip = {};
+      if (data.equip && typeof data.equip === 'object') {
+        for (const slot of EQUIP_SLOTS) {
+          const item = data.equip[slot];
+          if (item && VALID_ITEMS.has(item)) equip[slot] = item;
+        }
+      }
+
+      // Hotbar: only known talent IDs or null
+      const hotbar = [];
+      if (Array.isArray(data.hotbar)) {
+        for (let i = 0; i < 5; i++) {
+          const v = data.hotbar[i];
+          hotbar.push(v && VALID_TALENTS[v] ? v : null);
+        }
+      }
+
       await Player.updateOne(
         { username: p.username },
         {
           $set: {
-            hp: data.hp, maxhp: data.maxhp,
-            atkLvl: data.atkLvl, atkXp: data.atkXp,
-            defLvl: data.defLvl, defXp: data.defXp,
-            craftLvl: data.craftLvl, craftXp: data.craftXp,
-            dragonKilled: data.dragonKilled,
-            inventory: data.inventory,
-            equip: data.equip,
-            talents: data.talents,
-            hotbar: data.hotbar,
+            hp, maxhp, atkLvl, atkXp, defLvl, defXp, craftLvl, craftXp,
+            dragonKilled: !!data.dragonKilled,
+            inventory, equip, talents, hotbar,
           },
         }
       );

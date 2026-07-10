@@ -740,7 +740,12 @@ async function _handleAuthClick() {
     }
 
     _loggedInAs = res.save ? res.save.username : username.trim();
-    if (res.save) _applySave(res.save);
+    if (res.save) {
+      // Clear stale localStorage so beginGame()'s loadGame() doesn't overwrite server data
+      if (typeof clearSave === 'function') clearSave();
+      _applySave(res.save);
+      window._serverSaveApplied = true;
+    }
     _connectSocket(_loggedInAs);
     beginGame();
 

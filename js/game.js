@@ -991,6 +991,7 @@
 		'Dragon Bone':      { icon: '🦴', type: 'material', desc: 'Dense bone that glows faintly red.' },
 		'Quartz Ore':       { icon: '💜', type: 'material', desc: 'A violet crystal ore.' },
 		'Gold Ore':         { icon: '🌕', type: 'material', desc: 'Rich golden ore — smelt into gold bars.' },
+		'Gold Coin':        { icon: '🪙', type: 'material', desc: 'A gleaming coin — a sign of the creature\'s wealth.' },
 		'Titanium Ore':     { icon: '🔷', type: 'material', desc: 'Heavy blue-grey ore from the deepest islands.' },
 		// ---- crafted reagents (intermediate) ----
 		'Fire Essence':     { icon: '🔥', type: 'reagent', desc: 'Bottled flame — smelts ores into bars.' },
@@ -1855,8 +1856,17 @@
 	// XP curve + level helpers ---------------------------------------------------
 	function xpForLevel(l) { return Math.floor(40 * Math.pow(1.28, l - 1)); }
 	function combatLevel() { return (player.atkLvl + player.defLvl) / 2; }
-	function playerBaseAtk() { return 2 + player.atkLvl; }   // lvl 1 → 3
+	function playerBaseAtk() { return Math.round(3 * Math.pow(1.09, player.atkLvl - 1)); }   // lvl 1 → 3, exponential curve
 	function playerBaseDef() { return player.defLvl - 1; }   // lvl 1 → 0
+	function playerCritChance(school) {
+		let chance = 0.08;
+		if (school) {
+			const critId = school + '_crit';
+			const r = talentRank(critId);
+			if (r > 0) chance += [0, 0.04, 0.07, 0.11, 0.15, 0.20][r];
+		}
+		return chance;
+	}
 
 	// ------------------------------------------------------------------ talent definitions
 	// Each talent has up to 3 ranks. player.talents[id] = rank (0 = not learned).
@@ -1953,10 +1963,17 @@
 						'Heal 70 HP at 25% HP threshold.',
 						'Heal 100 HP at 25% HP threshold.',
 						'Heal 140 HP at 30% HP threshold — the phoenix rises!'] },
-			]
-		},
-		{
-			id: 'lightning', name: 'Lightning', icon: '⚡', color: '#facc15', borderColor: 'border-yellow-400/40', bgColor: 'bg-yellow-400/10',
+				{ id: 'fire_crit', name: 'Scorching Precision', type: 'passive', icon: '🎯', maxRank: 5,
+					rankDescs: ['',
+						'+4% critical strike chance for fire attacks and spells.',
+						'+7% critical strike chance for fire attacks and spells.',
+						'+11% critical strike chance for fire attacks and spells.',
+						'+15% critical strike chance for fire attacks and spells.',
+						'+20% critical strike chance for fire attacks and spells — LEGENDARY: every blow is lethal!'] },
+		]
+	},
+	{
+		id: 'lightning', name: 'Lightning', icon: '⚡', color: '#facc15', borderColor: 'border-yellow-400/40', bgColor: 'bg-yellow-400/10',
 			talents: [
 				{ id: 'lightning_active', name: 'Static Charge', type: 'active', icon: '⚡', maxRank: 8,
 					cooldowns: [0, 14, 13, 12, 11, 10, 9, 8, 7],
@@ -2048,10 +2065,17 @@
 						'Orb pulses 20 dmg/s for 8s.',
 						'Orb pulses 28 dmg/s for 9s.',
 						'Orb pulses 38 dmg/s for 10s — LEGENDARY: a storm contained in a sphere!'] },
-			]
-		},
-		{
-			id: 'ice', name: 'Ice', icon: '❄️', color: '#7dd3fc', borderColor: 'border-sky-400/40', bgColor: 'bg-sky-400/10',
+				{ id: 'lightning_crit', name: 'Galvanized Strike', type: 'passive', icon: '🎯', maxRank: 5,
+					rankDescs: ['',
+						'+4% critical strike chance for lightning attacks and spells.',
+						'+7% critical strike chance for lightning attacks and spells.',
+						'+11% critical strike chance for lightning attacks and spells.',
+						'+15% critical strike chance for lightning attacks and spells.',
+						'+20% critical strike chance for lightning attacks and spells — LEGENDARY: thunder without mercy!'] },
+		]
+	},
+	{
+		id: 'ice', name: 'Ice', icon: '❄️', color: '#7dd3fc', borderColor: 'border-sky-400/40', bgColor: 'bg-sky-400/10',
 			talents: [
 				{ id: 'ice_active', name: 'Frost Edge', type: 'active', icon: '❄️', maxRank: 8,
 					cooldowns: [0, 14, 13, 12, 11, 10, 9, 8, 7],
@@ -2146,10 +2170,17 @@
 						'Ice patch also deals 5 dmg/s to enemies standing on it.',
 						'Patch deals 9 dmg/s, radius 7 units.',
 						'Patch deals 14 dmg/s, lasts 15s — the ground never thaws!'] },
-			]
-		},
-		{
-			id: 'spirit', name: 'Spirit', icon: '💚', color: '#86efac', borderColor: 'border-green-400/40', bgColor: 'bg-green-400/10',
+				{ id: 'ice_crit', name: 'Frozen Precision', type: 'passive', icon: '🎯', maxRank: 5,
+					rankDescs: ['',
+						'+4% critical strike chance for ice attacks and spells.',
+						'+7% critical strike chance for ice attacks and spells.',
+						'+11% critical strike chance for ice attacks and spells.',
+						'+15% critical strike chance for ice attacks and spells.',
+						'+20% critical strike chance for ice attacks and spells — LEGENDARY: ice pierces any defence!'] },
+		]
+	},
+	{
+		id: 'spirit', name: 'Spirit', icon: '💚', color: '#86efac', borderColor: 'border-green-400/40', bgColor: 'bg-green-400/10',
 			talents: [
 				{ id: 'spirit_active', name: 'Mend', type: 'active', icon: '💚', maxRank: 8,
 					cooldowns: [0, 18, 16, 15, 13, 12, 10, 9, 8],
@@ -2236,9 +2267,16 @@
 						'Shield absorbs 135 damage for 12s.',
 						'Shield absorbs 185 damage for 12s.',
 						'Shield absorbs 240 damage for 15s — LEGENDARY: the spirit protects absolutely!'] },
-			]
-		},
-	];
+				{ id: 'spirit_crit', name: 'Divine Touch', type: 'passive', icon: '🎯', maxRank: 5,
+					rankDescs: ['',
+						'+4% critical strike chance for spirit spells and heals.',
+						'+7% critical strike chance for spirit spells and heals.',
+						'+11% critical strike chance for spirit spells and heals.',
+						'+15% critical strike chance for spirit spells and heals.',
+						'+20% critical strike chance for spirit spells and heals — LEGENDARY: every touch is divine!'] },
+		]
+	},
+];
 
 	// prerequisite chain: talent N requires rank >= 1 in the talent listed here
 	const TALENT_PREREQS = {
@@ -2281,6 +2319,10 @@
 		spirit_spirit_walk:      'spirit_soul_leech',
 		spirit_resurrection_mark:'spirit_hot',
 		spirit_aegis:            'spirit_fortitude',
+		fire_crit:               'fire_passive',
+		lightning_crit:          'lightning_passive',
+		ice_crit:                'ice_passive',
+		spirit_crit:             'spirit_passive',
 	};
 
 	function getTalentDef(id) {
@@ -2302,10 +2344,31 @@
 		return n;
 	}
 	function talentPointsAvailable() { return Math.max(0, talentPointsEarned() - talentPointsSpent()); }
+	// minimum rank needed in the prereq talent (default 1, chain talents need more)
+	const TALENT_PREREQ_RANK = {
+		// fire chain — require 2 ranks in previous before going deeper
+		fire_backdraft: 2, fire_wildfire: 2, fire_cremation: 2,
+		fire_fireball: 3, fire_inferno: 3, fire_flame_wall: 3, fire_magma_shell: 3,
+		fire_pyroclasm: 2, fire_phoenix_mark: 2,
+		// lightning chain
+		lightning_conductor: 2, lightning_aftershock: 2, lightning_static_aura: 2,
+		lightning_strike: 3, lightning_storm: 3, lightning_chain: 3,
+		lightning_discharge: 3, lightning_overload: 2, lightning_ball: 3,
+		// ice chain
+		ice_shield: 2, ice_brittle: 2, ice_shatter: 2,
+		ice_lance: 3, ice_blizzard: 3, ice_frost_nova: 3, ice_glacial_armor: 3,
+		ice_cold_snap: 2, ice_permafrost: 2,
+		// spirit chain
+		spirit_hot: 2, spirit_siphon: 2, spirit_fortitude: 2,
+		spirit_healing_surge: 3, spirit_soul_leech: 3, spirit_spirit_walk: 3,
+		spirit_resurrection_mark: 2, spirit_aegis: 2,
+		// crit branches — only rank 1 needed (easy entry)
+	};
 	function talentPrereqMet(id) {
 		const prereq = TALENT_PREREQS[id];
 		if (!prereq) return true;
-		return talentRank(prereq) >= 1;
+		const required = TALENT_PREREQ_RANK[id] || 1;
+		return talentRank(prereq) >= required;
 	}
 
 	// ------------------------------------------------------------------ skill activation
@@ -2357,21 +2420,35 @@
 			if (typeof netCastEffect === 'function') netCastEffect(0x7dd3fc, { ring: true, spark: true, radius: 2.4 });
 			log('🧊 Frost Ward (Rank ' + rank + '): Ice encases you — +' + bonus + ' armor for ' + dur + ' seconds.', 'craft');
 		} else if (id === 'spirit_active') {
-			const heal = Math.ceil(player.maxhp * [0, 0.12, 0.20, 0.28, 0.38, 0.50, 0.65, 0.82, 1.0][rank]);
+			let heal = Math.ceil(player.maxhp * [0, 0.12, 0.20, 0.28, 0.38, 0.50, 0.65, 0.82, 1.0][rank]);
+			let critHeal = false;
+			if (Math.random() < playerCritChance('spirit')) { heal = Math.floor(heal * 1.5); critHeal = true; }
 			player.hp = Math.min(player.maxhp, player.hp + heal);
 			setBar(player.bar, player.hp / player.maxhp, player.hp, player.maxhp); refreshHpUI();
-			floatText('+' + heal + ' HP', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#86efac', 1.0);
+			if (critHeal) {
+				floatText('CRITICAL +' + heal + ' HP!', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#4ade80', 1.2);
+				log('💚 CRITICAL Mend (Rank ' + rank + '): You recover ' + heal + ' HP!', 'craft');
+			} else {
+				floatText('+' + heal + ' HP', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#86efac', 1.0);
+				log('💚 Mend (Rank ' + rank + '): You recover ' + heal + ' HP.', 'craft');
+			}
 			if (typeof netCastEffect === 'function') netCastEffect(0x86efac, { spark: true });
-			log('💚 Mend (Rank ' + rank + '): You recover ' + heal + ' HP.', 'craft');
 		} else if (id === 'spirit_hot') {
-			const hp  = Math.ceil(player.maxhp * [0, 0.10, 0.17, 0.25, 0.35, 0.48, 0.63, 0.80, 1.0][rank]);
+			let hp  = Math.ceil(player.maxhp * [0, 0.10, 0.17, 0.25, 0.35, 0.48, 0.63, 0.80, 1.0][rank]);
 			const dur = [0, 10, 12, 14, 16, 18, 20, 22, 25][rank];
+			let critHeal = false;
+			if (Math.random() < playerCritChance('spirit')) { hp = Math.floor(hp * 1.5); critHeal = true; }
 			player.hotTimer = dur;
 			player.hotHealTotal = hp;
 			spawnSparkBurst(headPos(), 0x86efac, 16, 1.6, 3.0);
-			floatText('💚 Renewal +' + hp + 'hp', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#86efac', 1.0);
+			if (critHeal) {
+				floatText('CRITICAL 💚 Renewal +' + hp + 'hp!', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#4ade80', 1.2);
+				log('✨ CRITICAL Renewal (Rank ' + rank + '): A healing aura — ' + hp + ' HP over ' + dur + 's!', 'craft');
+			} else {
+				floatText('💚 Renewal +' + hp + 'hp', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#86efac', 1.0);
+				log('✨ Renewal (Rank ' + rank + '): A healing aura — ' + hp + ' HP over ' + dur + 's.', 'craft');
+			}
 			if (typeof netCastEffect === 'function') netCastEffect(0x86efac, { spark: true });
-			log('✨ Renewal (Rank ' + rank + '): A healing aura — ' + hp + ' HP over ' + dur + 's.', 'craft');
 		} else if (id === 'fire_fireball') {
 			player.fireballMode = true;
 			log('🔮 Fireball ready — click a creature to launch!', 'craft');
@@ -2844,17 +2921,24 @@
 			ls.timer -= dt;
 			if (ls.timer <= 0) {
 				ls.timer = ls.interval;
-				creatureTakeDamage(ls.creature, ls.damage);
-				floatText('⚡ ' + ls.damage, ls.creature.group.position.clone().add(new THREE.Vector3(0, 2.2, 0)), '#facc15', 1.0);
+				let lsDmg = ls.damage;
+				let lsCrit = false;
+				if (Math.random() < playerCritChance('lightning')) { lsDmg = Math.floor(lsDmg * 1.75); lsCrit = true; }
+				creatureTakeDamage(ls.creature, lsDmg);
+				if (lsCrit) {
+					floatText('CRIT! ⚡ ' + lsDmg, ls.creature.group.position.clone().add(new THREE.Vector3(0, 2.2, 0)), '#fde047', 1.3);
+				} else {
+					floatText('⚡ ' + lsDmg, ls.creature.group.position.clone().add(new THREE.Vector3(0, 2.2, 0)), '#facc15', 1.0);
+				}
 				spawnSparkBurst(ls.creature.group.position.clone(), 0xfacc15, 12, 2.0, 2.5);
 				spawnPillar(ls.creature.group.position.clone(), 0xfacc15, 0.6);
 				applyPassiveOnHit(ls.creature);
 				ls.hitsLeft--;
 				if (ls.hitsLeft <= 0) {
-					log('🗲 Lightning Strike: final bolt hits ' + ls.creature.name + '!', 'dmgOut');
+					log('🗲 Lightning Strike: final bolt hits ' + ls.creature.name + (lsCrit ? ' — CRITICAL!' : '') + '!', 'dmgOut');
 					player.lightningStrikes.splice(i, 1);
 				} else {
-					log('🗲 Lightning Strike: bolt hits ' + ls.creature.name + ' for ' + ls.damage + ' (' + ls.hitsLeft + ' remaining)!', 'dmgOut');
+					log('🗲 Lightning Strike: bolt hits ' + ls.creature.name + ' for ' + lsDmg + (lsCrit ? ' (CRIT!)' : '') + ' (' + ls.hitsLeft + ' remaining)!', 'dmgOut');
 				}
 			}
 		}
@@ -3154,6 +3238,7 @@
 		fire_magma_shell:  [80, 78],
 		fire_pyroclasm:    [56, 55],
 		fire_phoenix_mark: [68, 55],
+		fire_crit:         [20, 55],
 
 		// Lightning path
 		lightning_active:      [8,  30],
@@ -3167,6 +3252,7 @@
 		lightning_discharge:   [80, 78],
 		lightning_overload:    [32, 55],
 		lightning_ball:        [80, 8],
+		lightning_crit:        [20, 55],
 
 		// Ice path
 		ice_active:       [8,  30],
@@ -3180,6 +3266,7 @@
 		ice_glacial_armor:[80, 78],
 		ice_cold_snap:    [80, 8],
 		ice_permafrost:   [44, 55],
+		ice_crit:         [20, 55],
 
 		// Spirit path
 		spirit_active:           [8,  35],
@@ -3192,6 +3279,7 @@
 		spirit_spirit_walk:      [80, 60],
 		spirit_resurrection_mark:[32, 62],
 		spirit_aegis:            [56, 62],
+		spirit_crit:             [20, 62],
 	};
 
 	function renderTalentTree() {
@@ -3268,7 +3356,9 @@
 				html += '<div style="font-size:10px;color:#c4b5fd;line-height:1.4;margin-bottom:4px"><b>Rank ' + nr + ':</b> ' + talent.rankDescs[nr] + '</div>';
 				if (talent.type === 'active' && nr <= talent.maxRank) html += '<div style="font-size:10px;color:#6b7280;margin-bottom:6px">⏱ ' + talent.cooldowns[nr] + 's</div>';
 				if (!prereqMet) {
-					html += '<div style="font-size:10px;color:#ef4444;margin-top:6px">🔒 Requires: ' + (prereqTalent ? prereqTalent.name : prereqId) + '</div>';
+					const reqRank = TALENT_PREREQ_RANK[talent.id] || 1;
+					const prereqName = prereqTalent ? prereqTalent.name : (prereqId ? prereqId.replace(/_/g, ' ') : '');
+					html += '<div style="font-size:10px;color:#ef4444;margin-top:6px">🔒 Requires rank ' + reqRank + ' in ' + prereqName + '</div>';
 				} else {
 					const avail = talentPointsAvailable();
 					if (avail >= cost) {
@@ -3921,8 +4011,15 @@
 			floatText('❄️ +' + player.nextAttackIceBonus, headPos().add(new THREE.Vector3(0.5, 0.4, 0)), '#7dd3fc', 0.9);
 			player.nextAttackIceBonus = 0;
 		}
+		// critical hit check
+		if (Math.random() < playerCritChance('melee')) {
+			dmg = Math.floor(dmg * 1.75);
+			floatText('CRITICAL!', headPos().add(new THREE.Vector3(0, 1.2, 0)), '#fbbf24', 1.2);
+			log('CRITICAL HIT! You hit the ' + c.name + ' for ' + dmg + '.', 'dmgOut');
+		} else {
+			log('You hit the ' + c.name + ' for ' + dmg + '.', 'dmgOut');
+		}
 		creatureTakeDamage(c, dmg);
-		log('You hit the ' + c.name + ' for ' + dmg + '.', 'dmgOut');
 		if (c.state !== 'dead') grantXp('atk', Math.max(1, dmg * 0.4 * challengeFactor(c.def.level)));
 		if (c.state !== 'dead') applyPassiveOnHit(c);
 		player.parts.armR.rotation.x = -1.9;
@@ -3979,12 +4076,19 @@
 			}
 			if (dmg <= 0) return;
 		}
+		// creature critical hit (5% base)
+		if (Math.random() < 0.05) {
+			dmg = Math.floor(dmg * 1.75);
+			floatText('CRIT! -' + dmg, headPos(), '#f97316', 1.1);
+			log('CRITICAL! The ' + c.name + ' lands a critical hit for ' + dmg + '!', 'dmgIn');
+		} else {
+			floatText('-' + dmg, headPos(), '#fb923c');
+			log('The ' + c.name + ' hits you for ' + dmg + '.', 'dmgIn');
+		}
 		player.hp -= dmg;
 		player.lastHurt = elapsed;
 		setBar(player.bar, player.hp / player.maxhp, player.hp, player.maxhp);
 		refreshHpUI();
-		floatText('-' + dmg, headPos(), '#fb923c');
-		log('The ' + c.name + ' hits you for ' + dmg + '.', 'dmgIn');
 		if (player.hp <= 0) { playerDeath(); return; }
 		// taking hits trains defense — must check death BEFORE granting XP, because
 		// a Defense level-up in onLevelUp restores HP to full, masking a lethal blow
@@ -4867,7 +4971,9 @@
 		if (!nm) nm = 'Adventurer';
 		nm = nm.slice(0, 16).replace(/[<>]/g, '');
 		player.name = nm;
-		const hasSave = loadGame();
+		// Skip localStorage if server already populated player data (multiplayer login)
+		const hasSave = window._serverSaveApplied ? true : loadGame();
+		window._serverSaveApplied = false;
 		if (hasSave) {
 			nm = player.name;
 			refreshStatsUI();
@@ -5097,14 +5203,22 @@
 				scene.remove(fb.mesh);
 				player.iceLances.splice(i, 1);
 				if (fb.target.state !== 'dead') {
-					creatureTakeDamage(fb.target, fb.damage);
-					floatText('🧊 ' + fb.damage, fb.target.group.position.clone().add(new THREE.Vector3(0, 2.2, 0)), '#7dd3fc', 1.1);
+					let lcDmg = fb.damage;
+					let lcCrit = false;
+					if (Math.random() < playerCritChance('ice')) { lcDmg = Math.floor(lcDmg * 1.75); lcCrit = true; }
+					creatureTakeDamage(fb.target, lcDmg);
+					if (lcCrit) {
+						floatText('CRIT! ❄️ ' + lcDmg, fb.target.group.position.clone().add(new THREE.Vector3(0, 2.2, 0)), '#38bdf8', 1.3);
+						log('CRITICAL! ❄️ Ice Lance critically hit ' + fb.target.name + ' for ' + lcDmg + '!', 'dmgOut');
+					} else {
+						floatText('🧊 ' + lcDmg, fb.target.group.position.clone().add(new THREE.Vector3(0, 2.2, 0)), '#7dd3fc', 1.1);
+						log('❄️ Ice Lance froze ' + fb.target.name + ' for 3 turns!', 'dmgOut');
+					}
 					spawnSparkBurst(fb.target.group.position.clone(), 0xaaddff, 12, 2.0, 2.5);
 					// freeze for 3 turns
 					const existingFreeze = player.iceFreeze.find(f => f.creature === fb.target);
 					if (existingFreeze) { existingFreeze.turnsLeft = Math.max(existingFreeze.turnsLeft, 3); }
 					else { player.iceFreeze.push({ creature: fb.target, turnsLeft: 3 }); }
-					log('❄️ Ice Lance: froze ' + fb.target.name + ' for 3 turns!', 'dmgOut');
 					applyPassiveOnHit(fb.target);
 				}
 				continue;
@@ -5125,8 +5239,16 @@
 				scene.remove(fb.mesh);
 				player.fireballs.splice(i, 1);
 				if (fb.target.state !== 'dead') {
-					creatureTakeDamage(fb.target, fb.damage);
-					floatText('🔥 ' + fb.damage, fb.target.group.position.clone().add(new THREE.Vector3(0, 2.2, 0)), '#ff6b35', 1.1);
+					let fbDmg = fb.damage;
+					let fbCrit = false;
+					if (Math.random() < playerCritChance('fire')) { fbDmg = Math.floor(fbDmg * 1.75); fbCrit = true; }
+					creatureTakeDamage(fb.target, fbDmg);
+					if (fbCrit) {
+						floatText('CRIT! 🔥 ' + fbDmg, fb.target.group.position.clone().add(new THREE.Vector3(0, 2.2, 0)), '#f97316', 1.3);
+						log('CRITICAL! 🔥 Fireball critically hit ' + fb.target.name + ' for ' + fbDmg + '!', 'dmgOut');
+					} else {
+						floatText('🔥 ' + fbDmg, fb.target.group.position.clone().add(new THREE.Vector3(0, 2.2, 0)), '#ff6b35', 1.1);
+					}
 					// apply burn from Ember Touch
 					applyPassiveOnHit(fb.target);
 				}
@@ -5180,11 +5302,17 @@
 						if (player.aegisAbsorb <= 0) { player.aegisAbsorb = 0; player.aegisTimer = 0; log('🔮 Aegis shattered.', 'sys'); }
 					}
 					if (dmg > 0) {
+						if (Math.random() < 0.05) {
+							dmg = Math.floor(dmg * 1.75);
+							floatText('CRIT! -' + dmg, headPos(), '#f97316', 1.1);
+							log('CRITICAL! A projectile hits you for ' + dmg + '!', 'dmgIn');
+						} else {
+							floatText('-' + dmg, headPos(), '#c084fc');
+						}
 						player.hp -= dmg;
 						player.lastHurt = elapsed;
 						setBar(player.bar, player.hp / player.maxhp, player.hp, player.maxhp);
 						refreshHpUI();
-						floatText('-' + dmg, headPos(), '#c084fc');
 						if (player.hp <= 0) playerDeath();
 					}
 				}

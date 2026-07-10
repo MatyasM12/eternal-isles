@@ -3,7 +3,7 @@
 // ------------------------------------------------------------------ creatures
 const CREATURE_DEFS = {
 Rabbit: {
-count: 10, hp: 20, dmg: 3, speed: 2.6, hopper: true, aggro: 0, barW: 0.9, barY: 0.95, hitY: 0.6, level: 1, xp: 14, tiers: [0],
+count: 10, hp: 35, dmg: 3, speed: 2.6, hopper: true, aggro: 0, barW: 0.9, barY: 0.95, hitY: 0.6, level: 1, xp: 14, tiers: [0],
 drops: [{ item: 'Rabbit Fur', p: 1 }, { item: 'Raw Meat', p: 0.55 }, { item: 'Bones', p: 0.45 }],
 build() {
 const g = new THREE.Group();
@@ -26,7 +26,7 @@ return g;
 },
 },
 Beaver: {
-count: 5, hp: 34, dmg: 4, speed: 2.0, hopper: false, aggro: 0, barW: 1.0, barY: 1.0, hitY: 0.55, nearWater: true, level: 3, xp: 26, tiers: [0],
+count: 5, hp: 60, dmg: 4, speed: 2.0, hopper: false, aggro: 0, barW: 1.0, barY: 1.0, hitY: 0.55, nearWater: true, level: 3, xp: 26, tiers: [0],
 drops: [{ item: 'Beaver Fur', p: 1 }, { item: 'Raw Meat', p: 0.6 }, { item: 'Bones', p: 0.4 }],
 build() {
 const g = new THREE.Group();
@@ -49,7 +49,7 @@ return g;
 },
 },
 Deer: {
-count: 6, hp: 45, dmg: 6, speed: 3.4, hopper: false, aggro: 0, barW: 1.2, barY: 1.7, hitY: 1.1, level: 5, xp: 38, tiers: [1, 2],
+count: 6, hp: 79, dmg: 6, speed: 3.4, hopper: false, aggro: 0, barW: 1.2, barY: 1.7, hitY: 1.1, level: 5, xp: 38, tiers: [1, 2],
 drops: [{ item: 'Deer Fur', p: 1 }, { item: 'Deer Antlers', p: 0.7 }, { item: 'Bones', p: 0.6 }],
 build() {
 const g = new THREE.Group();
@@ -77,7 +77,7 @@ return g;
 },
 },
 Wolf: {
-count: 6, hp: 64, dmg: 9, speed: 4.0, hopper: false, aggro: 5.2, barW: 1.2, barY: 1.35, hitY: 0.8, level: 8, xp: 60, tiers: [1, 2],
+count: 6, hp: 112, dmg: 9, speed: 4.0, hopper: false, aggro: 5.2, barW: 1.2, barY: 1.35, hitY: 0.8, level: 8, xp: 60, tiers: [1, 2],
 drops: [{ item: 'Wolf Fur', p: 1 }, { item: 'Raw Meat', p: 0.7 }, { item: 'Bones', p: 0.6 }],
 build() {
 const g = new THREE.Group();
@@ -106,7 +106,7 @@ return g;
 },
 },
 Fox: {
-count: 7, hp: 28, dmg: 4, speed: 4.2, hopper: false, aggro: 0, barW: 1.0, barY: 1.05, hitY: 0.55, level: 2, xp: 22, tiers: [0],
+count: 7, hp: 49, dmg: 4, speed: 4.2, hopper: false, aggro: 0, barW: 1.0, barY: 1.05, hitY: 0.55, level: 2, xp: 22, tiers: [0],
 drops: [{ item: 'Fox Pelt', p: 1 }, { item: 'Raw Meat', p: 0.5 }, { item: 'Bones', p: 0.4 }],
 build() {
 const g = new THREE.Group();
@@ -135,7 +135,7 @@ return g;
 },
 },
 Boar: {
-count: 6, hp: 56, dmg: 7, speed: 3.2, hopper: false, aggro: 4.0, barW: 1.2, barY: 1.25, hitY: 0.7, level: 6, xp: 46, tiers: [1, 2],
+count: 6, hp: 98, dmg: 7, speed: 3.2, hopper: false, aggro: 4.0, barW: 1.2, barY: 1.25, hitY: 0.7, level: 6, xp: 46, tiers: [1, 2],
 drops: [{ item: 'Boar Tusk', p: 0.8 }, { item: 'Raw Meat', p: 0.75 }, { item: 'Bones', p: 0.6 }],
 build() {
 const g = new THREE.Group();
@@ -167,7 +167,7 @@ return g;
 },
 },
 Bear: {
-count: 5, hp: 98, dmg: 13, speed: 3.6, hopper: false, aggro: 5.5, barW: 1.4, barY: 1.7, hitY: 1.0, level: 11, xp: 95, tiers: [2],
+count: 5, hp: 172, dmg: 13, speed: 3.6, hopper: false, aggro: 5.5, barW: 1.4, barY: 1.7, hitY: 1.0, level: 11, xp: 95, tiers: [2],
 drops: [{ item: 'Bear Pelt', p: 1 }, { item: 'Bear Claw', p: 0.7 }, { item: 'Raw Meat', p: 0.8 }, { item: 'Bones', p: 0.7 }],
 build() {
 const g = new THREE.Group();
@@ -198,7 +198,7 @@ return g;
 },
 },
 Direwolf: {
-count: 5, hp: 155, dmg: 17, speed: 4.6, hopper: false, aggro: 6.5, barW: 1.5, barY: 1.6, hitY: 0.9, level: 13, xp: 140, tiers: [2, 3],
+count: 5, hp: 271, dmg: 17, speed: 4.6, hopper: false, aggro: 6.5, barW: 1.5, barY: 1.6, hitY: 0.9, level: 13, xp: 140, tiers: [2, 3],
 drops: [{ item: 'Dire Pelt', p: 1 }, { item: 'Wolf Fur', p: 0.7 }, { item: 'Raw Meat', p: 0.7 }, { item: 'Bones', p: 0.6 }],
 build() {
 const g = new THREE.Group();
@@ -228,7 +228,7 @@ return g;
 },
 },
 'Giant Spider': {
-count: 6, hp: 200, dmg: 21, speed: 4.0, hopper: false, aggro: 6.0, barW: 1.6, barY: 1.2, hitY: 0.6, level: 15, xp: 175, tiers: [3, 4],
+count: 6, hp: 350, dmg: 21, speed: 4.0, hopper: false, aggro: 6.0, barW: 1.6, barY: 1.2, hitY: 0.6, level: 15, xp: 175, tiers: [3, 4],
 drops: [{ item: 'Spider Silk', p: 1 }, { item: 'Venom Gland', p: 0.75 }, { item: 'Bones', p: 0.5 }],
 build() {
 const g = new THREE.Group();
@@ -255,7 +255,7 @@ return g;
 },
 },
 'Cave Troll': {
-count: 5, hp: 310, dmg: 28, speed: 2.8, hopper: false, aggro: 6.0, barW: 1.9, barY: 2.5, hitY: 1.4, level: 18, xp: 240, tiers: [3, 4],
+count: 5, hp: 543, dmg: 28, speed: 2.8, hopper: false, aggro: 6.0, barW: 1.9, barY: 2.5, hitY: 1.4, level: 18, xp: 240, tiers: [3, 4],
 drops: [{ item: 'Troll Hide', p: 1 }, { item: 'Bones', p: 0.8 }, { item: 'Bear Claw', p: 0.5 }, { item: 'Raw Meat', p: 0.7 }],
 build() {
 const g = new THREE.Group();
@@ -281,7 +281,7 @@ return g;
 },
 },
 Wyvern: {
-count: 4, hp: 420, dmg: 37, speed: 4.4, hopper: false, aggro: 7.5, barW: 2.1, barY: 2.2, hitY: 1.2, level: 22, xp: 330, tiers: [4],
+count: 4, hp: 735, dmg: 37, speed: 4.4, hopper: false, aggro: 7.5, barW: 2.1, barY: 2.2, hitY: 1.2, level: 22, xp: 330, tiers: [4],
 drops: [{ item: 'Wyvern Scale', p: 1 }, { item: 'Bones', p: 0.8 }, { item: 'Raw Meat', p: 0.8 }],
 build() {
 const g = new THREE.Group();
@@ -307,7 +307,7 @@ return g;
 },
 },
 'Frost Golem': {
-count: 4, hp: 590, dmg: 48, speed: 2.4, hopper: false, aggro: 7.0, barW: 2.3, barY: 2.9, hitY: 1.6, level: 26, xp: 460, tiers: [4],
+count: 4, hp: 1033, dmg: 48, speed: 2.4, hopper: false, aggro: 7.0, barW: 2.3, barY: 2.9, hitY: 1.6, level: 26, xp: 460, tiers: [4],
 drops: [{ item: 'Golem Core', p: 1 }, { item: 'Silver Ore', p: 0.7 }, { item: 'Bones', p: 0.6 }],
 build() {
 const g = new THREE.Group();
@@ -330,7 +330,7 @@ return g;
 },
 },
 Dragon: {
-count: 1, hp: 3600, dmg: 135, speed: 3.2, hopper: false, aggro: 12, barW: 3.2, barY: 3.8, hitY: 2.0, level: 50, xp: 2000, tiers: [6], spawnInset: 2,
+count: 1, hp: 6300, dmg: 135, speed: 3.2, hopper: false, aggro: 12, barW: 3.2, barY: 3.8, hitY: 2.0, level: 50, xp: 2000, tiers: [6], spawnInset: 2,
 drops: [
 { item: 'Dragon Scale', p: 1 },
 { item: 'Dragon Bone',  p: 1 },
@@ -396,7 +396,7 @@ return g;
 },
 // ---- Dragon's Lair bridging creatures (tier 5) ----
 Wyvern: {
-count: 4, hp: 800, dmg: 55, speed: 4.0, hopper: false, aggro: 8, barW: 2.0, barY: 2.2, hitY: 1.2, level: 30, xp: 520, tiers: [5],
+count: 4, hp: 1400, dmg: 55, speed: 4.0, hopper: false, aggro: 8, barW: 2.0, barY: 2.2, hitY: 1.2, level: 30, xp: 520, tiers: [5],
 drops: [
 { item: 'Raw Meat',    p: 1.00 },
 { item: 'Dragon Scale', p: 0.30 },
@@ -441,7 +441,7 @@ return g;
 },
 },
 'Lava Titan': {
-count: 3, hp: 1600, dmg: 85, speed: 2.6, hopper: false, aggro: 9, barW: 2.4, barY: 3.0, hitY: 1.6, level: 38, xp: 900, tiers: [5],
+count: 3, hp: 2800, dmg: 85, speed: 2.6, hopper: false, aggro: 9, barW: 2.4, barY: 3.0, hitY: 1.6, level: 38, xp: 900, tiers: [5],
 drops: [
 { item: 'Raw Meat',     p: 0.60 },
 { item: 'Titanium Ore', p: 0.80 },
@@ -498,7 +498,7 @@ return g;
 },
 // ---- Eldenmere tier-6 creatures ----
 'Shadow Wraith': {
-count: 3, hp: 5000, dmg: 180, speed: 4.5, hopper: false, aggro: 14, barW: 2.2, barY: 2.8, hitY: 1.4, level: 60, xp: 3200, tiers: [7], spawnInset: 10,
+count: 3, hp: 8750, dmg: 180, speed: 4.5, hopper: false, aggro: 14, barW: 2.2, barY: 2.8, hitY: 1.4, level: 60, xp: 3200, tiers: [7], spawnInset: 10,
 drops: [
 { item: 'Shadow Essence', p: 1.00 },
 { item: 'Ether Shard',    p: 0.60 },
@@ -526,7 +526,7 @@ return g;
 },
 },
 'Void Stalker': {
-count: 3, hp: 4500, dmg: 200, speed: 5.2, hopper: false, aggro: 16, barW: 2.0, barY: 2.4, hitY: 1.2, level: 62, xp: 3500, tiers: [7], spawnInset: 10,
+count: 3, hp: 7875, dmg: 200, speed: 5.2, hopper: false, aggro: 16, barW: 2.0, barY: 2.4, hitY: 1.2, level: 62, xp: 3500, tiers: [7], spawnInset: 10,
 drops: [
 { item: 'Void Fang',      p: 1.00 },
 { item: 'Voidstone',      p: 0.70 },
@@ -556,7 +556,7 @@ return g;
 },
 // Legendary deep-end creatures — spawn only at the far northern tip of Eldenmere
 'Infernal Titan': {
-count: 2, hp: 14000, dmg: 320, speed: 1.8, hopper: false, aggro: 14, barW: 3.5, barY: 4.2, hitY: 2.0, level: 75, xp: 7500, tiers: [7], spawnInset: 8,
+count: 2, hp: 24500, dmg: 320, speed: 1.8, hopper: false, aggro: 14, barW: 3.5, barY: 4.2, hitY: 2.0, level: 75, xp: 7500, tiers: [7], spawnInset: 8,
 spawnZone: { x: 0, z: -310, r: 28 },
 drops: [
 { item: 'Infernal Ember', p: 1.00 },
@@ -595,7 +595,7 @@ return g;
 },
 },
 'Void Colossus': {
-count: 2, hp: 16000, dmg: 360, speed: 1.4, hopper: false, aggro: 12, barW: 4.0, barY: 4.8, hitY: 2.2, level: 80, xp: 9000, tiers: [7], spawnInset: 8,
+count: 2, hp: 28000, dmg: 360, speed: 1.4, hopper: false, aggro: 12, barW: 4.0, barY: 4.8, hitY: 2.2, level: 80, xp: 9000, tiers: [7], spawnInset: 8,
 spawnZone: { x: 0, z: -295, r: 22 },
 drops: [
 { item: 'Void Relic',     p: 1.00 },
@@ -632,7 +632,7 @@ return g;
 },
 },
 'Ancient Golem': {
-count: 2, hp: 8000, dmg: 150, speed: 2.2, hopper: false, aggro: 10, barW: 3.0, barY: 3.5, hitY: 1.8, level: 65, xp: 4500, tiers: [7], spawnInset: 12,
+count: 2, hp: 14000, dmg: 150, speed: 2.2, hopper: false, aggro: 10, barW: 3.0, barY: 3.5, hitY: 1.8, level: 65, xp: 4500, tiers: [7], spawnInset: 12,
 drops: [
 { item: 'Ancient Core',   p: 1.00 },
 { item: 'Starstone',      p: 0.80 },
@@ -661,8 +661,8 @@ return g;
 },
 },
 'Cave Worm': {
-count: 3, hp: 680, dmg: 72, speed: 2.4, hopper: false, aggro: 14.0, barW: 2.2, barY: 3.6, hitY: 1.6, level: 58, xp: 520, tiers: [8],
-drops: [{ item: 'Bones', p: 1 }, { item: 'Raw Meat', p: 1 }, { item: 'Sulfur', p: 0.7 }, { item: 'Iron Ore', p: 0.6 }, { item: 'Gold Coin', p: 0.5 }],
+count: 3, hp: 1190, dmg: 72, speed: 2.4, hopper: false, aggro: 14.0, barW: 2.2, barY: 3.6, hitY: 1.6, level: 58, xp: 520, tiers: [8],
+drops: [{ item: 'Bones', p: 1 }, { item: 'Raw Meat', p: 1 }, { item: 'Sulphur', p: 0.7 }, { item: 'Iron Ore', p: 0.6 }, { item: 'Gold Coin', p: 0.5 }],
 build() {
 const g = new THREE.Group();
 const ph = new THREE.Mesh(
