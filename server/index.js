@@ -156,6 +156,24 @@ function initCreatures(creatureDefs) {
   console.log(`[world] ${creatureState.size} creatures initialised`);
 }
 
+// ─── PvP Arenas (rectangle AABB, world coords) ────────────────────────────────
+// Each arena is { isle, x, z, hw, hd } — half-width (X) and half-depth (Z).
+const ARENAS = [
+  { isle: 'Isla Prima',    x:  18,  z:  18,  hw: 6, hd: 6 },
+  { isle: 'Verdant Reach', x: 160,  z: -22,  hw: 5, hd: 5 },
+  { isle: 'Emberfell',     x: -22,  z: 165,  hw: 5, hd: 5 },
+  { isle: 'Frostspire',    x:-140,  z: -30,  hw: 6, hd: 6 },
+  { isle: 'Ashwood Isle',  x: -90,  z:  78,  hw: 5, hd: 5 },
+  { isle: 'Eldenmere',     x:  20,  z:-225,  hw: 7, hd: 7 },
+];
+
+function _inAnyArena(x, z) {
+  for (const a of ARENAS) {
+    if (Math.abs(x - a.x) <= a.hw && Math.abs(z - a.z) <= a.hd) return true;
+  }
+  return false;
+}
+
 // ─── Online sessions ──────────────────────────────────────────────────────────
 // socketId -> { username, socket, x, z, dead }
 const onlinePlayers = new Map();
@@ -718,6 +736,29 @@ io.on('connection', (socket) => {
     } catch (err) {
       console.error('[bank_save]', err);
     }
+  });
+
+  // ── player:attack_player — PvP damage (arena-gated) ──────────────────────
+  socket.on('player:attack_player', ({ targetId, damage }) => {
+    const attacker = onlinePlayers.get(socket.id);
+    const target   = onlinePlayers.get(targetId);
+    if (!attacker || !target) return;
+    if (!_inAnyArena(attacker.x, attacker.z)) return;
+    if (!_inAnyArena(target.x, target.z)) return;
+    const dmg = Math.max(1, Math.min(500, Math.abs(Math.round(damage))));
+    io.to(targetId).emit('player:damaged', {
+      fromId: socket.id,
+      fromUsername: attacker.username,
+      damage: dmg,
+    });
+    io.emit('player:pvp_hit', {
+      fromId: socket.id,
+      fromUsername: attacker.username,
+      targetId,
+      targetUsername: target.username,
+      damage: dmg,
+    });
+    console.log(`[pvp] ${attacker.username} → ${target.username} for ${dmg}`);
   });
 
   // ── disconnect ────────────────────────────────────────────────────────────

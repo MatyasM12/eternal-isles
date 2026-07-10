@@ -46,6 +46,56 @@
 		{ name: 'The Abyssal Maw', x:  220, z:  220,   r: 45,  tier: 8, biome: 'volcanic',  peakMult: 1.10, elongX: 1.0,  elongZ: 1.0,  hillFreq: 0.13 },
 	];
 	const ISLAND_R = 52; // legacy alias (fireflies etc. use it)
+
+	// ------------------------------------------------------------------ PvP arenas
+	// Rectangle PvP arenas. hw=half-width (X), hd=half-depth (Z). Must match server/index.js ARENAS.
+	const ARENAS = [
+		{ isle: 'Isla Prima',    x:  18,  z:  18,  hw: 6, hd: 6 },
+		{ isle: 'Verdant Reach', x: 160,  z: -22,  hw: 5, hd: 5 },
+		{ isle: 'Emberfell',     x: -22,  z: 165,  hw: 5, hd: 5 },
+		{ isle: 'Frostspire',    x:-140,  z: -30,  hw: 6, hd: 6 },
+		{ isle: 'Ashwood Isle',  x: -90,  z:  78,  hw: 5, hd: 5 },
+		{ isle: 'Eldenmere',     x:  20,  z:-225,  hw: 7, hd: 7 },
+	];
+	function inArena(x, z) {
+		for (const a of ARENAS) {
+			if (Math.abs(x - a.x) <= a.hw && Math.abs(z - a.z) <= a.hd) return true;
+		}
+		return false;
+	}
+	// Rock pillar walls forming a rectangle; entrance gap on south side (z = a.z + a.hd)
+	function buildArenas() {
+		const SPACING = 1.8;
+		const ENTRANCE = 3.2;
+		const pillarGeo = new THREE.CylinderGeometry(0.22, 0.26, 2.8, 8);
+		const pillarMat = new THREE.MeshStandardMaterial({ color: 0x7a6a55, roughness: 0.95, metalness: 0.05 });
+		function addPillar(px, pz) {
+			const py = terrainHeight(px, pz);
+			const p = new THREE.Mesh(pillarGeo, pillarMat);
+			p.position.set(px, py + 1.4, pz);
+			scene.add(p);
+		}
+		for (const a of ARENAS) {
+			const xCount = Math.round(2 * a.hw / SPACING);
+			const zCount = Math.round(2 * a.hd / SPACING);
+			// North wall — full including corners
+			for (let i = 0; i <= xCount; i++) {
+				addPillar(a.x - a.hw + (i / xCount) * 2 * a.hw, a.z - a.hd);
+			}
+			// South wall — entrance gap in centre
+			for (let i = 0; i <= xCount; i++) {
+				const px = a.x - a.hw + (i / xCount) * 2 * a.hw;
+				if (Math.abs(px - a.x) < ENTRANCE / 2) continue;
+				addPillar(px, a.z + a.hd);
+			}
+			// West and east walls — skip corners (already in north/south)
+			for (let i = 1; i < zCount; i++) {
+				const pz = a.z - a.hd + (i / zCount) * 2 * a.hd;
+				addPillar(a.x - a.hw, pz);
+				addPillar(a.x + a.hw, pz);
+			}
+		}
+	}
 	const WATER_Y = -1.15;
 	const SEA = WATER_Y - 2.15; // shallow lagoon floor (swimmable everywhere between isles)
 	// cluster bounding circle (centered at origin-ish) → deep ocean past OUTER_R
@@ -233,6 +283,15 @@
 
 	const clickables = []; // groups with userData.interact
 	const creatures = [];
+	// Called by network.js when a new other-player is added, so their mesh is raycasted
+	function registerOtherPlayerClickable(mesh, entry) {
+		mesh.userData.interact = { kind: 'player', entry };
+		clickables.push(mesh);
+	}
+	function unregisterOtherPlayerClickable(mesh) {
+		const idx = clickables.indexOf(mesh);
+		if (idx !== -1) clickables.splice(idx, 1);
+	}
 
 	// axis-aligned solid boxes that block movement (used for Eldenmere town walls)
 	// each entry: { x1, z1, x2, z2 } in world coords (min/max)
@@ -4235,6 +4294,24 @@
 		// auto-defend, like the old lands
 		if (!player.action && !player.dead) player.action = { type: 'attack', creature: c };
 	}
+	// Called by network.js when the server says another player hit us
+	function playerTakePvpDamage(fromUsername, dmg, fromId) {
+		if (player.dead) return;
+		floatText('⚔ -' + dmg, headPos(), '#f87171', 1.1);
+		log('⚔ ' + fromUsername + ' hits you for ' + dmg + '!', 'dmgIn');
+		player.hp = Math.max(0, player.hp - dmg);
+		player.lastHurt = elapsed;
+		setBar(player.bar, player.hp / player.maxhp, player.hp, player.maxhp);
+		refreshHpUI();
+		if (player.hp <= 0) { playerDeath(); return; }
+		// Auto-retaliate: if not already fighting this attacker, start attacking them
+		if (fromId && (!player.action || player.action.type !== 'attack_player')) {
+			const entry = (typeof getOtherPlayers === 'function') ? getOtherPlayers().get(fromId) : null;
+			if (entry && inArena(player.group.position.x, player.group.position.z)) {
+				player.action = { type: 'attack_player', entry };
+			}
+		}
+	}
 	function playerDeath() {
 		if (player.dead) return;
 		player.dead = true;
@@ -4396,6 +4473,62 @@
 				if (it.kind === 'chest') {
 					stopHarvest(); player.action = null;
 					openChestModal();
+					return;
+				}
+				if (it.kind === 'player') {
+					const entry = it.entry;
+					if (!inArena(player.group.position.x, player.group.position.z)) {
+						log('You must be inside an arena to attack other players!', 'warn');
+						return;
+					}
+					if (!inArena(entry.mesh.position.x, entry.mesh.position.z)) {
+						log(entry.username + ' is not in an arena — PvP is arena-only!', 'warn');
+						return;
+					}
+					// Spell modes — fire at the player
+					const targetPos = entry.mesh.position.clone().add(new THREE.Vector3(0, 1, 0));
+					if (player.fireballMode) {
+						player.fireballMode = false;
+						const rank = talentRank('fire_fireball');
+						const dmg = Math.ceil(playerAtk() * ([0, 1.8, 2.8, 4.0, 5.5, 7.2][rank]));
+						const geo = new THREE.SphereGeometry(0.18, 8, 8);
+						const mat = new THREE.MeshBasicMaterial({ color: 0xff4400 });
+						const fmesh = new THREE.Mesh(geo, mat);
+						const fl = new THREE.PointLight(0xff4400, 1, 4); fmesh.add(fl);
+						fmesh.position.copy(headPos()); scene.add(fmesh);
+						const sid = (typeof netGetOtherPlayerSocketId === 'function') ? netGetOtherPlayerSocketId(entry) : null;
+						player.fireballs.push({ mesh: fmesh, target: null, pvpEntry: entry, pvpSid: sid, startPos: headPos(), endPos: targetPos, t: 0, damage: dmg });
+						log('🔮 Fireball launched at ' + entry.username + '!', 'craft');
+						return;
+					}
+					if (player.iceLanceMode) {
+						player.iceLanceMode = false;
+						const rank = talentRank('ice_lance');
+						const dmg = Math.ceil(playerAtk() * ([0, 1.1, 1.9, 2.9, 4.1, 5.6][rank]));
+						const geo = new THREE.CylinderGeometry(0.06, 0.18, 0.9, 6);
+						const mat = new THREE.MeshBasicMaterial({ color: 0x7dd3fc });
+						const imesh = new THREE.Mesh(geo, mat);
+						const il = new THREE.PointLight(0xaaeeff, 1.2, 4); imesh.add(il);
+						imesh.position.copy(headPos()); scene.add(imesh);
+						const sid = (typeof netGetOtherPlayerSocketId === 'function') ? netGetOtherPlayerSocketId(entry) : null;
+						player.iceLances.push({ mesh: imesh, target: null, pvpEntry: entry, pvpSid: sid, startPos: headPos(), endPos: targetPos, t: 0, damage: dmg });
+						log('🧊 Ice Lance launched at ' + entry.username + '!', 'craft');
+						return;
+					}
+					if (player.lightningStrikeMode) {
+						player.lightningStrikeMode = false;
+						const rank = talentRank('lightning_strike');
+						const dmg = Math.ceil(playerAtk() * ([0, 0.45, 0.70, 1.05, 1.55, 2.10][rank]));
+						const sid = (typeof netGetOtherPlayerSocketId === 'function') ? netGetOtherPlayerSocketId(entry) : null;
+						if (sid && typeof netAttackPlayer === 'function') {
+							for (let li = 0; li < 5; li++) setTimeout(() => netAttackPlayer(sid, dmg), li * 400);
+							log('🗲 Lightning Strike hits ' + entry.username + ' — 5 bolts!', 'craft');
+						}
+						return;
+					}
+					stopHarvest();
+					player.action = { type: 'attack_player', entry };
+					log('⚔ You engage ' + entry.username + ' in combat!', 'sys');
 					return;
 				}
 			}
@@ -4641,6 +4774,7 @@
 				if (it.kind === 'creature' && it.creature.state !== 'dead') cur = inSpellMode ? CURSORS.spell : CURSORS.sword;
 				else if (it.kind === 'harvest') cur = cursorForVerb(it.node.verb);
 				else if (it.kind === 'chest') cur = CURSORS.chest;
+				else if (it.kind === 'player') cur = CURSORS.sword;
 			}
 		}
 		renderer.domElement.style.cursor = cur;
@@ -4695,6 +4829,38 @@
 							player.attackTimer = 1.15;
 							playerHit(c);
 							if (c.state !== 'dead') c.state = 'combat';
+						}
+					}
+				}
+			} else if (a.type === 'attack_player') {
+				const entry = a.entry;
+				if (!entry || !entry.mesh) { player.action = null; }
+				else {
+					// Check both players are still in arena
+					if (!inArena(g.position.x, g.position.z) || !inArena(entry.mesh.position.x, entry.mesh.position.z)) {
+						player.action = null;
+						log('You must both be inside the arena to fight!', 'warn');
+					} else {
+						const d = g.position.distanceTo(entry.mesh.position);
+						if (d > 2.5) {
+							player.moving = true;
+							moveEntityTowards(g, entry.mesh.position, spd, dt);
+							player.targetAngle = g.userData._angle;
+						} else {
+							const dv = entry.mesh.position.clone().sub(g.position);
+							player.targetAngle = Math.atan2(dv.x, dv.z);
+							player.attackTimer -= dt;
+							if (player.attackTimer <= 0) {
+								player.attackTimer = 1.15;
+								const dmg = Math.max(1, playerAtk() + randInt(0, 2) - 1);
+								const sid = (typeof netGetOtherPlayerSocketId === 'function') ? netGetOtherPlayerSocketId(entry) : null;
+								if (sid && typeof netAttackPlayer === 'function') {
+									netAttackPlayer(sid, dmg);
+									log('⚔ You hit ' + entry.username + ' for ' + dmg + '!', 'dmgOut');
+									floatText('⚔ ' + dmg, entry.mesh.position.clone().add(new THREE.Vector3(0, 2.5, 0)), '#f87171', 1.0);
+									player.parts.armR.rotation.x = -1.9;
+								}
+							}
 						}
 					}
 				}
@@ -5170,6 +5336,7 @@
 		});
 		_seed = WORLD_SEED;  // reset so creature positions are identical on every client
 		spawnAllCreatures();
+		buildArenas();
 		netOnCreaturesSpawned();
 		started = true;
 		if (hasSave) {
@@ -5367,7 +5534,14 @@
 			if (fb.t >= 1) {
 				scene.remove(fb.mesh);
 				player.iceLances.splice(i, 1);
-				if (fb.target.state !== 'dead') {
+				if (fb.pvpSid) {
+					// PvP ice lance
+					let lcDmg = fb.damage;
+					if (Math.random() < playerCritChance('ice')) lcDmg = Math.floor(lcDmg * 1.75);
+					netAttackPlayer(fb.pvpSid, lcDmg);
+					floatText('🧊 ' + lcDmg, fb.endPos, '#7dd3fc', 1.1);
+					log('🧊 Ice Lance hits ' + fb.pvpEntry.username + ' for ' + lcDmg + '!', 'dmgOut');
+				} else if (fb.target && fb.target.state !== 'dead') {
 					let lcDmg = fb.damage;
 					let lcCrit = false;
 					if (Math.random() < playerCritChance('ice')) { lcDmg = Math.floor(lcDmg * 1.75); lcCrit = true; }
@@ -5380,7 +5554,6 @@
 						log('❄️ Ice Lance froze ' + fb.target.name + ' for 3 turns!', 'dmgOut');
 					}
 					spawnSparkBurst(fb.target.group.position.clone(), 0xaaddff, 12, 2.0, 2.5);
-					// freeze for 3 turns
 					const existingFreeze = player.iceFreeze.find(f => f.creature === fb.target);
 					if (existingFreeze) { existingFreeze.turnsLeft = Math.max(existingFreeze.turnsLeft, 3); }
 					else { player.iceFreeze.push({ creature: fb.target, turnsLeft: 3 }); }
@@ -5403,7 +5576,14 @@
 			if (fb.t >= 1) {
 				scene.remove(fb.mesh);
 				player.fireballs.splice(i, 1);
-				if (fb.target.state !== 'dead') {
+				if (fb.pvpSid) {
+					// PvP fireball
+					let fbDmg = fb.damage;
+					if (Math.random() < playerCritChance('fire')) fbDmg = Math.floor(fbDmg * 1.75);
+					netAttackPlayer(fb.pvpSid, fbDmg);
+					floatText('🔥 ' + fbDmg, fb.endPos, '#ff6b35', 1.1);
+					log('🔮 Fireball hits ' + fb.pvpEntry.username + ' for ' + fbDmg + '!', 'dmgOut');
+				} else if (fb.target && fb.target.state !== 'dead') {
 					let fbDmg = fb.damage;
 					let fbCrit = false;
 					if (Math.random() < playerCritChance('fire')) { fbDmg = Math.floor(fbDmg * 1.75); fbCrit = true; }
@@ -5414,7 +5594,6 @@
 					} else {
 						floatText('🔥 ' + fbDmg, fb.target.group.position.clone().add(new THREE.Vector3(0, 2.2, 0)), '#ff6b35', 1.1);
 					}
-					// apply burn from Ember Touch
 					applyPassiveOnHit(fb.target);
 				}
 				continue;

@@ -13,6 +13,7 @@ const _otherPlayers        = new Map(); // socketId -> { username, mesh, animT, 
 // Exposed so game.js can check
 function isMultiplayer() { return _socket !== null && _socket.connected; }
 function getUsername()   { return _loggedInAs; }
+function getOtherPlayers() { return _otherPlayers; }
 
 // ─── REST helpers ─────────────────────────────────────────────────────────────
 async function _post(path, body) {
@@ -120,6 +121,26 @@ function _connectSocket(username) {
       if (!lc) continue;
       lc.netPos   = { x: entry.x, z: entry.z };
       lc.netState = entry.state;
+    }
+  });
+
+  // ── PvP ───────────────────────────────────────────────────────────────────
+  _socket.on('player:damaged', function(data) {
+    // Server says we took PvP damage
+    if (typeof playerTakePvpDamage === 'function') {
+      playerTakePvpDamage(data.fromUsername, data.damage, data.fromId);
+    }
+  });
+
+  _socket.on('player:pvp_hit', function(data) {
+    // Broadcast hit visual: show float text on target player's mesh
+    if (data.targetId === _socket.id) return; // handled by player:damaged already
+    if (data.fromId === _socket.id) {
+      // We are attacker — show damage float on target mesh
+      const entry = _otherPlayers.get(data.targetId);
+      if (entry && entry.mesh && typeof floatText === 'function') {
+        floatText('⚔ ' + data.damage, entry.mesh.position.clone().add(new THREE.Vector3(0, 2.5, 0)), '#f87171', 1.0);
+      }
     }
   });
 
@@ -360,10 +381,15 @@ function _addOtherPlayer(id, username, atkLvl, defLvl, craftLvl) {
   label.position.set(0, 2.6, 0);
   mesh.add(label);
 
-  _otherPlayers.set(id, {
+  const entry = {
     username, mesh, animT: 0, moving: false, lastPos: null, lastAnimTime: performance.now(),
     atkLvl: atkLvl || 1, defLvl: defLvl || 1, craftLvl: craftLvl || 1,
-  });
+  };
+  _otherPlayers.set(id, entry);
+  // Make the mesh clickable for PvP
+  if (typeof registerOtherPlayerClickable === 'function') {
+    registerOtherPlayerClickable(mesh, entry);
+  }
   // Draw initial HP bar at full health so number is visible immediately
   _updateOtherPlayerHp(id, 100, 100);
 }
@@ -372,6 +398,7 @@ function _removeOtherPlayer(id) {
   const entry = _otherPlayers.get(id);
   if (!entry) return;
   if (typeof scene !== 'undefined') scene.remove(entry.mesh);
+  if (typeof unregisterOtherPlayerClickable === 'function') unregisterOtherPlayerClickable(entry.mesh);
   _otherPlayers.delete(id);
 }
 
@@ -551,6 +578,20 @@ function netAttackCreature(localCreature, damage) {
     }
   }
   return false;
+}
+
+// ─── PvP attack ───────────────────────────────────────────────────────────────
+function netAttackPlayer(targetSocketId, damage) {
+  if (!isMultiplayer() || !_socket) return;
+  _socket.emit('player:attack_player', { targetId: targetSocketId, damage });
+}
+
+// Return the socket id for a given other-player entry (for PvP targeting)
+function netGetOtherPlayerSocketId(entry) {
+  for (const [id, e] of _otherPlayers) {
+    if (e === entry) return id;
+  }
+  return null;
 }
 
 // ─── Broadcast a player-cast spell so other clients show the visual ──────────
