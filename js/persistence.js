@@ -4,6 +4,8 @@
 const SAVE_KEY = 'eternalIsles_save';
 function saveGame() {
 netSavePlayer();
+// In multiplayer mode, the server DB is the sole source of truth — skip localStorage
+if (typeof isMultiplayer === 'function' && isMultiplayer()) return;
 try {
 localStorage.setItem(SAVE_KEY, JSON.stringify({
 name: player.name,
@@ -16,6 +18,7 @@ equip: Object.assign({}, player.equip),
 dragonKilled: player.dragonKilled,
 talents: Object.assign({}, player.talents),
 hotbar: player.hotbar.slice(),
+bank: bank.map(e => e ? { item: e.item, count: e.count } : null),
 }));
 } catch(e) {}
 }
@@ -36,6 +39,11 @@ if (s.hotbar)    { for (let i = 0; i < 5 && i < s.hotbar.length; i++) player.hot
 if (s.inventory) {
 for (let i = 0; i < Math.min(s.inventory.length, inventory.length); i++) {
 inventory[i] = s.inventory[i] ? { item: s.inventory[i].item, count: s.inventory[i].count } : null;
+}
+}
+if (s.bank) {
+for (let i = 0; i < Math.min(s.bank.length, bank.length); i++) {
+bank[i] = s.bank[i] ? { item: s.bank[i].item, count: s.bank[i].count } : null;
 }
 }
 return true;

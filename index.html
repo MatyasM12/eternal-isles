@@ -28,6 +28,12 @@
         }
         /* circular harvest progress — driven by inline conic-gradient from JS */
         #progressRing { background: conic-gradient(#7fe0ff 0%, rgba(255,255,255,0.08) 0); }
+        /* classes missing from compiled Tailwind — used by chest grid */
+        .grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+        .w-12 { width: 3rem; }
+        .gap-1 { gap: 0.25rem; }
+        /* chest modal centered, fixed width to fit 6×48px slots + gaps + padding */
+        #chestModal { left: 50%; top: 50%; transform: translate(-50%, -50%); width: 340px; }
     </style>
 </head>
 <body class="overflow-hidden bg-[#0a0f14] text-zinc-100">
@@ -203,7 +209,7 @@
 </div>
 
 <!-- ==================== CRAFT WINDOW (Eternal Lands style mix box) ==================== -->
-<div id="craftModal" class="fixed inset-0 z-30 hidden items-center justify-center bg-black/30 backdrop-blur-[2px]">
+<div id="craftModal" class="fixed inset-0 z-30 hidden items-center justify-center">
     <div class="pointer-events-auto w-[720px] max-w-[94vw] rounded-2xl border border-amber-300/20 bg-black/60 shadow-2xl backdrop-blur-xl panel-in">
         <div class="flex items-center justify-between border-b border-white/10 px-5 py-3">
             <div>
@@ -229,7 +235,7 @@
                 </div>
                 <div class="mt-3 flex gap-2">
                     <button id="btnMix" class="flex-1 rounded-xl border border-emerald-300/40 bg-emerald-400/15 px-4 py-3 font-display text-base font-bold tracking-widest text-emerald-200 transition hover:bg-emerald-400/30">⚗️ MIX</button>
-                    <button id="btnMix5" class="rounded-xl border border-fuchsia-300/40 bg-fuchsia-400/15 px-4 py-3 font-display text-base font-bold tracking-widest text-fuchsia-200 transition hover:bg-fuchsia-400/30">⚗️ ×5</button>
+                    <button id="btnMixAll" class="rounded-xl border border-fuchsia-300/40 bg-fuchsia-400/15 px-4 py-3 font-display text-base font-bold tracking-widest text-fuchsia-200 transition hover:bg-fuchsia-400/30">⚗️ Mix All</button>
                 </div>
                 <div class="mt-3 rounded-lg border border-white/10 bg-white/5 px-3 py-2">
                     <div class="flex items-center justify-between text-[11px]">
@@ -242,6 +248,18 @@
                 </div>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- ==================== BANK CHEST MODAL ==================== -->
+<div id="chestModal" class="pointer-events-auto fixed z-20 hidden rounded-2xl border border-amber-300/25 bg-black/60 shadow-2xl backdrop-blur-md panel-in">
+    <div class="flex items-center justify-between border-b border-white/10 px-3 py-2">
+        <div class="font-display text-sm font-bold tracking-widest text-amber-200">🪙 BANK CHEST</div>
+        <button id="btnChestClose" class="rounded border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-zinc-300 transition hover:bg-white/20">✕</button>
+    </div>
+    <div class="p-2">
+        <div class="mb-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500">Bank Storage — 30 slots</div>
+        <div id="chestGrid" class="grid grid-cols-6 gap-1"></div>
     </div>
 </div>
 
@@ -317,6 +335,6 @@
 <script src="js/persistence.js?v=1"></script>
 <script src="js/creatures.js?v=9"></script>
 <script src="js/network.js?v=15"></script>
-<script src="js/game.js?v=48"></script>
+<script src="js/game.js?v=49"></script>
 </body>
 </html>

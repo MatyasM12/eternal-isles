@@ -506,6 +506,40 @@
 	}
 	for (const isle of ISLES) buildSignpost(isle);
 
+	// ------------------------------------------------------------------ bank chests
+	(function buildBankChests() {
+		const woodMatC  = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, flatShading: true, roughness: 0.85 });
+		const lidMatC   = new THREE.MeshStandardMaterial({ color: 0xaa7040, flatShading: true, roughness: 0.80 });
+		const claspMatC = new THREE.MeshStandardMaterial({ color: 0xd4a017, metalness: 0.6, roughness: 0.3,
+			emissive: 0xd4a017, emissiveIntensity: 0.4 });
+
+		function buildChest(wx, wz) {
+			const g = new THREE.Group();
+			const body = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.55, 0.70), woodMatC);
+			body.position.y = 0.275; body.castShadow = true; g.add(body);
+			const lid = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.20, 0.70), lidMatC);
+			lid.position.y = 0.65; lid.castShadow = true; g.add(lid);
+			const clasp = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.08), claspMatC);
+			clasp.position.set(0, 0.55, 0.36); g.add(clasp);
+			g.userData.interact = { kind: 'chest' };
+			const y = terrainHeight(wx, wz);
+			g.position.set(wx, y, wz);
+			scene.add(g);
+			clickables.push(g);
+		}
+
+		// One chest near centre of each chosen island
+		// Isla Prima (0), Emberfell (2), Frostspire (3), Ashwood Isle (5), Eldenmere (7)
+		const chestIsles = [
+			{ x:    0, z:    0,   ox:  5, oz:  5 },  // Isla Prima
+			{ x:  -28, z:  152,  ox:  4, oz:  4 },  // Emberfell
+			{ x: -150, z:  -40,  ox:  5, oz:  5 },  // Frostspire
+			{ x: -100, z:   70,  ox:  5, oz:  5 },  // Ashwood Isle
+			{ x:    0, z: -235,  ox:  8, oz:  8 },  // Eldenmere
+		];
+		for (const c of chestIsles) buildChest(c.x + c.ox, c.z + c.oz);
+	})();
+
 	// ------------------------------------------------------------------ Eldenmere: great arcane city
 	(function buildEldenmere() {
 		const EX = 0, EZ = -235; // Eldenmere island center
@@ -1252,6 +1286,10 @@
 	// ------------------------------------------------------------------ inventory
 	const INV_SLOTS = 28;
 	const inventory = new Array(INV_SLOTS).fill(null); // {item, count}
+
+	// ------------------------------------------------------------------ bank
+	const BANK_SLOTS = 30;
+	const bank = new Array(BANK_SLOTS).fill(null); // {item, count}
 	function invCount(item) {
 		return inventory.reduce((s, e) => s + (e && e.item === item ? e.count : 0), 0);
 	}
@@ -1433,6 +1471,8 @@
 		else _initChat();
 	})();
 
+	let _dragSrc = null; // { from: 'inv'|'bank', index: i } — shared by renderInventory and chest modal
+
 	function renderInventory() {
 		ui.invGrid.innerHTML = '';
 		let used = 0;
@@ -1443,15 +1483,18 @@
 				(e
 					? 'border-white/15 bg-white/10 hover:border-cyan-300/50 hover:bg-white/20 cursor-pointer'
 					: 'border-white/5 bg-white/[0.03]');
+			cell.draggable = true;
 			if (e) {
 				used++;
 				const info = ITEMS[e.item];
-				cell.innerHTML =
-					'<span>' + info.icon + '</span>' +
-					'<span class="absolute bottom-0 right-1 text-[10px] font-bold text-zinc-200 drop-shadow">' + e.count + '</span>';
-				const action = info.type === 'material' ? '' :
-					info.type === 'food' ? ' — click to eat' : ' — click to equip';
-				attachTooltip(cell, e.item, action);
+				if (info) {
+					cell.innerHTML =
+						'<span>' + info.icon + '</span>' +
+						'<span class="absolute bottom-0 right-1 text-[10px] font-bold text-zinc-200 drop-shadow">' + e.count + '</span>';
+					const action = info.type === 'material' ? '' :
+						info.type === 'food' ? ' — click to eat' : ' — click to equip';
+					attachTooltip(cell, e.item, action);
+				}
 				cell.addEventListener('click', () => onInventoryClick(i));
 				cell.addEventListener('contextmenu', (ev) => {
 					ev.preventDefault();
@@ -1461,11 +1504,105 @@
 					log('Discarded ' + entry.item + (entry.count > 1 ? ' ×' + entry.count : '') + '.', 'sys');
 					renderInventory();
 				});
+				cell.addEventListener('dragstart', (ev) => {
+					_dragSrc = { from: 'inv', index: i };
+					ev.dataTransfer.effectAllowed = 'move';
+				});
+			} else {
+				cell.addEventListener('dragstart', (ev) => ev.preventDefault());
 			}
+			cell.addEventListener('dragover', (ev) => { ev.preventDefault(); ev.dataTransfer.dropEffect = 'move'; });
+			cell.addEventListener('drop', (ev) => {
+				ev.preventDefault();
+				if (!_dragSrc) return;
+				_handleSlotDrop('inv', i);
+			});
 			ui.invGrid.appendChild(cell);
 		});
 		ui.invCount.textContent = used + ' / ' + INV_SLOTS;
 		if (!ui.craftModal.classList.contains('hidden')) renderRecipes();
+	}
+
+	// ------------------------------------------------------------------ chest modal
+
+	function _makeSlotEl(e, from, index) {
+		const cell = document.createElement('button');
+		cell.className =
+			'relative flex h-12 w-12 items-center justify-center rounded-lg border text-xl transition ' +
+			(e
+				? 'border-amber-300/30 bg-white/10 hover:border-cyan-300/50 hover:bg-white/20 cursor-grab'
+				: 'border-white/5 bg-white/[0.03]');
+		cell.draggable = true;
+		if (e) {
+			const info = ITEMS[e.item];
+			if (info) {
+				cell.innerHTML =
+					'<span>' + info.icon + '</span>' +
+					'<span class="absolute bottom-0 right-1 text-[10px] font-bold text-zinc-200 drop-shadow">' + e.count + '</span>';
+				attachTooltip(cell, e.item, '');
+			}
+		}
+		cell.addEventListener('dragstart', (ev) => {
+			if (!e) { ev.preventDefault(); return; }
+			_dragSrc = { from, index };
+			ev.dataTransfer.effectAllowed = 'move';
+		});
+		cell.addEventListener('dragover', (ev) => { ev.preventDefault(); ev.dataTransfer.dropEffect = 'move'; });
+		cell.addEventListener('drop', (ev) => {
+			ev.preventDefault();
+			if (!_dragSrc) return;
+			_handleSlotDrop(from, index);
+		});
+		return cell;
+	}
+
+	function _handleSlotDrop(toFrom, toIndex) {
+		if (!_dragSrc) return;
+		const srcFrom = _dragSrc.from;
+		const srcArr  = srcFrom === 'inv' ? inventory : bank;
+		const dstArr  = toFrom === 'inv' ? inventory : bank;
+		const si = _dragSrc.index, di = toIndex;
+		if (si === di && srcFrom === toFrom) { _dragSrc = null; return; }
+		const src = srcArr[si], dst = dstArr[di];
+		if (src && dst && src.item === dst.item) {
+			// merge stacks
+			const total = src.count + dst.count;
+			dstArr[di] = { item: dst.item, count: Math.min(total, 9999) };
+			srcArr[si] = total > 9999 ? { item: src.item, count: total - 9999 } : null;
+		} else {
+			// swap
+			dstArr[di] = src || null;
+			srcArr[si] = dst || null;
+		}
+		const involvedBank = srcFrom === 'bank' || toFrom === 'bank';
+		_dragSrc = null;
+		renderInventory();
+		if (!document.getElementById('chestModal').classList.contains('hidden')) renderChestModal();
+		if (involvedBank) netSaveBank();
+		saveGame();
+	}
+
+	function renderChestModal() {
+		const chestGrid = document.getElementById('chestGrid');
+		if (!chestGrid) return;
+		chestGrid.innerHTML = '';
+		for (let i = 0; i < BANK_SLOTS; i++) {
+			chestGrid.appendChild(_makeSlotEl(bank[i], 'bank', i));
+		}
+	}
+
+	function openChestModal() {
+		const modal = document.getElementById('chestModal');
+		if (!modal) return;
+		renderChestModal();
+		modal.classList.remove('hidden');
+	}
+
+	function closeChestModal() {
+		const modal = document.getElementById('chestModal');
+		if (!modal) return;
+		modal.classList.add('hidden');
+		netSaveBank();
 	}
 
 	function onInventoryClick(slot) {
@@ -1857,7 +1994,7 @@
 	function xpForLevel(l) { return Math.floor(40 * Math.pow(1.28, l - 1)); }
 	function combatLevel() { return (player.atkLvl + player.defLvl) / 2; }
 	function playerBaseAtk() { return Math.round(3 * Math.pow(1.09, player.atkLvl - 1)); }   // lvl 1 → 3, exponential curve
-	function playerBaseDef() { return player.defLvl - 1; }   // lvl 1 → 0
+	function playerBaseDef() { return Math.round((player.defLvl - 1) * 0.4); }   // lvl 1 → 0, lvl 20 → ~8
 	function playerCritChance(school) {
 		let chance = 0.08;
 		if (school) {
@@ -3968,7 +4105,7 @@
 	// challenge factor: fighting things far below your level yields little XP
 	function challengeFactor(creatureLvl) {
 		const diff = creatureLvl - combatLevel();          // positive → tougher than you
-		return clamp(1 + diff * 0.18, 0.15, 2.2);
+		return clamp(1 + diff * 0.18, 0.45, 2.2);
 	}
 	function equipItem(name) {
 		const info = ITEMS[name];
@@ -4256,6 +4393,11 @@
 					}
 					return;
 				}
+				if (it.kind === 'chest') {
+					stopHarvest(); player.action = null;
+					openChestModal();
+					return;
+				}
 			}
 		}
 		// then the ground
@@ -4462,12 +4604,14 @@
 		return 'url(' + cv.toDataURL('image/png') + ') ' + hot[0] + ' ' + hot[1] + ', pointer';
 	}
 	const CURSORS = {
-		sword: makeCursor('⚔️', [20, 20]),
-		axe:   makeCursor('🪓', [10, 30]),
-		pick:  makeCursor('⛏️', [10, 30]),
-		gather:makeCursor('🌿', [20, 20]),
-		fish:  makeCursor('🎣', [8, 30]),
-		walk:  'default',
+		sword:  makeCursor('⚔️', [20, 20]),
+		axe:    makeCursor('🪓', [10, 30]),
+		pick:   makeCursor('⛏️', [10, 30]),
+		gather: makeCursor('🌿', [20, 20]),
+		fish:   makeCursor('🎣', [8, 30]),
+		chest:  makeCursor('🪙', [20, 20]),
+		spell:  makeCursor('🎯', [20, 20]),
+		walk:   'default',
 	};
 	const hoverRay = new THREE.Raycaster();
 	const hoverPtr = new THREE.Vector2();
@@ -4488,13 +4632,15 @@
 		hoverRay.setFromCamera(hoverPtr, camera);
 		const hits = hoverRay.intersectObjects(clickables, true);
 		let cur = CURSORS.walk;
+		const inSpellMode = player.fireballMode || player.iceLanceMode || player.lightningStrikeMode;
 		if (hits.length) {
 			let o = hits[0].object;
 			while (o && !o.userData.interact) o = o.parent;
 			if (o) {
 				const it = o.userData.interact;
-				if (it.kind === 'creature' && it.creature.state !== 'dead') cur = CURSORS.sword;
+				if (it.kind === 'creature' && it.creature.state !== 'dead') cur = inSpellMode ? CURSORS.spell : CURSORS.sword;
 				else if (it.kind === 'harvest') cur = cursorForVerb(it.node.verb);
+				else if (it.kind === 'chest') cur = CURSORS.chest;
 			}
 		}
 		renderer.domElement.style.cursor = cur;
@@ -4762,6 +4908,7 @@
 		}
 	}
 	let mixing = false;
+	let mixCancelled = false;
 // Try to reload mix[] from inventory using the same recipe requirements.
 // Returns true if the mix box was successfully re-populated.
 	function reloadMixFromRecipe(req) {
@@ -4776,7 +4923,9 @@
 	}
 	function doMix(times) {
 		if (mixing) return;
-		const remaining = { left: (times && times > 1) ? times : 1 };
+		mixCancelled = false;
+		const unlimited = times === Infinity;
+		const remaining = { left: unlimited ? 1 : (times && times > 1 ? times : 1) };
 		const agg = mixAggregate();
 		if (Object.keys(agg).length === 0) { ui.mixHint.textContent = 'The mix box is empty.'; return; }
 		const recipe = RECIPES.find((r) => reqMatches(agg, r.req));
@@ -4785,10 +4934,17 @@
 			log('That combination makes nothing.', 'warn');
 			return;
 		}
+		function stopMix() {
+			mixing = false; mixCancelled = false;
+			const btn = document.getElementById('btnMixAll');
+			if (btn) { btn.textContent = '⚗️ Mix All'; }
+			renderInventory(); renderMix();
+		}
 		function runOnce(isFirst) {
+			if (mixCancelled) { stopMix(); return; }
 			if (!isFirst) {
 				// reload the mix box for subsequent iterations
-				if (!reloadMixFromRecipe(recipe.req)) { mixing = false; renderInventory(); renderMix(); return; }
+				if (!reloadMixFromRecipe(recipe.req)) { stopMix(); return; }
 			}
 			// consume the ingredients up front (they're at risk — crafting can fail!)
 			const spent = {};
@@ -4840,14 +4996,11 @@
 					log('You failed to make the ' + recipe.out + '.', 'warn');
 					floatText('✗ Failed!', headPos(), '#f87171', 1.05);
 				}
-				remaining.left--;
-				if (remaining.left > 0) {
+				if (!unlimited) remaining.left--;
+				if ((unlimited || remaining.left > 0) && !mixCancelled) {
 					runOnce(false);
 				} else {
-					mixing = false;
-					renderInventory();
-					reloadMixFromRecipe(recipe.req);
-					renderMix();
+					stopMix();
 				}
 			}, 1350);
 		}
@@ -4863,10 +5016,14 @@
 		renderMix();
 	});
 	$('btnCraftClose').addEventListener('click', () => {
+		if (mixing) { mixCancelled = true; }
 		clearMixToInventory();
 		ui.craftModal.classList.add('hidden');
 		ui.craftModal.classList.remove('flex');
+		const btnAll = document.getElementById('btnMixAll');
+		if (btnAll) btnAll.textContent = '⚗️ Mix All';
 	});
+	$('btnChestClose').addEventListener('click', closeChestModal);
 
 // Make craft modal draggable so player can reposition it to see the character animation
 	(function() {
@@ -4904,7 +5061,15 @@
 	})();
 
 	$('btnMix').addEventListener('click', () => doMix(1));
-	$('btnMix5').addEventListener('click', () => doMix(5));
+	$('btnMixAll').addEventListener('click', () => {
+		if (mixing) {
+			mixCancelled = true;
+			document.getElementById('btnMixAll').textContent = '⚗️ Mix All';
+			return;
+		}
+		document.getElementById('btnMixAll').textContent = '⏹ Stop';
+		doMix(Infinity);
+	});
 	$('btnHelp').addEventListener('click', () => {
 		ui.helpModal.classList.remove('hidden');
 		ui.helpModal.classList.add('flex');

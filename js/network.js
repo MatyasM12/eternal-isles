@@ -43,6 +43,11 @@ function _applySave(s) {
         : null;
     }
   }
+  if (s.bank && Array.isArray(s.bank)) {
+    for (let i = 0; i < Math.min(s.bank.length, bank.length); i++) {
+      bank[i] = s.bank[i] ? { item: s.bank[i].item, count: s.bank[i].count } : null;
+    }
+  }
   return true;
 }
 
@@ -621,6 +626,12 @@ function netGetOnlinePlayers() {
     });
   });
   return list;
+}
+
+// ─── Persist bank to server ───────────────────────────────────────────────────
+function netSaveBank() {
+  if (!isMultiplayer() || !_socket) return;
+  _socket.emit('player:bank_save', bank.map(e => e ? { item: e.item, count: e.count } : null));
 }
 
 // ─── Called by saveGame() to also persist to server ──────────────────────────

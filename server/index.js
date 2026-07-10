@@ -30,6 +30,7 @@ const playerSchema = new mongoose.Schema({
   equip:     { type: mongoose.Schema.Types.Mixed, default: {} },
   talents:   { type: mongoose.Schema.Types.Mixed, default: {} },
   hotbar:    { type: mongoose.Schema.Types.Mixed, default: [null,null,null,null,null] },
+  bank:      { type: mongoose.Schema.Types.Mixed, default: [] },
 }, { timestamps: true });
 
 const Player = mongoose.model('Player', playerSchema);
@@ -162,7 +163,7 @@ const onlinePlayers = new Map();
 // ─── Server AI loop ───────────────────────────────────────────────────────────
 const AI_HZ    = 10;
 const AI_DT    = 1 / AI_HZ;  // seconds per tick
-const LEASH    = 15;          // creature resets if target wanders this far from spawn
+const LEASH    = 40;          // creature resets if target wanders this far from spawn
 
 function _aiTick() {
   if (creatureState.size === 0) return;
@@ -270,8 +271,10 @@ function _aiTick() {
           if (walkable(nx, nz)) { c.x = nx; c.z = nz; }
         }
 
-        // melee attack — use meleeRange directly (no +1 gap that could skip attacks)
-        if (dist <= meleeRange) {
+        // melee attack — fires whenever player is within meleeRange OR
+        // within the movement-stop range (covers the gap spellcasters stop at)
+        const effectiveMeleeRange = sp ? Math.max(meleeRange, stopRange) : meleeRange;
+        if (dist <= effectiveMeleeRange) {
           c.attackTimer -= AI_DT;
           if (c.attackTimer <= 0) {
             c.attackTimer = 1.6 + Math.random() * 0.4;
@@ -279,11 +282,11 @@ function _aiTick() {
           }
         }
 
-        // spell attack (spellcasters only)
-        // spellTimer is initialized when entering combat (see above); never lazy
-        if (sp && dist >= sp.spellRange[0] && dist <= sp.spellRange[1]) {
+        // spell attack (spellcasters only) — timer always ticks in combat;
+        // fires if player is within max spell range (no lower bound gap)
+        if (sp) {
           c.spellTimer -= AI_DT;
-          if (c.spellTimer <= 0) {
+          if (c.spellTimer <= 0 && dist <= sp.spellRange[1]) {
             c.spellTimer = _randRange(sp.spellInterval[0], sp.spellInterval[1]);
             const dmg = Math.round(c.dmg * sp.dmgMult);
             // broadcast visual to ALL clients
@@ -363,6 +366,7 @@ app.post('/login', async (req, res) => {
       equip:       player.equip,
       talents:     player.talents,
       hotbar:      player.hotbar,
+      bank:        player.bank,
     };
     res.json({ ok: true, save });
   } catch (err) {
@@ -538,23 +542,58 @@ io.on('connection', (socket) => {
 
       // Inventory: allow only known item names and reasonable stack sizes
       const VALID_ITEMS = new Set([
-        'Wood','Bark','Iron Ore','Coal','Gold Ore','Stone','Clay','Bone',
-        'Leather Hide','Beaver Fur','Wolf Pelt','Scale','Fiber','Vines',
+        // Raw resources
+        'Wood','Wood Log','Bark','Iron Ore','Coal','Gold Ore','Stone','Clay','Bone','Bones',
+        'Leather Hide','Beaver Fur','Wolf Pelt','Wolf Fur','Scale','Fiber','Vines',
         'Flower','Root','Herb','Mushroom','Acorn','Pine Cone','Lily Pad',
         'Crimson Berry','Shadow Seed','Aether Crystal','Starleaf',
-        'Iron Bar','Gold Bar','Steel Bar','Troll Bone',
-        'Wood Staff','Iron Staff','Gold Staff','Steel Staff','Troll Staff','Aether Staff',
-        'Wood Shield','Iron Shield','Gold Shield','Steel Shield','Troll Shield','Aether Shield',
-        'Leather Vest','Iron Vest','Gold Vest','Steel Vest','Troll Vest','Aether Vest',
-        'Leather Legs','Iron Legs','Gold Legs','Steel Legs','Troll Legs','Aether Legs',
-        'Leather Boots','Iron Boots','Gold Boots','Steel Boots','Troll Boots','Aether Boots',
-        'Healing Potion','Mana Potion','Strength Potion','Defense Potion',
-        'Silver Ring','Gold Ring','Platinum Ring','Iron Medallion','Gold Medallion','Aether Medallion',
-        'Void Essence','Voidstone','Void Fang','Void Relic','Void Core',
-        'Firefly Wing','Snake Venom','Bear Claw','Wolf Tooth','Troll Hide',
-        'Dragon Scale','Dragon Claw','Dragon Eye','Dragon Heart',
+        'Silver Ore','Titanium Ore',
+        // Harvested flora
+        'Blue Star Flower','Chrysanthemum','Lilac','Moonbloom','Starbloom','Sunfire Lily','Voidpetal','Red Rose',
+        // Creature drops
+        'Raw Fish','Raw Meat','Sulphur','Gold Coin',
+        'Rabbit Fur','Fox Pelt','Deer Fur','Deer Antlers','Boar Tusk',
+        'Bear Pelt','Bear Claw','Wolf Tooth','Dire Pelt',
+        'Wyvern Scale','Troll Hide','Troll Bone',
+        'Dragon Bone','Dragon Fang','Dragon Scale','Dragon Claw','Dragon Eye','Dragon Heart',
         'Cave Worm Slime','Cave Worm Fang','Worm Acid Flask',
+        'Golem Core','Enriched Fire Essence','Infernal Ember',
+        'Spider Silk','Venom Gland',
+        'Ancient Core','Ether Shard','Starstone','Shadow Essence',
+        'Firefly Wing','Snake Venom',
+        'Void Essence','Voidstone','Void Fang','Void Relic','Void Core',
         'Fire Essence','Frost Shard','Storm Crystal','Spirit Dust',
+        // Bars / refined
+        'Iron Bar','Gold Bar','Steel Bar','Aether Bar',
+        // Weapons
+        'Wooden Staff','Bone Dagger',"Hunter's Bow",'Iron Sword','Boar Spear','War Hammer',
+        'Silver Rapier','Steel Greatsword','Venom Dagger','Troll Club','Wyvern Glaive',
+        'Golemforged Blade','Titanium Sword','Dragonbone Sword',
+        'Aether Blade','Void Scythe','Starforged Warblade','Emberforged Blade','Volcanic Warblade',
+        // Shields
+        'Wooden Shield','Iron Shield','Steel Shield','Troll Shield','Titanium Shield','Dragon Scale Shield',
+        'Aether Ward','Void Bulwark',
+        // Helms
+        'Flower Crown','Antler Helm','Iron Helm','Wolf Skull Helm','Steel Helm','Wyvern Helm',
+        'Titanium Helm','Dragon Skull Helm','Aether Crown','Void Helm','Embercrown',
+        // Armor
+        'Fur Cloak','Leather Armor','Scale Mail','Iron Plate','Steel Cuirass','Wyvern Hauberk',
+        'Golem Plate','Titanium Plate','Dragon Scale Hauberk',
+        'Aether Vestment','Void Plate','Phoenixweave Vestment','Infernoplate',
+        // Cuisses
+        'Leather Cuisses','Iron Cuisses','Steel Cuisses','Titanium Cuisses','Dragon Bone Cuisses','Aether Cuisses',
+        // Greaves
+        'Leather Greaves','Iron Greaves','Steel Greaves','Titanium Greaves','Dragon Bone Greaves','Aether Greaves',
+        // Rings
+        'Iron Ring','Silver Ring','Quartz Ring','Gold Ring','Dragon Fang Ring','Void Ring','Emberveil Ring',
+        // Medallions
+        'Silver Medallion','Quartz Medallion','Gold Medallion','Dragon Heart Medallion','Starstone Medallion',
+        // Consumables
+        'Raw Meat','Cooked Meat','Raw Fish',
+        'Minor Health Potion','Health Potion','Greater Health Potion',
+        'Healing Potion','Mana Potion','Strength Potion','Defense Potion',
+        'Moonbloom Draught','Sunfire Tonic','Void Elixir','Starbloom Brew',
+        'Moonbloom Salve','Solar Draught','Void Shroud','Celestial Brew',
       ]);
       const inventory = [];
       if (Array.isArray(data.inventory)) {
@@ -571,7 +610,7 @@ io.on('connection', (socket) => {
       }
 
       // Equip: only known slots and known items
-      const EQUIP_SLOTS = ['weapon','head','chest','legs','feet','ring','medallion'];
+      const EQUIP_SLOTS = ['weapon','shield','helm','armor','cuisses','greaves','ring','medallion'];
       const equip = {};
       if (data.equip && typeof data.equip === 'object') {
         for (const slot of EQUIP_SLOTS) {
@@ -601,6 +640,83 @@ io.on('connection', (socket) => {
       );
     } catch (err) {
       console.error('[save]', err);
+    }
+  });
+
+  // ── player:bank_save ──────────────────────────────────────────────────────
+  socket.on('player:bank_save', async (data) => {
+    const p = onlinePlayers.get(socket.id);
+    if (!p) return;
+    try {
+      const VALID_ITEMS_BANK = new Set([
+        // Raw resources
+        'Wood','Wood Log','Bark','Iron Ore','Coal','Gold Ore','Stone','Clay','Bone','Bones',
+        'Leather Hide','Beaver Fur','Wolf Pelt','Wolf Fur','Scale','Fiber','Vines',
+        'Flower','Root','Herb','Mushroom','Acorn','Pine Cone','Lily Pad',
+        'Crimson Berry','Shadow Seed','Aether Crystal','Starleaf',
+        'Silver Ore','Titanium Ore',
+        // Harvested flora
+        'Blue Star Flower','Chrysanthemum','Lilac','Moonbloom','Starbloom','Sunfire Lily','Voidpetal','Red Rose',
+        // Creature drops
+        'Raw Fish','Raw Meat','Sulphur','Gold Coin',
+        'Rabbit Fur','Fox Pelt','Deer Fur','Deer Antlers','Boar Tusk',
+        'Bear Pelt','Bear Claw','Wolf Tooth','Dire Pelt',
+        'Wyvern Scale','Troll Hide','Troll Bone',
+        'Dragon Bone','Dragon Fang','Dragon Scale','Dragon Claw','Dragon Eye','Dragon Heart',
+        'Cave Worm Slime','Cave Worm Fang','Worm Acid Flask',
+        'Golem Core','Enriched Fire Essence','Infernal Ember',
+        'Spider Silk','Venom Gland',
+        'Ancient Core','Ether Shard','Starstone','Shadow Essence',
+        'Firefly Wing','Snake Venom',
+        'Void Essence','Voidstone','Void Fang','Void Relic','Void Core',
+        'Fire Essence','Frost Shard','Storm Crystal','Spirit Dust',
+        // Bars / refined
+        'Iron Bar','Gold Bar','Steel Bar','Aether Bar',
+        // Weapons
+        'Wooden Staff','Bone Dagger',"Hunter's Bow",'Iron Sword','Boar Spear','War Hammer',
+        'Silver Rapier','Steel Greatsword','Venom Dagger','Troll Club','Wyvern Glaive',
+        'Golemforged Blade','Titanium Sword','Dragonbone Sword',
+        'Aether Blade','Void Scythe','Starforged Warblade','Emberforged Blade','Volcanic Warblade',
+        // Shields
+        'Wooden Shield','Iron Shield','Steel Shield','Troll Shield','Titanium Shield','Dragon Scale Shield',
+        'Aether Ward','Void Bulwark',
+        // Helms
+        'Flower Crown','Antler Helm','Iron Helm','Wolf Skull Helm','Steel Helm','Wyvern Helm',
+        'Titanium Helm','Dragon Skull Helm','Aether Crown','Void Helm','Embercrown',
+        // Armor
+        'Fur Cloak','Leather Armor','Scale Mail','Iron Plate','Steel Cuirass','Wyvern Hauberk',
+        'Golem Plate','Titanium Plate','Dragon Scale Hauberk',
+        'Aether Vestment','Void Plate','Phoenixweave Vestment','Infernoplate',
+        // Cuisses
+        'Leather Cuisses','Iron Cuisses','Steel Cuisses','Titanium Cuisses','Dragon Bone Cuisses','Aether Cuisses',
+        // Greaves
+        'Leather Greaves','Iron Greaves','Steel Greaves','Titanium Greaves','Dragon Bone Greaves','Aether Greaves',
+        // Rings
+        'Iron Ring','Silver Ring','Quartz Ring','Gold Ring','Dragon Fang Ring','Void Ring','Emberveil Ring',
+        // Medallions
+        'Silver Medallion','Quartz Medallion','Gold Medallion','Dragon Heart Medallion','Starstone Medallion',
+        // Consumables
+        'Raw Meat','Cooked Meat','Raw Fish',
+        'Minor Health Potion','Health Potion','Greater Health Potion',
+        'Healing Potion','Mana Potion','Strength Potion','Defense Potion',
+        'Moonbloom Draught','Sunfire Tonic','Void Elixir','Starbloom Brew',
+        'Moonbloom Salve','Solar Draught','Void Shroud','Celestial Brew',
+      ]);
+      const bank = [];
+      if (Array.isArray(data)) {
+        for (let i = 0; i < Math.min(data.length, 30); i++) {
+          const slot = data[i];
+          if (!slot) { bank.push(null); continue; }
+          if (VALID_ITEMS_BANK.has(slot.item) && Number.isInteger(slot.count) && slot.count > 0 && slot.count <= 9999) {
+            bank.push({ item: slot.item, count: slot.count });
+          } else {
+            bank.push(null);
+          }
+        }
+      }
+      await Player.updateOne({ username: p.username }, { $set: { bank } });
+    } catch (err) {
+      console.error('[bank_save]', err);
     }
   });
 
