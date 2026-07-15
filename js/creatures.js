@@ -1142,8 +1142,8 @@ function killCreature(c) {
     }
 // ---- experience: scaled down hard when you badly outmatch the foe ----
     const f = challengeFactor(c.def.level);
-    const atkGain = Math.max(1, Math.round(c.def.xp * 0.6 * f));
-    const defGain = Math.max(1, Math.round(c.def.xp * 0.4 * f));
+    const atkGain = Math.max(1, Math.round(c.def.xp * 1.5 * f));
+    const defGain = Math.max(1, Math.round(c.def.xp * 1.0 * f));
     const hp0 = headPos();
     floatText('+' + atkGain + ' ATK', hp0.clone().add(new THREE.Vector3(-0.6, 0.2, 0)), '#ff8f8f', 0.85);
     floatText('+' + defGain + ' DEF', hp0.clone().add(new THREE.Vector3(0.6, 0.5, 0)), '#8fbcff', 0.85);

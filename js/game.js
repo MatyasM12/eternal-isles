@@ -246,6 +246,9 @@
 	ground.receiveShadow = true;
 	scene.add(ground);
 
+	// ------------------------------------------------------------------ procedural grass
+	const grassSystem = new GrassSystem(scene, ISLES);
+
 	// ------------------------------------------------------------------ water
 	const waterGeo = new THREE.PlaneGeometry(900, 900, 48, 48);
 	waterGeo.rotateX(-Math.PI / 2);
@@ -324,31 +327,81 @@
 		}
 	}
 
-	// ------------------------------------------------------------------ trees
-	const trunkMat = new THREE.MeshStandardMaterial({ color: 0x6d4a2f, flatShading: true, roughness: 0.9 });
-	const leafMats = [0x2f7f3b, 0x3f9142, 0x57a84f].map(
-		(c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true, roughness: 0.85 })
-	);
-	const trunkGeo = new THREE.CylinderGeometry(0.16, 0.27, 1.5, 7);
-	const leafGeos = [new THREE.OctahedronGeometry(1.15, 0), new THREE.OctahedronGeometry(0.88, 0), new THREE.OctahedronGeometry(0.6, 0)];
+	// ------------------------------------------------------------------ trees (procedural via ez-tree)
+	const EZTree = window['@dgreenheck/ez-tree'];
 
-	function buildTree(p) {
+	// Pre-generate one template tree per biome, then clone for each placement.
+	// ez-tree units are ~40 internal units tall → scale 0.085 for game scale (~3.5 units tall).
+	const TREE_SCALE = 0.085;
+
+	// Preset names per biome: [small, medium, large]
+	const BIOME_TREE_PRESETS = {
+		temperate: ['Oak Small', 'Oak Medium', 'Oak Large'],
+		volcanic:  ['Pine Small', 'Pine Medium', 'Pine Large'],
+		frost:     ['Pine Small', 'Pine Medium', 'Pine Large'],
+		arcane:    ['Ash Small', 'Ash Medium', 'Ash Large'],
+	};
+
+	// Solid leaf colours per biome (no texture, so we supply real colours)
+	const BIOME_LEAF_COLOR = {
+		temperate: 0x4a8c3f,  // mid green
+		volcanic:  0x6b4c2a,  // dark rust-brown
+		frost:     0xadd8e6,  // light icy blue
+		arcane:    0x7040c0,  // purple
+	};
+
+	// Pre-build template Trees (one per biome × 3 sizes = 12 total)
+	const _treeTemplates = {};
+	for (const [biome, presets] of Object.entries(BIOME_TREE_PRESETS)) {
+		_treeTemplates[biome] = presets.map((presetName, si) => {
+			const t = new EZTree.Tree();
+			t.loadPreset(presetName);
+			t.options.bark.textured    = false;
+			t.options.bark.flatShading = true;
+			t.options.leaves.billboard = 'single';
+			t.options.leaves.alphaTest = 0;
+			t.options.seed = 1000 + biome.charCodeAt(0) * 13 + si * 37;
+			t.generate();
+			// Textures are stripped — replace the leaf material with a plain solid-colour one
+			if (t.leavesMesh && t.leavesMesh.material) {
+				t.leavesMesh.material.dispose();
+				t.leavesMesh.material = new THREE.MeshStandardMaterial({
+					color: BIOME_LEAF_COLOR[biome],
+					roughness: 0.85,
+					side: THREE.DoubleSide,
+					flatShading: true,
+				});
+			}
+			t.scale.setScalar(TREE_SCALE);
+			t.updateMatrix();
+			return t;
+		});
+	}
+
+	function buildTree(p, isle) {
+		const biome = (isle && isle.biome) || 'temperate';
+		const templates = _treeTemplates[biome] || _treeTemplates.temperate;
+		// Pick a size weighted toward medium (0→small, 1→medium, 2→large)
+		const sizeIdx = rand(0, 1) < 0.2 ? 0 : rand(0, 1) < 0.55 ? 1 : 2;
+		const tmpl = templates[sizeIdx];
+
+		// Clone geometry + reuse material from template
 		const g = new THREE.Group();
-		const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-		trunk.position.y = 0.75; trunk.castShadow = true;
-		g.add(trunk);
-		const ys = [1.9, 2.7, 3.35];
-		for (let i = 0; i < 3; i++) {
-			const leaf = new THREE.Mesh(leafGeos[i], leafMats[(i + randInt(0, 2)) % 3]);
-			leaf.position.y = ys[i];
-			leaf.rotation.y = rand(0, Math.PI);
-			leaf.castShadow = true;
-			g.add(leaf);
+		if (tmpl.branchesMesh) {
+			const m = new THREE.Mesh(tmpl.branchesMesh.geometry.clone(), tmpl.branchesMesh.material);
+			m.castShadow = true; m.receiveShadow = true;
+			g.add(m);
 		}
+		if (tmpl.leavesMesh) {
+			const m = new THREE.Mesh(tmpl.leavesMesh.geometry.clone(), tmpl.leavesMesh.material);
+			m.castShadow = true;
+			g.add(m);
+		}
+
 		g.position.copy(p);
 		g.rotation.y = rand(0, Math.PI * 2);
-		const s = rand(0.8, 1.25);
-		g.scale.set(s, s * rand(0.9, 1.15), s);
+		const s = TREE_SCALE * rand(0.85, 1.2);
+		g.scale.set(s, s * rand(0.9, 1.12), s);
 		g.userData.interact = {
 			kind: 'harvest',
 			node: { item: 'Wood Log', duration: 2.8, range: 2.7, verb: 'chopping', group: g },
@@ -427,53 +480,106 @@
 	scatterOnIsles(3, 6.5, 5, (p) => buildMineral(p, 'Voidstone'), 7, 7);
 	scatterOnIsles(3, 7.0, 5, (p) => buildMineral(p, 'Starstone'), 7, 7);
 
-	// ------------------------------------------------------------------ flowers
+	// ------------------------------------------------------------------ flowers (ez-tree bush base + bloom clusters)
 	const flowerAnchors = []; // for the sparkle particle system
+
+	// Bloom geometry shared across all instances of the same species
+	const BLOOM_GEO = new THREE.IcosahedronGeometry(0.13, 0);
+
 	const FLOWER_DEFS = [
-		{ item: 'Red Rose',          color: 0xff3355, emissive: 0xd0143a, geo: new THREE.IcosahedronGeometry(0.22, 0) },
-		{ item: 'Blue Star Flower',  color: 0x4d8dff, emissive: 0x2a5fe0, geo: new THREE.OctahedronGeometry(0.26, 0) },
-		{ item: 'Chrysanthemum',     color: 0xffc933, emissive: 0xd08f10, geo: new THREE.DodecahedronGeometry(0.22, 0) },
-		{ item: 'Lilac',             color: 0xb57ede, emissive: 0x7d3fb0, geo: new THREE.IcosahedronGeometry(0.21, 0) },
-		// Eldenmere tier-6 flowers
-		{ item: 'Moonbloom',         color: 0xd0f0ff, emissive: 0x4ac8ff, geo: new THREE.IcosahedronGeometry(0.24, 1) },
-		{ item: 'Voidpetal',         color: 0x3a0050, emissive: 0x8800cc, geo: new THREE.OctahedronGeometry(0.27, 0) },
-		{ item: 'Sunfire Lily',      color: 0xff8c00, emissive: 0xdd4400, geo: new THREE.DodecahedronGeometry(0.24, 0) },
-		{ item: 'Starbloom',         color: 0xe8eeff, emissive: 0x6080ff, geo: new THREE.IcosahedronGeometry(0.22, 0) },
+		{ item: 'Red Rose',         color: 0xff2244, emissive: 0xcc0022, emissiveIntensity: 0.6,  leafColor: 0x2d7a2a, bushPreset: 'Bush 2' },
+		{ item: 'Blue Star Flower', color: 0x4d8dff, emissive: 0x1a55cc, emissiveIntensity: 0.5,  leafColor: 0x3a7a3a, bushPreset: 'Bush 1' },
+		{ item: 'Chrysanthemum',    color: 0xffcc22, emissive: 0xdd9900, emissiveIntensity: 0.55, leafColor: 0x3d7a2a, bushPreset: 'Bush 3' },
+		{ item: 'Lilac',            color: 0xcc88ff, emissive: 0x8833cc, emissiveIntensity: 0.5,  leafColor: 0x4a6a3a, bushPreset: 'Bush 2' },
+		// Eldenmere tier-7 arcane flowers
+		{ item: 'Moonbloom',        color: 0xd0f0ff, emissive: 0x44ccff, emissiveIntensity: 1.0,  leafColor: 0x1a4a6a, bushPreset: 'Bush 1' },
+		{ item: 'Voidpetal',        color: 0xaa44ff, emissive: 0x6600cc, emissiveIntensity: 1.2,  leafColor: 0x200030, bushPreset: 'Bush 3' },
+		{ item: 'Sunfire Lily',     color: 0xff8800, emissive: 0xdd4400, emissiveIntensity: 0.9,  leafColor: 0x4a5020, bushPreset: 'Bush 2' },
+		{ item: 'Starbloom',        color: 0xeeeeff, emissive: 0x6688ff, emissiveIntensity: 0.8,  leafColor: 0x1a2a4a, bushPreset: 'Bush 1' },
 	];
-	const stemMat = new THREE.MeshStandardMaterial({ color: 0x2d7a2a, flatShading: true, roughness: 0.85 });
-	const stemGeo = new THREE.CylinderGeometry(0.038, 0.052, 0.72, 5);
-	const leafGeo = new THREE.ConeGeometry(0.13, 0.34, 4);
-	const bushBaseGeo = new THREE.SphereGeometry(0.52, 8, 5);
+
+	// Pre-generate one bush template per species — clone geo per placement, share materials
+	const BUSH_SCALE = 0.038; // ez-tree internal units ~40 tall → ~1.5 game units wide for a bush
+	const _bushTemplates = FLOWER_DEFS.map((def, i) => {
+		const t = new EZTree.Tree();
+		t.loadPreset(def.bushPreset);
+		t.options.bark.textured    = false;
+		t.options.bark.flatShading = true;
+		t.options.leaves.billboard = 'single';
+		t.options.leaves.alphaTest = 0;
+		t.options.seed = 2000 + i * 53;
+		t.generate();
+		// Replace leaf material with solid foliage colour
+		if (t.leavesMesh && t.leavesMesh.material) {
+			t.leavesMesh.material.dispose();
+			t.leavesMesh.material = new THREE.MeshStandardMaterial({
+				color: def.leafColor,
+				roughness: 0.9,
+				side: THREE.DoubleSide,
+				flatShading: true,
+			});
+		}
+		t.scale.setScalar(BUSH_SCALE);
+		t.updateMatrix();
+		// Compute approximate canopy sphere in local (pre-scale) space
+		const leafGeo = t.leavesMesh && t.leavesMesh.geometry;
+		let canopyR = 10, canopyY = 18; // safe fallback in ez-tree units
+		if (leafGeo && leafGeo.boundingSphere) {
+			canopyR = leafGeo.boundingSphere.radius;
+			canopyY = leafGeo.boundingSphere.center.y;
+		}
+		const bloomMat = new THREE.MeshStandardMaterial({
+			color: def.color,
+			emissive: def.emissive || 0x000000,
+			emissiveIntensity: def.emissiveIntensity || 0.5,
+			flatShading: true,
+			roughness: 0.4,
+		});
+		return { t, canopyR, canopyY, bloomMat };
+	});
 
 	function buildFlower(def, p) {
+		const di = FLOWER_DEFS.indexOf(def);
+		const tmpl = _bushTemplates[di];
 		const g = new THREE.Group();
-		const bloomMat = new THREE.MeshStandardMaterial({
-			color: def.color, emissive: def.emissive, emissiveIntensity: 1.0, flatShading: true, roughness: 0.45,
-		});
-		// low leafy bush mound as a base
-		const base = new THREE.Mesh(bushBaseGeo, stemMat);
-		base.scale.set(1.05, 0.48, 1.05); base.position.y = 0.14; g.add(base);
-		const n = randInt(5, 8);
-		for (let i = 0; i < n; i++) {
-			const ox = rand(-0.52, 0.52), oz = rand(-0.52, 0.52);
-			const stem = new THREE.Mesh(stemGeo, stemMat);
-			stem.position.set(ox, 0.38, oz);
-			stem.rotation.z = rand(-0.22, 0.22);
-			stem.rotation.x = rand(-0.1, 0.1);
-			g.add(stem);
-			const bloom = new THREE.Mesh(def.geo, bloomMat);
-			bloom.scale.setScalar(rand(0.78, 1.25));
-			bloom.position.set(ox, 0.82 + rand(-0.1, 0.15), oz);
-			bloom.rotation.y = rand(0, Math.PI * 2);
+
+		// Clone bush geometry (shared materials)
+		if (tmpl.t.branchesMesh && tmpl.t.branchesMesh.geometry) {
+			const m = new THREE.Mesh(tmpl.t.branchesMesh.geometry.clone(), tmpl.t.branchesMesh.material);
+			m.castShadow = true;
+			g.add(m);
+		}
+		if (tmpl.t.leavesMesh && tmpl.t.leavesMesh.geometry) {
+			const m = new THREE.Mesh(tmpl.t.leavesMesh.geometry.clone(), tmpl.t.leavesMesh.material);
+			m.castShadow = true;
+			g.add(m);
+		}
+
+		// Scale the group so the bush sits at ~1.2–1.5 units tall in game space
+		const s = BUSH_SCALE * rand(0.85, 1.2);
+		g.scale.setScalar(s);
+		g.rotation.y = rand(0, Math.PI * 2);
+
+		// Scatter bloom flowers across the upper canopy hemisphere
+		// canopyR/canopyY are in ez-tree local units; multiply by s to get game-space radius
+		const cr = tmpl.canopyR * s;
+		const cy = tmpl.canopyY * s;
+		const bloomCount = randInt(14, 22);
+		for (let i = 0; i < bloomCount; i++) {
+			// Random point on upper hemisphere surface
+			const phi   = rand(0, Math.PI * 0.52);   // 0..~94°, biased toward top
+			const theta = rand(0, Math.PI * 2);
+			const bx = cr * Math.sin(phi) * Math.cos(theta);
+			const by = cy + cr * Math.cos(phi) * rand(0.5, 1.0);
+			const bz = cr * Math.sin(phi) * Math.sin(theta);
+			const bloom = new THREE.Mesh(BLOOM_GEO, tmpl.bloomMat);
+			bloom.scale.setScalar(rand(0.8, 1.4) / s); // counteract group scale so bloom size is consistent
+			bloom.position.set(bx / s, by / s, bz / s);
+			bloom.rotation.set(rand(0, Math.PI), rand(0, Math.PI * 2), 0);
 			bloom.castShadow = true;
 			g.add(bloom);
-			// leaves scattered around stems
-			const lf = new THREE.Mesh(leafGeo, stemMat);
-			lf.position.set(ox + rand(-0.14, 0.14), 0.32, oz + rand(-0.14, 0.14));
-			lf.rotation.z = rand(-1.4, -0.7);
-			lf.rotation.y = rand(0, Math.PI * 2);
-			g.add(lf);
 		}
+
 		g.position.copy(p);
 		g.userData.interact = {
 			kind: 'harvest',
@@ -540,6 +646,7 @@
 	// ------------------------------------------------------------------ signpost: "ISLA PRIMA"
 	function buildSignpost(isle) {
 		const g = new THREE.Group();
+		const trunkMat = new THREE.MeshStandardMaterial({ color: 0x6b4226, flatShading: true, roughness: 0.9 });
 		const post = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 1.6, 6), trunkMat);
 		post.position.y = 0.8; post.castShadow = true; g.add(post);
 		const board = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.55, 0.09), trunkMat);
@@ -1043,322 +1150,6 @@
 	}));
 	scene.add(sparkles);
 
-	// ------------------------------------------------------------------ items & recipes
-	const ITEMS = {
-		// ---- gathered materials ----
-		'Red Rose':         { icon: '🌹', type: 'material', desc: 'A fragrant crimson bloom.' },
-		'Blue Star Flower': { icon: '🔹', type: 'material', desc: 'A glowing azure wildflower.' },
-		'Chrysanthemum':    { icon: '🌼', type: 'material', desc: 'A cheerful golden bloom.' },
-		'Lilac':            { icon: '🌷', type: 'material', desc: 'A purple bloom used in essences.' },
-		'Wood Log':         { icon: '🪵', type: 'material', desc: 'Sturdy timber, chopped from a tree.' },
-		'Iron Ore':         { icon: '🪨', type: 'material', desc: 'Raw ore — smelt it into iron bars.' },
-		'Coal':             { icon: '⚫', type: 'material', desc: 'Fuel for forging steel.' },
-		'Silver Ore':       { icon: '⚪', type: 'material', desc: 'Pale ore — smelt into silver bars.' },
-		'Sulphur':          { icon: '🟡', type: 'material', desc: 'Brimstone, key to fire essence.' },
-		'Rabbit Fur':       { icon: '🐇', type: 'material', desc: 'Soft white pelt.' },
-		'Raw Meat':         { icon: '🍖', type: 'food', heal: 6,   desc: 'Click to eat · restores 6 HP.' },
-		'Cooked Meat':      { icon: '🥩', type: 'food', heal: 22,  desc: 'Click to eat · restores 22 HP.' },
-		'Minor Health Potion': { icon: '🧪', type: 'food', heal: 40,  desc: 'Click to drink · restores 40 HP.' },
-		'Health Potion':    { icon: '⚗️', type: 'food', heal: 80,  desc: 'Click to drink · restores 80 HP.' },
-		'Greater Health Potion': { icon: '💊', type: 'food', heal: 150, desc: 'Click to drink · restores 150 HP.' },
-		'Bones':            { icon: '🦴', type: 'material', desc: 'Useful for weapons and armor.' },
-		'Beaver Fur':       { icon: '🦫', type: 'material', desc: 'Dense, water-resistant fur.' },
-		'Deer Fur':         { icon: '🟤', type: 'material', desc: 'Warm tawny hide — tan it into leather.' },
-		'Deer Antlers':     { icon: '🦌', type: 'material', desc: 'Branching antlers.' },
-		'Wolf Fur':         { icon: '🐺', type: 'material', desc: 'Coarse grey pelt.' },
-		'Boar Tusk':        { icon: '🦷', type: 'material', desc: 'A sharp curved tusk.' },
-		'Fox Pelt':         { icon: '🦊', type: 'material', desc: 'Fine russet fur.' },
-		'Bear Pelt':        { icon: '🐻', type: 'material', desc: 'Thick, heavy hide.' },
-		'Bear Claw':        { icon: '🐾', type: 'material', desc: 'A wicked curved claw.' },
-		'Raw Fish':         { icon: '🐟', type: 'food', heal: 8, desc: 'Click to eat · restores 8 HP.' },
-		'Fish Scales':      { icon: '🐠', type: 'material', desc: 'Iridescent overlapping scales.' },
-		'Dire Pelt':        { icon: '🐕', type: 'material', desc: 'The rugged hide of a direwolf.' },
-		'Spider Silk':      { icon: '🕸️', type: 'material', desc: 'Impossibly strong spider silk.' },
-		'Venom Gland':      { icon: '🧪', type: 'material', desc: 'Dripping with potent venom.' },
-		'Troll Hide':       { icon: '🟢', type: 'material', desc: 'Rubbery, near-impervious hide.' },
-		'Wyvern Scale':     { icon: '🐲', type: 'material', desc: 'A gleaming, fireproof scale.' },
-		'Golem Core':       { icon: '💠', type: 'material', desc: 'A humming heart of living stone.' },
-		'Dragon Scale':     { icon: '🔴', type: 'material', desc: 'An enormous scale, harder than steel.' },
-		'Dragon Fang':      { icon: '🦷', type: 'material', desc: 'A razor-sharp tooth from the great wyrm.' },
-		'Dragon Heart':     { icon: '❤️‍🔥', type: 'material', desc: 'Still warm — thrums with primal power.' },
-		'Dragon Bone':      { icon: '🦴', type: 'material', desc: 'Dense bone that glows faintly red.' },
-		'Quartz Ore':       { icon: '💜', type: 'material', desc: 'A violet crystal ore.' },
-		'Gold Ore':         { icon: '🌕', type: 'material', desc: 'Rich golden ore — smelt into gold bars.' },
-		'Gold Coin':        { icon: '🪙', type: 'material', desc: 'A gleaming coin — a sign of the creature\'s wealth.' },
-		'Titanium Ore':     { icon: '🔷', type: 'material', desc: 'Heavy blue-grey ore from the deepest islands.' },
-		// ---- crafted reagents (intermediate) ----
-		'Fire Essence':     { icon: '🔥', type: 'reagent', desc: 'Bottled flame — smelts ores into bars.' },
-		'Tanned Leather':   { icon: '🟫', type: 'reagent', desc: 'Cured hide, ready for armor.' },
-		'Iron Bar':         { icon: '🔩', type: 'reagent', desc: 'Refined iron for smithing.' },
-		'Steel Bar':        { icon: '⚙️', type: 'reagent', desc: 'Tough steel for master gear.' },
-		'Silver Bar':       { icon: '🥈', type: 'reagent', desc: 'Bright silver for fine weapons.' },
-		'Quartz Crystal':   { icon: '🔮', type: 'reagent', desc: 'A purified quartz gem, thrumming with magic.' },
-		'Gold Bar':         { icon: '🟡', type: 'reagent', desc: 'A gleaming gold ingot for fine jewelry.' },
-		'Titanium Bar':     { icon: '🔩', type: 'reagent', desc: 'A dense titanium ingot — lighter and stronger than steel.' },
-		// ---- weapons ----
-		'Wooden Staff':     { icon: '🪄', type: 'weapon', atk: 2,  desc: 'A simple focus staff.' },
-		'Bone Dagger':      { icon: '🔪', type: 'weapon', atk: 3,  desc: 'A jagged bone blade.' },
-		"Hunter's Bow":     { icon: '🏹', type: 'weapon', atk: 5,  desc: 'A supple hunting bow.' },
-		'Iron Sword':       { icon: '⚔️', type: 'weapon', atk: 6,  desc: 'A dependable iron blade.' },
-		'Boar Spear':       { icon: '🔱', type: 'weapon', atk: 7,  desc: 'Tusk-tipped hunting spear.' },
-		'War Hammer':       { icon: '🔨', type: 'weapon', atk: 9,  desc: 'A crushing two-hand maul.' },
-		'Silver Rapier':    { icon: '🗡️', type: 'weapon', atk: 10, desc: 'A swift, gleaming silver blade.' },
-		'Steel Greatsword': { icon: '⚔️', type: 'weapon', atk: 12, desc: 'A mighty forged greatsword.' },
-		'Venom Dagger':     { icon: '🔪', type: 'weapon', atk: 13, desc: 'A blade slick with venom.' },
-		'Troll Club':       { icon: '🏏', type: 'weapon', atk: 15, desc: 'A brutal, hide-wrapped club.' },
-		'Wyvern Glaive':    { icon: '🔱', type: 'weapon', atk: 17, desc: 'A glaive edged in wyvern scale.' },
-		'Golemforged Blade':{ icon: '⚔️', type: 'weapon', atk: 21, desc: 'A blade humming with earth-magic.' },
-		'Titanium Sword':   { icon: '🗡️', type: 'weapon', atk: 22, desc: 'A razor-thin blade of pure titanium — incredibly light.' },
-		'Dragonbone Sword': { icon: '🗡️', type: 'weapon', atk: 35, desc: 'A massive blade forged from a dragon\'s own bones.' },
-		// ---- shields (new slot) ----
-		'Wooden Shield':    { icon: '🛡️', type: 'shield', def: 2,  desc: 'A round plank shield.' },
-		'Iron Shield':      { icon: '🛡️', type: 'shield', def: 4,  desc: 'A banded iron shield.' },
-		'Steel Shield':     { icon: '🛡️', type: 'shield', def: 6,  desc: 'A heavy steel kite shield.' },
-		'Troll Shield':     { icon: '🛡️', type: 'shield', def: 9,  desc: 'A vast shield of troll hide.' },
-		'Titanium Shield':  { icon: '🛡️', type: 'shield', def: 12, desc: 'A lightweight but incredibly tough titanium buckler.' },
-		'Dragon Scale Shield': { icon: '🛡️', type: 'shield', def: 18, desc: 'A buckler of dragon-scale, nearly impenetrable.' },
-		// ---- helms ----
-		'Flower Crown':     { icon: '👑', type: 'helm',   def: 1,  desc: 'A pretty woven circlet.' },
-		'Antler Helm':      { icon: '🪖', type: 'helm',   def: 2,  desc: 'A helm crowned with antlers.' },
-		'Iron Helm':        { icon: '⛑️', type: 'helm',   def: 3,  desc: 'A solid iron helmet.' },
-		'Wolf Skull Helm':  { icon: '💀', type: 'helm',   def: 4,  desc: 'A fearsome fanged helm.' },
-		'Steel Helm':       { icon: '⛑️', type: 'helm',   def: 6,  desc: 'A visored steel great-helm.' },
-		'Wyvern Helm':      { icon: '🐲', type: 'helm',   def: 8,  desc: 'A horned helm of wyvern scale.' },
-		'Titanium Helm':    { icon: '⛑️', type: 'helm',   def: 12, desc: 'A sleek titanium helmet with excellent coverage.' },
-		'Dragon Skull Helm':{ icon: '💀', type: 'helm',   def: 16, desc: 'The skull of a slain dragon, worn as a helm.' },
-		// ---- body armor ----
-		'Fur Cloak':        { icon: '🧥', type: 'armor',  def: 2,  desc: 'A warm layered cloak.' },
-		'Leather Armor':    { icon: '🦺', type: 'armor',  def: 4,  desc: 'Hardened leather cuirass.' },
-		'Scale Mail':       { icon: '🐠', type: 'armor',  def: 6,  desc: 'Overlapping scale armor.' },
-		'Iron Plate':       { icon: '🛡️', type: 'armor',  def: 8,  desc: 'Heavy plated cuirass.' },
-		'Steel Cuirass':    { icon: '🛡️', type: 'armor',  def: 11, desc: 'A master-forged steel cuirass.' },
-		'Wyvern Hauberk':   { icon: '🐲', type: 'armor',  def: 14, desc: 'Scale hauberk, light and strong.' },
-		'Golem Plate':      { icon: '💠', type: 'armor',  def: 18, desc: 'Armor of living golem-stone.' },
-		'Titanium Plate':   { icon: '🔷', type: 'armor',  def: 22, desc: 'Razor-thin but incredibly tough titanium plate.' },
-		'Dragon Scale Hauberk': { icon: '🔴', type: 'armor',  def: 30, desc: 'Full hauberk of overlapping dragon scales.' },
-		// ---- cuisses (thigh armor, new slot) ----
-		'Leather Cuisses':  { icon: '👖', type: 'cuisses', def: 2, desc: 'Padded leather thigh guards.' },
-		'Iron Cuisses':     { icon: '👖', type: 'cuisses', def: 4, desc: 'Iron-plated cuisses.' },
-		'Steel Cuisses':    { icon: '👖', type: 'cuisses', def: 7, desc: 'Steel cuisses for the thighs.' },
-		'Titanium Cuisses': { icon: '👖', type: 'cuisses', def: 10, desc: 'Titanium thigh plates — barely any weight.' },
-		'Dragon Bone Cuisses': { icon: '👖', type: 'cuisses', def: 14, desc: 'Cuisses reinforced with dragonbone.' },
-		// ---- greaves (shin armor, new slot) ----
-		'Leather Greaves':  { icon: '🥾', type: 'greaves', def: 2, desc: 'Leather shin wraps.' },
-		'Iron Greaves':     { icon: '🥾', type: 'greaves', def: 3, desc: 'Iron greaves for the shins.' },
-		'Steel Greaves':    { icon: '🥾', type: 'greaves', def: 6, desc: 'Steel greaves, near-impenetrable.' },
-		'Titanium Greaves':  { icon: '🥾', type: 'greaves', def: 9, desc: 'Titanium shin guards, light as feathers.' },
-		'Dragon Bone Greaves': { icon: '🥾', type: 'greaves', def: 12, desc: 'Greaves carved from dragonbone.' },
-		// ---- medallions ----
-		'Silver Medallion': { icon: '🏅', type: 'medallion', def: 3, atk: 1, desc: 'A silver disc on a chain. +3 DEF, +1 ATK.' },
-		'Quartz Medallion': { icon: '🔮', type: 'medallion', def: 5, atk: 2, desc: 'A glowing quartz pendant. +5 DEF, +2 ATK.' },
-		'Gold Medallion':   { icon: '🥇', type: 'medallion', def: 8, atk: 3, desc: 'A heavy golden medallion. +8 DEF, +3 ATK.' },
-		'Dragon Heart Medallion': { icon: '❤️‍🔥', type: 'medallion', def: 15, atk: 8, desc: 'A still-burning dragon heart, worn as a talisman. +15 DEF, +8 ATK.' },
-		// ---- rings ----
-		'Iron Ring':        { icon: '💍', type: 'ring', atk: 1, desc: 'A plain iron band. +1 ATK.' },
-		'Silver Ring':      { icon: '💍', type: 'ring', atk: 2, def: 1, desc: 'A fine silver ring. +2 ATK, +1 DEF.' },
-		'Quartz Ring':      { icon: '💍', type: 'ring', atk: 3, def: 2, desc: 'A ring set with a quartz gem. +3 ATK, +2 DEF.' },
-		'Gold Ring':        { icon: '💍', type: 'ring', atk: 4, def: 3, desc: 'A heavy gold ring. +4 ATK, +3 DEF.' },
-		'Dragon Fang Ring': { icon: '💍', type: 'ring', atk: 10, def: 5, desc: 'A ring carved from a dragon fang. +10 ATK, +5 DEF.' },
-		// ---- Eldenmere tier-6 gathered materials ----
-		'Moonbloom':        { icon: '🌙', type: 'material', desc: 'A luminous flower that glows like the moon.' },
-		'Voidpetal':        { icon: '🌑', type: 'material', desc: 'A dark blossom from beyond the veil.' },
-		'Sunfire Lily':     { icon: '🔆', type: 'material', desc: 'A blazing lily that burns cold to the touch.' },
-		'Starbloom':        { icon: '⭐', type: 'material', desc: 'A silver flower that hums with celestial energy.' },
-		'Aether Crystal':   { icon: '💎', type: 'material', desc: 'A crackling cyan crystal suffused with pure aether.' },
-		'Voidstone':        { icon: '🌑', type: 'material', desc: 'A fragment of solid void — drinks in light.' },
-		'Starstone':        { icon: '✨', type: 'material', desc: 'A glittering stone forged inside a dying star.' },
-		// ---- Eldenmere tier-6 creature drops ----
-		'Shadow Essence':   { icon: '🌫️', type: 'material', desc: 'The remnant of a shadow wraith — cold and insubstantial.' },
-		'Void Fang':        { icon: '🦷', type: 'material', desc: 'A crystalline tooth from a void stalker.' },
-		'Ancient Core':     { icon: '🔵', type: 'material', desc: 'The beating heart of an ancient golem.' },
-		'Ether Shard':      { icon: '🔹', type: 'material', desc: 'A razor sliver of solidified ether.' },
-		// ---- Eldenmere tier-6 crafted reagents ----
-		'Aether Bar':       { icon: '🔷', type: 'reagent', desc: 'A bar of smelted aether crystal — pulsing with energy.' },
-		'Void Ingot':       { icon: '⬛', type: 'reagent', desc: 'Compressed voidstone, darker than night.' },
-		'Star Alloy':       { icon: '🌟', type: 'reagent', desc: 'A glowing alloy of starstone and aether.' },
-		// ---- Eldenmere tier-6 weapons ----
-		'Aether Blade':     { icon: '⚔️', type: 'weapon', atk: 45, desc: 'A crackling blade of pure aether energy. +45 ATK.' },
-		'Void Scythe':      { icon: '🗡️', type: 'weapon', atk: 52, desc: 'A scythe that cleaves through reality itself. +52 ATK.' },
-		'Starforged Warblade': { icon: '⚔️', type: 'weapon', atk: 60, desc: 'A blade hammered from the heart of a star. +60 ATK.' },
-		// ---- Eldenmere tier-6 shields ----
-		'Aether Ward':      { icon: '🛡️', type: 'shield', def: 25, desc: 'A shield of crystallized aether. +25 DEF.' },
-		'Void Bulwark':     { icon: '🛡️', type: 'shield', def: 32, desc: 'A buckler of solid void, immune to force. +32 DEF.' },
-		// ---- Eldenmere tier-6 helms ----
-		'Aether Crown':     { icon: '👑', type: 'helm', def: 22, desc: 'A crown of living aether. +22 DEF.' },
-		'Void Helm':        { icon: '💀', type: 'helm', def: 28, desc: 'A helm that phases between worlds. +28 DEF.' },
-		// ---- Eldenmere tier-6 body armor ----
-		'Aether Vestment':  { icon: '🧥', type: 'armor', def: 38, desc: 'Robes woven from pure aetheric energy. +38 DEF.' },
-		'Void Plate':       { icon: '🛡️', type: 'armor', def: 50, desc: 'Armor of compressed void that absorbs all force. +50 DEF.' },
-		// ---- Eldenmere tier-6 cuisses ----
-		'Aether Cuisses':   { icon: '👖', type: 'cuisses', def: 18, desc: 'Aether-infused thigh guards. +18 DEF.' },
-		// ---- Eldenmere tier-6 greaves ----
-		'Aether Greaves':   { icon: '🥾', type: 'greaves', def: 16, desc: 'Aether-reinforced shin guards. +16 DEF.' },
-		// ---- Eldenmere tier-6 medallions & rings ----
-		'Starstone Medallion': { icon: '🏅', type: 'medallion', def: 25, atk: 15, desc: 'A medallion of starstone. +25 DEF, +15 ATK.' },
-		'Void Ring':        { icon: '💍', type: 'ring', atk: 18, def: 10, desc: 'A ring of void crystal. +18 ATK, +10 DEF.' },
-		// ---- Flower-brewed elixirs (consumables) ----
-		'Moonbloom Draught':    { icon: '🌙', type: 'food', heal: 60,                                         desc: 'Click to drink · restores 60 HP.' },
-		'Sunfire Tonic':        { icon: '🔆', type: 'food', heal: 0,   atkBuff: 8,  buffDur: 60,              desc: 'Click to drink · grants +8 ATK for 60 seconds.' },
-		'Void Elixir':          { icon: '🌑', type: 'food', heal: 0,   defBuff: 10, buffDur: 60,              desc: 'Click to drink · grants +10 DEF for 60 seconds.' },
-		'Starbloom Brew':       { icon: '⭐', type: 'food', heal: 45,  atkBuff: 5,  buffDur: 45,              desc: 'Click to drink · restores 45 HP and grants +5 ATK for 45 seconds.' },
-		'Moonbloom Salve':      { icon: '🌛', type: 'food', heal: 0,   hotHeal: 120, hotDur: 30,              desc: 'Click to drink · restores 120 HP over 30 seconds.' },
-		'Solar Draught':        { icon: '☀️', type: 'food', heal: 0,   atkBuff: 15, buffDur: 45,              desc: 'Click to drink · grants +15 ATK for 45 seconds.' },
-		'Void Shroud':          { icon: '🌒', type: 'food', heal: 0,   defBuff: 18, dmgReduce: 0.10, buffDur: 45, desc: 'Click to drink · grants +18 DEF and reduces damage taken by 10% for 45 seconds.' },
-		'Celestial Brew':       { icon: '🌠', type: 'food', heal: 80,  atkBuff: 10, defBuff: 8, buffDur: 45, desc: 'Click to drink · restores 80 HP and grants +10 ATK +8 DEF for 45 seconds.' },
-		// ---- Enriched crafting reagent ----
-		'Enriched Fire Essence': { icon: '🔥', type: 'reagent', desc: 'A Fire Essence suffused with rare energy. Required for legendary crafting.' },
-		// ---- Drops from Eldenmere legendary creatures (used only in Legendary Forge) ----
-		'Infernal Ember':  { icon: '🔴', type: 'reagent', desc: 'A smoldering ember torn from an Infernal Titan. Required for legendary forging.' },
-		'Void Relic':      { icon: '🟣', type: 'reagent', desc: 'A crystallised void shard from a Void Colossus. Required for legendary forging.' },
-		// ---- Legendary Arcane Forge items (crafted with Enriched Fire Essence) ----
-		'Emberforged Blade':      { icon: '⚔️', type: 'weapon', atk: 75, desc: 'A legendary blade tempered with Enriched Fire Essence. +75 ATK.' },
-		'Phoenixweave Vestment':  { icon: '🧥', type: 'armor', def: 65, desc: 'Legendary robes woven through molten essence. +65 DEF.' },
-		'Embercrown':             { icon: '👑', type: 'helm', def: 40, atk: 10, desc: 'A helm glowing with enriched fire. +40 DEF, +10 ATK.' },
-		'Infernoplate':           { icon: '🛡️', type: 'armor', def: 80, desc: 'Legendary armor radiating infernal heat. +80 DEF.' },
-		'Volcanic Warblade':      { icon: '⚔️', type: 'weapon', atk: 90, desc: 'A blade erupting with volcanic power. +90 ATK.' },
-		'Emberveil Ring':         { icon: '💍', type: 'ring', atk: 25, def: 15, desc: 'A ring shimmering with enriched fire. +25 ATK, +15 DEF.' },
-		// ---- belts ----
-		'Leather Belt':     { icon: '🟤', type: 'belt', def: 2,  desc: 'A simple leather belt. +2 DEF.' },
-		'Iron Belt':        { icon: '⬛', type: 'belt', def: 4,  desc: 'A studded iron belt. +4 DEF.' },
-		'Steel Belt':       { icon: '🔩', type: 'belt', def: 7,  desc: 'A reinforced steel belt. +7 DEF.' },
-		'Silver Belt':      { icon: '🪬', type: 'belt', def: 9,  atk: 2, desc: 'A silver-linked belt. +9 DEF, +2 ATK.' },
-		'Titanium Belt':    { icon: '🔶', type: 'belt', def: 14, atk: 3, desc: 'A heavyweight titanium belt. +14 DEF, +3 ATK.' },
-		'Dragon Scale Belt':{ icon: '🐲', type: 'belt', def: 22, atk: 5, desc: 'A belt of dragon scales. +22 DEF, +5 ATK.' },
-		'Void Belt':        { icon: '🌑', type: 'belt', def: 30, atk: 8, desc: 'A belt woven from void crystal. +30 DEF, +8 ATK.' },
-		'Emberveil Belt':   { icon: '🔥', type: 'belt', def: 40, atk: 12, desc: 'A legendary belt imbued with enriched fire. +40 DEF, +12 ATK.' },
-	};
-	// rate = base success chance (raised by your Manufacture skill).  tier groups the book.
-	const RECIPES = [
-		// --- reagents (the crafting chain) ---
-		{ out: 'Fire Essence',   req: { 'Sulphur': 1, 'Red Rose': 1, 'Lilac': 1 },       tag: 'reagent', rate: 0.85, tier: 'Reagents' },
-		{ out: 'Tanned Leather', req: { 'Deer Fur': 2 },                                  tag: 'reagent', rate: 0.90, tier: 'Reagents' },
-		{ out: 'Iron Bar',       req: { 'Iron Ore': 2, 'Coal': 1, 'Fire Essence': 1 },     tag: 'reagent', rate: 0.85, tier: 'Reagents' },
-		{ out: 'Silver Bar',     req: { 'Silver Ore': 2, 'Fire Essence': 1 },             tag: 'reagent', rate: 0.80, tier: 'Reagents' },
-		{ out: 'Steel Bar',      req: { 'Iron Bar': 2, 'Coal': 1, 'Fire Essence': 1 },    tag: 'reagent', rate: 0.72, tier: 'Reagents' },
-		{ out: 'Quartz Crystal', req: { 'Quartz Ore': 2, 'Fire Essence': 1 },             tag: 'reagent', rate: 0.78, tier: 'Reagents' },
-		{ out: 'Gold Bar',       req: { 'Gold Ore': 2, 'Fire Essence': 1 },               tag: 'reagent', rate: 0.75, tier: 'Reagents' },
-		// --- consumables ---
-		{ out: 'Cooked Meat',          req: { 'Raw Meat': 1, 'Fire Essence': 1 },                              tag: '+22 HP',  rate: 0.95, tier: 'Consumables' },
-		{ out: 'Minor Health Potion',  req: { 'Red Rose': 2, 'Blue Star Flower': 1 },                          tag: '+40 HP',  rate: 0.85, tier: 'Consumables' },
-		{ out: 'Health Potion',        req: { 'Red Rose': 3, 'Chrysanthemum': 2, 'Fire Essence': 1 },          tag: '+80 HP',  rate: 0.70, tier: 'Consumables' },
-		{ out: 'Greater Health Potion',req: { 'Dragon Scale': 1, 'Gold Bar': 1, 'Fire Essence': 2 },           tag: '+150 HP', rate: 0.55, tier: 'Consumables' },
-		// --- weapons ---
-		{ out: 'Wooden Staff',     req: { 'Wood Log': 2, 'Blue Star Flower': 1 },         tag: '+2 ATK',  rate: 0.92, tier: 'Weapons' },
-		{ out: 'Bone Dagger',      req: { 'Bones': 2, 'Wood Log': 1 },                    tag: '+3 ATK',  rate: 0.88, tier: 'Weapons' },
-		{ out: "Hunter's Bow",     req: { 'Wood Log': 2, 'Deer Antlers': 1, 'Spider Silk': 1 }, tag: '+5 ATK', rate: 0.72, tier: 'Weapons' },
-		{ out: 'Iron Sword',       req: { 'Iron Bar': 2, 'Wood Log': 1 },                 tag: '+6 ATK',  rate: 0.78, tier: 'Weapons' },
-		{ out: 'Boar Spear',       req: { 'Iron Bar': 1, 'Boar Tusk': 2, 'Wood Log': 1 }, tag: '+7 ATK',  rate: 0.70, tier: 'Weapons' },
-		{ out: 'War Hammer',       req: { 'Iron Bar': 3, 'Wood Log': 1 },                 tag: '+9 ATK',  rate: 0.62, tier: 'Weapons' },
-		{ out: 'Silver Rapier',    req: { 'Silver Bar': 2, 'Iron Bar': 1 },               tag: '+10 ATK', rate: 0.58, tier: 'Weapons' },
-		{ out: 'Steel Greatsword', req: { 'Steel Bar': 3, 'Tanned Leather': 1 },          tag: '+12 ATK', rate: 0.52, tier: 'Weapons' },
-		{ out: 'Venom Dagger',     req: { 'Steel Bar': 1, 'Venom Gland': 2 },             tag: '+13 ATK', rate: 0.48, tier: 'Weapons' },
-		{ out: 'Troll Club',       req: { 'Steel Bar': 2, 'Troll Hide': 1, 'Wood Log': 2 }, tag: '+15 ATK', rate: 0.42, tier: 'Weapons' },
-		{ out: 'Wyvern Glaive',    req: { 'Steel Bar': 2, 'Wyvern Scale': 2 },            tag: '+17 ATK', rate: 0.38, tier: 'Weapons' },
-		{ out: 'Golemforged Blade',req: { 'Steel Bar': 2, 'Silver Bar': 1, 'Golem Core': 1 }, tag: '+21 ATK', rate: 0.32, tier: 'Weapons' },
-		// --- shields ---
-		{ out: 'Wooden Shield',    req: { 'Wood Log': 3 },                                tag: '+2 DEF',  rate: 0.90, tier: 'Shields' },
-		{ out: 'Iron Shield',      req: { 'Iron Bar': 3 },                                tag: '+4 DEF',  rate: 0.66, tier: 'Shields' },
-		{ out: 'Steel Shield',     req: { 'Steel Bar': 3, 'Silver Bar': 1 },              tag: '+6 DEF',  rate: 0.50, tier: 'Shields' },
-		{ out: 'Troll Shield',     req: { 'Steel Bar': 2, 'Troll Hide': 2 },              tag: '+9 DEF',  rate: 0.38, tier: 'Shields' },
-		// --- helms ---
-		{ out: 'Flower Crown',     req: { 'Red Rose': 1, 'Blue Star Flower': 1, 'Chrysanthemum': 1 }, tag: '+1 DEF', rate: 0.95, tier: 'Helms' },
-		{ out: 'Antler Helm',      req: { 'Deer Antlers': 1, 'Beaver Fur': 1 },           tag: '+2 DEF',  rate: 0.80, tier: 'Helms' },
-		{ out: 'Iron Helm',        req: { 'Iron Bar': 2, 'Tanned Leather': 1 },           tag: '+3 DEF',  rate: 0.70, tier: 'Helms' },
-		{ out: 'Wolf Skull Helm',  req: { 'Wolf Fur': 2, 'Bones': 1, 'Bear Claw': 1 },    tag: '+4 DEF',  rate: 0.55, tier: 'Helms' },
-		{ out: 'Steel Helm',       req: { 'Steel Bar': 2, 'Tanned Leather': 1 },          tag: '+6 DEF',  rate: 0.48, tier: 'Helms' },
-		{ out: 'Wyvern Helm',      req: { 'Steel Bar': 1, 'Wyvern Scale': 2 },            tag: '+8 DEF',  rate: 0.40, tier: 'Helms' },
-		// --- body armor ---
-		{ out: 'Fur Cloak',        req: { 'Rabbit Fur': 2, 'Fox Pelt': 1 },               tag: '+2 DEF',  rate: 0.90, tier: 'Body Armor' },
-		{ out: 'Leather Armor',    req: { 'Tanned Leather': 2, 'Bones': 1 },              tag: '+4 DEF',  rate: 0.78, tier: 'Body Armor' },
-		{ out: 'Scale Mail',       req: { 'Fish Scales': 4, 'Iron Bar': 1 },              tag: '+6 DEF',  rate: 0.62, tier: 'Body Armor' },
-		{ out: 'Iron Plate',       req: { 'Iron Bar': 5, 'Tanned Leather': 2 },           tag: '+8 DEF',  rate: 0.48, tier: 'Body Armor' },
-		{ out: 'Steel Cuirass',    req: { 'Steel Bar': 4, 'Tanned Leather': 2 },          tag: '+11 DEF', rate: 0.40, tier: 'Body Armor' },
-		{ out: 'Wyvern Hauberk',   req: { 'Steel Bar': 2, 'Wyvern Scale': 3 },            tag: '+14 DEF', rate: 0.34, tier: 'Body Armor' },
-		{ out: 'Golem Plate',      req: { 'Steel Bar': 3, 'Golem Core': 2 },              tag: '+18 DEF', rate: 0.28, tier: 'Body Armor' },
-		// --- cuisses ---
-		{ out: 'Leather Cuisses',  req: { 'Tanned Leather': 2 },                          tag: '+2 DEF',  rate: 0.82, tier: 'Cuisses' },
-		{ out: 'Iron Cuisses',     req: { 'Iron Bar': 3, 'Tanned Leather': 1 },           tag: '+4 DEF',  rate: 0.62, tier: 'Cuisses' },
-		{ out: 'Steel Cuisses',    req: { 'Steel Bar': 2, 'Tanned Leather': 2 },          tag: '+7 DEF',  rate: 0.44, tier: 'Cuisses' },
-		// --- greaves ---
-		{ out: 'Leather Greaves',  req: { 'Tanned Leather': 1, 'Bones': 1 },              tag: '+2 DEF',  rate: 0.82, tier: 'Greaves' },
-		{ out: 'Iron Greaves',     req: { 'Iron Bar': 2 },                                tag: '+3 DEF',  rate: 0.62, tier: 'Greaves' },
-		{ out: 'Steel Greaves',    req: { 'Steel Bar': 2, 'Coal': 1 },                    tag: '+6 DEF',  rate: 0.44, tier: 'Greaves' },
-		// --- medallions ---
-		{ out: 'Silver Medallion', req: { 'Silver Bar': 2, 'Fish Scales': 2 },                      tag: '+3 DEF +1 ATK', rate: 0.72, tier: 'Medallions' },
-		{ out: 'Quartz Medallion', req: { 'Quartz Crystal': 2, 'Silver Bar': 1 },                   tag: '+5 DEF +2 ATK', rate: 0.60, tier: 'Medallions' },
-		{ out: 'Gold Medallion',   req: { 'Gold Bar': 2, 'Quartz Crystal': 1 },                     tag: '+8 DEF +3 ATK', rate: 0.48, tier: 'Medallions' },
-		// --- rings ---
-		{ out: 'Iron Ring',        req: { 'Iron Bar': 1, 'Coal': 1 },                               tag: '+1 ATK',        rate: 0.85, tier: 'Rings' },
-		{ out: 'Silver Ring',      req: { 'Silver Bar': 1, 'Iron Bar': 1 },                         tag: '+2 ATK +1 DEF', rate: 0.72, tier: 'Rings' },
-		{ out: 'Quartz Ring',      req: { 'Quartz Crystal': 1, 'Silver Bar': 1 },                   tag: '+3 ATK +2 DEF', rate: 0.60, tier: 'Rings' },
-		{ out: 'Gold Ring',        req: { 'Gold Bar': 1, 'Quartz Crystal': 1 },                     tag: '+4 ATK +3 DEF', rate: 0.50, tier: 'Rings' },
-		// --- titanium-tier (tier 4-5) ---
-		{ out: 'Titanium Bar',          req: { 'Titanium Ore': 2, 'Coal': 1, 'Fire Essence': 1 },            tag: 'reagent',     rate: 0.60, minCraftLvl: 10, tier: 'Titanium Forge' },
-		{ out: 'Titanium Sword',        req: { 'Titanium Bar': 2, 'Steel Bar': 1 },                          tag: '+22 ATK',     rate: 0.30, minCraftLvl: 12, tier: 'Titanium Forge' },
-		{ out: 'Titanium Shield',       req: { 'Titanium Bar': 3 },                                          tag: '+12 DEF',     rate: 0.30, minCraftLvl: 12, tier: 'Titanium Forge' },
-		{ out: 'Titanium Helm',         req: { 'Titanium Bar': 2, 'Tanned Leather': 1 },                     tag: '+12 DEF',     rate: 0.28, minCraftLvl: 12, tier: 'Titanium Forge' },
-		{ out: 'Titanium Plate',        req: { 'Titanium Bar': 5, 'Tanned Leather': 2 },                     tag: '+22 DEF',     rate: 0.22, minCraftLvl: 14, tier: 'Titanium Forge' },
-		{ out: 'Titanium Cuisses',      req: { 'Titanium Bar': 3, 'Tanned Leather': 1 },                     tag: '+10 DEF',     rate: 0.28, minCraftLvl: 12, tier: 'Titanium Forge' },
-		{ out: 'Titanium Greaves',      req: { 'Titanium Bar': 2 },                                          tag: '+9 DEF',      rate: 0.30, minCraftLvl: 12, tier: 'Titanium Forge' },
-		// --- dragon-tier (tier 5) ---
-		{ out: 'Dragonbone Sword',      req: { 'Dragon Bone': 3, 'Dragon Fang': 2, 'Steel Bar': 2 },           tag: '+35 ATK', rate: 0.14, minCraftLvl: 18, tier: 'Dragon Forge' },
-		{ out: 'Dragon Scale Shield',   req: { 'Dragon Scale': 4, 'Steel Bar': 2 },                            tag: '+18 DEF', rate: 0.14, minCraftLvl: 18, tier: 'Dragon Forge' },
-		{ out: 'Dragon Skull Helm',     req: { 'Dragon Bone': 2, 'Dragon Scale': 2 },                          tag: '+16 DEF', rate: 0.14, minCraftLvl: 18, tier: 'Dragon Forge' },
-		{ out: 'Dragon Scale Hauberk',  req: { 'Dragon Scale': 6, 'Dragon Heart': 1, 'Steel Bar': 2 },         tag: '+30 DEF', rate: 0.10, minCraftLvl: 20, tier: 'Dragon Forge' },
-		{ out: 'Dragon Bone Cuisses',   req: { 'Dragon Bone': 3, 'Dragon Scale': 1 },                          tag: '+14 DEF', rate: 0.14, minCraftLvl: 18, tier: 'Dragon Forge' },
-		{ out: 'Dragon Bone Greaves',   req: { 'Dragon Bone': 2, 'Dragon Fang': 1 },                           tag: '+12 DEF', rate: 0.14, minCraftLvl: 18, tier: 'Dragon Forge' },
-		{ out: 'Dragon Heart Medallion', req: { 'Dragon Heart': 1, 'Gold Bar': 2, 'Dragon Fang': 1 },         tag: '+15 DEF +8 ATK', rate: 0.10, minCraftLvl: 20, tier: 'Dragon Forge' },
-		{ out: 'Dragon Fang Ring',       req: { 'Dragon Fang': 2, 'Gold Bar': 1 },                            tag: '+10 ATK +5 DEF', rate: 0.14, minCraftLvl: 18, tier: 'Dragon Forge' },
-		// ---- Arcane Forge (tier 6) — intermediate reagents ----
-		{ out: 'Aether Bar',            req: { 'Aether Crystal': 3 },                                        tag: 'Reagent',        rate: 0.55, minCraftLvl: 22, tier: 'Arcane Forge' },
-		{ out: 'Void Ingot',            req: { 'Voidstone': 3 },                                             tag: 'Reagent',        rate: 0.55, minCraftLvl: 22, tier: 'Arcane Forge' },
-		{ out: 'Star Alloy',            req: { 'Starstone': 2, 'Aether Crystal': 1 },                        tag: 'Reagent',        rate: 0.45, minCraftLvl: 24, tier: 'Arcane Forge' },
-		// ---- Arcane Forge — weapons ----
-		{ out: 'Aether Blade',          req: { 'Aether Bar': 4, 'Void Ingot': 1 },                           tag: '+45 ATK',        rate: 0.18, minCraftLvl: 26, tier: 'Arcane Forge' },
-		{ out: 'Void Scythe',           req: { 'Void Ingot': 4, 'Aether Bar': 2, 'Shadow Essence': 2 },      tag: '+52 ATK',        rate: 0.14, minCraftLvl: 28, tier: 'Arcane Forge' },
-		{ out: 'Starforged Warblade',   req: { 'Star Alloy': 4, 'Void Fang': 2, 'Aether Bar': 2 },           tag: '+60 ATK',        rate: 0.10, minCraftLvl: 30, tier: 'Arcane Forge' },
-		// ---- Arcane Forge — shields ----
-		{ out: 'Aether Ward',           req: { 'Aether Bar': 3, 'Starstone': 1 },                            tag: '+25 DEF',        rate: 0.20, minCraftLvl: 26, tier: 'Arcane Forge' },
-		{ out: 'Void Bulwark',          req: { 'Void Ingot': 4, 'Ancient Core': 1 },                         tag: '+32 DEF',        rate: 0.16, minCraftLvl: 28, tier: 'Arcane Forge' },
-		// ---- Arcane Forge — helms ----
-		{ out: 'Aether Crown',          req: { 'Aether Bar': 2, 'Star Alloy': 1 },                           tag: '+22 DEF',        rate: 0.22, minCraftLvl: 26, tier: 'Arcane Forge' },
-		{ out: 'Void Helm',             req: { 'Void Ingot': 2, 'Shadow Essence': 1, 'Aether Bar': 1 },      tag: '+28 DEF',        rate: 0.18, minCraftLvl: 28, tier: 'Arcane Forge' },
-		// ---- Arcane Forge — body armor ----
-		{ out: 'Aether Vestment',       req: { 'Aether Bar': 5, 'Star Alloy': 2 },                           tag: '+38 DEF',        rate: 0.16, minCraftLvl: 28, tier: 'Arcane Forge' },
-		{ out: 'Void Plate',            req: { 'Void Ingot': 6, 'Ancient Core': 2, 'Aether Bar': 2 },        tag: '+50 DEF',        rate: 0.12, minCraftLvl: 30, tier: 'Arcane Forge' },
-		// ---- Arcane Forge — cuisses & greaves ----
-		{ out: 'Aether Cuisses',        req: { 'Aether Bar': 3, 'Void Ingot': 1 },                           tag: '+18 DEF',        rate: 0.20, minCraftLvl: 26, tier: 'Arcane Forge' },
-		{ out: 'Aether Greaves',        req: { 'Aether Bar': 2, 'Void Ingot': 1 },                           tag: '+16 DEF',        rate: 0.22, minCraftLvl: 26, tier: 'Arcane Forge' },
-		// ---- Arcane Forge — medallions & rings ----
-		{ out: 'Starstone Medallion',   req: { 'Star Alloy': 2, 'Ancient Core': 1, 'Aether Bar': 1 },        tag: '+25 DEF +15 ATK', rate: 0.14, minCraftLvl: 30, tier: 'Arcane Forge' },
-		{ out: 'Void Ring',             req: { 'Void Fang': 2, 'Void Ingot': 1 },                            tag: '+18 ATK +10 DEF', rate: 0.16, minCraftLvl: 28, tier: 'Arcane Forge' },
-		// ---- Botanica (flower-based consumables) ----
-		{ out: 'Moonbloom Draught',  req: { 'Moonbloom': 2, 'Blue Star Flower': 1 },                             tag: '+60 HP',                 rate: 0.90, tier: 'Botanica' },
-		{ out: 'Sunfire Tonic',      req: { 'Sunfire Lily': 2, 'Fire Essence': 1 },                              tag: '+8 ATK 60s',             rate: 0.85, tier: 'Botanica' },
-		{ out: 'Void Elixir',        req: { 'Voidpetal': 2, 'Coal': 1 },                                         tag: '+10 DEF 60s',            rate: 0.85, tier: 'Botanica' },
-		{ out: 'Starbloom Brew',     req: { 'Starbloom': 2, 'Chrysanthemum': 1 },                                tag: '+45 HP +5 ATK',          rate: 0.85, tier: 'Botanica' },
-		{ out: 'Moonbloom Salve',    req: { 'Moonbloom': 3, 'Voidpetal': 1, 'Blue Star Flower': 2 },             tag: '+120 HP regen 30s',      rate: 0.75, tier: 'Botanica' },
-		{ out: 'Solar Draught',      req: { 'Sunfire Lily': 3, 'Starbloom': 1, 'Gold Bar': 1 },                  tag: '+15 ATK 45s',            rate: 0.70, tier: 'Botanica' },
-		{ out: 'Void Shroud',        req: { 'Voidpetal': 3, 'Moonbloom': 1, 'Tanned Leather': 2 },              tag: '+18 DEF -10% dmg 45s',   rate: 0.65, tier: 'Botanica' },
-		{ out: 'Celestial Brew',     req: { 'Starbloom': 3, 'Moonbloom': 2, 'Sunfire Lily': 1, 'Voidpetal': 1 }, tag: '+80 HP +10 ATK +8 DEF', rate: 0.55, tier: 'Botanica' },
-		// ---- Legendary Forge (requires Enriched Fire Essence) ----
-		{ out: 'Emberforged Blade',     req: { 'Enriched Fire Essence': 2, 'Infernal Ember': 4 },             tag: '+75 ATK',          rate: 0.10, minCraftLvl: 35, tier: 'Legendary Forge' },
-		{ out: 'Volcanic Warblade',     req: { 'Enriched Fire Essence': 3, 'Infernal Ember': 5, 'Void Relic': 2 }, tag: '+90 ATK',       rate: 0.06, minCraftLvl: 40, tier: 'Legendary Forge' },
-		{ out: 'Phoenixweave Vestment', req: { 'Enriched Fire Essence': 2, 'Void Relic': 3, 'Infernal Ember': 2 }, tag: '+65 DEF',       rate: 0.10, minCraftLvl: 35, tier: 'Legendary Forge' },
-		{ out: 'Infernoplate',          req: { 'Enriched Fire Essence': 3, 'Void Relic': 5 },                   tag: '+80 DEF',          rate: 0.06, minCraftLvl: 40, tier: 'Legendary Forge' },
-		{ out: 'Embercrown',            req: { 'Enriched Fire Essence': 2, 'Infernal Ember': 2, 'Void Relic': 2 }, tag: '+40 DEF +10 ATK', rate: 0.10, minCraftLvl: 35, tier: 'Legendary Forge' },
-		{ out: 'Emberveil Ring',        req: { 'Enriched Fire Essence': 1, 'Infernal Ember': 2 },               tag: '+25 ATK +15 DEF',  rate: 0.14, minCraftLvl: 32, tier: 'Legendary Forge' },
-		{ out: 'Emberveil Belt',        req: { 'Enriched Fire Essence': 1, 'Void Relic': 2 },                  tag: '+40 DEF +12 ATK',  rate: 0.14, minCraftLvl: 32, tier: 'Legendary Forge' },
-		// --- belts ---
-		{ out: 'Leather Belt',  req: { 'Tanned Leather': 1 },                                    tag: '+2 DEF',          rate: 0.90, tier: 'Belts' },
-		{ out: 'Iron Belt',     req: { 'Iron Bar': 1, 'Tanned Leather': 1 },                     tag: '+4 DEF',          rate: 0.72, tier: 'Belts' },
-		{ out: 'Steel Belt',    req: { 'Steel Bar': 1, 'Tanned Leather': 1 },                    tag: '+7 DEF',          rate: 0.52, tier: 'Belts' },
-		{ out: 'Silver Belt',   req: { 'Silver Bar': 1, 'Steel Bar': 1 },                        tag: '+9 DEF +2 ATK',   rate: 0.44, tier: 'Belts' },
-		{ out: 'Titanium Belt', req: { 'Titanium Bar': 1, 'Steel Bar': 1 },                      tag: '+14 DEF +3 ATK',  rate: 0.26, minCraftLvl: 12, tier: 'Belts' },
-		{ out: 'Dragon Scale Belt', req: { 'Dragon Scale': 3, 'Titanium Bar': 1 },               tag: '+22 DEF +5 ATK',  rate: 0.14, minCraftLvl: 18, tier: 'Belts' },
-		{ out: 'Void Belt',     req: { 'Void Ingot': 2, 'Aether Bar': 1 },                       tag: '+30 DEF +8 ATK',  rate: 0.14, minCraftLvl: 28, tier: 'Belts' },
-	];
-	const EQUIP_SLOTS = ['weapon', 'shield', 'helm', 'armor', 'cuisses', 'greaves', 'medallion', 'ring', 'ring2', 'belt'];
 
 	// ------------------------------------------------------------------ inventory
 	const INV_SLOTS = 28;
@@ -2016,7 +1807,7 @@
 	// ------------------------------------------------------------------ player
 	const player = {
 		group: new THREE.Group(),
-		hp: 50, maxhp: 50, baseAtk: 3, baseDef: 0, fortitudeMaxhpApplied: 0,
+		hp: 120, maxhp: 120, baseAtk: 3, baseDef: 0, fortitudeMaxhpApplied: 0,
 		speed: 4.4,
 		name: 'Adventurer',
 		equip: { weapon: null, shield: null, helm: null, armor: null, cuisses: null, greaves: null, medallion: null, ring: null, ring2: null, belt: null },
@@ -2082,509 +1873,6 @@
 		return chance;
 	}
 
-	// ------------------------------------------------------------------ talent definitions
-	// Each talent has up to 3 ranks. player.talents[id] = rank (0 = not learned).
-	// Ranks are described in rankDescs[]; cost is always 1 point per rank.
-	const TALENT_PATHS = [
-		{
-			id: 'fire', name: 'Fire', icon: '🔥', color: '#ff6b35', borderColor: 'border-orange-400/40', bgColor: 'bg-orange-400/10',
-			talents: [
-				{ id: 'fire_active', name: 'Flame Strike', type: 'active', icon: '🔥', maxRank: 8,
-					cooldowns: [0, 14, 13, 12, 11, 10, 9, 8, 7],
-					rankDescs: ['',
-						'Next attack +12 fire damage.',
-						'Next attack +24 fire damage.',
-						'Next attack +42 fire damage.',
-						'Next attack +63 fire damage — weapon glows white-hot.',
-						'Next attack +90 fire damage — a column of fire erupts.',
-						'Next attack +123 fire damage — the ground scorches.',
-						'Next attack +162 fire damage — incandescent inferno.',
-						'Next attack +210 fire damage — LEGENDARY: the sky itself ignites!'] },
-				{ id: 'fire_passive', name: 'Ember Touch', type: 'passive', icon: '✨', maxRank: 8,
-					rankDescs: ['',
-						'20% chance to Burn (4 dmg/s for 4s).',
-						'30% chance to Burn (7 dmg/s for 5s).',
-						'40% chance to Burn (11 dmg/s for 5s).',
-						'50% chance to Burn (16 dmg/s for 6s).',
-						'60% chance to Burn (22 dmg/s for 6s).',
-						'70% chance to Burn (30 dmg/s for 7s).',
-						'80% chance to Burn (40 dmg/s for 7s).',
-						'90% chance to Burn (55 dmg/s for 8s) — LEGENDARY: everything you touch ignites!'] },
-				{ id: 'fire_backdraft', name: 'Backdraft', type: 'passive', icon: '🌪️', maxRank: 5,
-					rankDescs: ['',
-						'Each burn tick has 10% chance to add 1 extra tick.',
-						'Each burn tick has 15% chance to add 1 extra tick.',
-						'Each burn tick has 20% chance to add 1 extra tick.',
-						'Each burn tick has 25% chance to add 1 extra tick.',
-						'Each burn tick has 30% chance to add 1 extra tick — flames feed themselves!'] },
-				{ id: 'fire_wildfire', name: 'Wildfire', type: 'passive', icon: '🔥', maxRank: 5,
-					rankDescs: ['',
-						'Burn spreads to 1 nearby enemy within 5 units on proc (20% chance).',
-						'Spread chance 30%.',
-						'Spread chance 45%.',
-						'Spread chance 60%.',
-						'Spread chance 80% — wildfire cannot be contained!'] },
-				{ id: 'fire_cremation', name: 'Cremation', type: 'passive', icon: '💀', maxRank: 5,
-					rankDescs: ['',
-						'Enemies that die while burning explode for 15 fire damage in 4-unit radius.',
-						'Explosion deals 25 fire damage.',
-						'Explosion deals 35 fire damage.',
-						'Explosion deals 50 fire damage.',
-						'Explosion deals 70 fire damage — ashes to ashes!'] },
-				{ id: 'fire_fireball', name: 'Fireball', type: 'active', icon: '🔮', maxRank: 5,
-					cooldowns: [0, 20, 18, 16, 14, 12],
-					rankDescs: ['',
-						'Hurl a fireball at a creature for 40 fire damage. Click a creature to aim.',
-						'Fireball deals 70 fire damage.',
-						'Fireball deals 110 fire damage.',
-						'Fireball deals 160 fire damage — scorching projectile.',
-						'Fireball deals 220 fire damage — LEGENDARY: a star falls to earth!'] },
-				{ id: 'fire_inferno', name: 'Inferno', type: 'active', icon: '🌋', maxRank: 5,
-					cooldowns: [0, 45, 40, 35, 30, 25],
-					rankDescs: ['',
-						'Channel for 2.5s then erupt — deals 20 fire damage to ALL enemies within 7 units.',
-						'Inferno deals 35 fire damage in the blast.',
-						'Inferno deals 55 fire damage — the ground cracks.',
-						'Inferno deals 80 fire damage — molten earth erupts.',
-						'Inferno deals 110 fire damage — LEGENDARY: a volcano tears the world open!'] },
-				{ id: 'fire_flame_wall', name: 'Flame Wall', type: 'active', icon: '🔥', maxRank: 5,
-					cooldowns: [0, 40, 36, 32, 28, 24],
-					rankDescs: ['',
-						'Erect a wall of fire at your feet — 8 dmg/s to crossing enemies for 6s.',
-						'Flame Wall deals 14 dmg/s for 7s.',
-						'Flame Wall deals 20 dmg/s for 8s.',
-						'Flame Wall deals 28 dmg/s for 10s.',
-						'Flame Wall deals 38 dmg/s for 12s — LEGENDARY: no one passes!'] },
-				{ id: 'fire_magma_shell', name: 'Magma Shell', type: 'active', icon: '🛡️', maxRank: 5,
-					cooldowns: [0, 38, 34, 30, 26, 22],
-					rankDescs: ['',
-						'Coat yourself in magma — absorb up to 30 damage. Attackers take 8 fire damage per hit.',
-						'Shell absorbs 55 damage. Attackers take 14 fire damage.',
-						'Shell absorbs 85 damage. Attackers take 22 fire damage.',
-						'Shell absorbs 120 damage. Attackers take 32 fire damage.',
-						'Shell absorbs 160 damage. Attackers take 45 fire damage — LEGENDARY: touch me and burn!'] },
-				{ id: 'fire_pyroclasm', name: 'Pyroclasm', type: 'passive', icon: '💥', maxRank: 5,
-					rankDescs: ['',
-						'Critical burn ticks: 10% chance a burn tick deals double damage.',
-						'Crit chance 15%.',
-						'Crit chance 20%.',
-						'Crit chance 28%.',
-						'Crit chance 35% — the inferno rages uncontrolled!'] },
-				{ id: 'fire_phoenix_mark', name: 'Phoenix Mark', type: 'passive', icon: '🦅', maxRank: 5,
-					rankDescs: ['',
-						'Once per combat: auto-cast Mend (25 HP) when your HP drops below 20%.',
-						'Heal 45 HP at 20% HP threshold.',
-						'Heal 70 HP at 25% HP threshold.',
-						'Heal 100 HP at 25% HP threshold.',
-						'Heal 140 HP at 30% HP threshold — the phoenix rises!'] },
-				{ id: 'fire_crit', name: 'Scorching Precision', type: 'passive', icon: '🎯', maxRank: 5,
-					rankDescs: ['',
-						'+4% critical strike chance for fire attacks and spells.',
-						'+7% critical strike chance for fire attacks and spells.',
-						'+11% critical strike chance for fire attacks and spells.',
-						'+15% critical strike chance for fire attacks and spells.',
-						'+20% critical strike chance for fire attacks and spells — LEGENDARY: every blow is lethal!'] },
-		]
-	},
-	{
-		id: 'lightning', name: 'Lightning', icon: '⚡', color: '#facc15', borderColor: 'border-yellow-400/40', bgColor: 'bg-yellow-400/10',
-			talents: [
-				{ id: 'lightning_active', name: 'Static Charge', type: 'active', icon: '⚡', maxRank: 8,
-					cooldowns: [0, 14, 13, 12, 11, 10, 9, 8, 7],
-					rankDescs: ['',
-						'Next attack +10 lightning damage.',
-						'Next attack +20 lightning damage.',
-						'Next attack +34 lightning damage.',
-						'Next attack +52 lightning damage — thunder booms.',
-						'Next attack +74 lightning damage — lightning arc leaps.',
-						'Next attack +100 lightning damage — storm answers your call.',
-						'Next attack +132 lightning damage — sky-shattering bolt.',
-						'Next attack +170 lightning damage — LEGENDARY: a storm god strikes through you!'] },
-				{ id: 'lightning_passive', name: 'Shock', type: 'passive', icon: '💫', maxRank: 8,
-					rankDescs: ['',
-						'1% chance on hit: +6 bonus dmg, stun 1 cycle.',
-						'2% chance on hit: +10 bonus dmg, stun 1 cycle.',
-						'3% chance on hit: +16 bonus dmg, stun 1 cycle.',
-						'4% chance on hit: +24 bonus dmg, stun 2 cycles.',
-						'5% chance on hit: +34 bonus dmg, stun 2 cycles.',
-						'6% chance on hit: +46 bonus dmg, stun 2 cycles.',
-						'7% chance on hit: +62 bonus dmg, stun 3 cycles.',
-						'9% chance on hit: +80 bonus dmg, stun 3 cycles — LEGENDARY: a divine bolt of judgment!'] },
-				{ id: 'lightning_conductor', name: 'Conductor', type: 'passive', icon: '⚡', maxRank: 5,
-					rankDescs: ['',
-						'Shocked enemies take 10% increased damage from all sources.',
-						'Shocked enemies take 17% increased damage.',
-						'Shocked enemies take 24% increased damage.',
-						'Shocked enemies take 30% increased damage.',
-						'Shocked enemies take 35% increased damage — the charge amplifies everything!'] },
-				{ id: 'lightning_aftershock', name: 'Aftershock', type: 'passive', icon: '💥', maxRank: 5,
-					rankDescs: ['',
-						'When a stun expires, deal 10 lightning damage to the creature.',
-						'Aftershock deals 20 lightning damage.',
-						'Aftershock deals 35 lightning damage.',
-						'Aftershock deals 50 lightning damage.',
-						'Aftershock deals 70 lightning damage — thunder clap finale!'] },
-				{ id: 'lightning_static_aura', name: 'Static Aura', type: 'active', icon: '🌩️', maxRank: 5,
-					cooldowns: [0, 30, 27, 24, 21, 18],
-					rankDescs: ['',
-						'Activate a 10s aura dealing 5 lightning dmg/s to enemies within 6 units.',
-						'Aura deals 9 dmg/s.',
-						'Aura deals 13 dmg/s.',
-						'Aura deals 17 dmg/s.',
-						'Aura deals 22 dmg/s — crackling storm encircles you!'] },
-				{ id: 'lightning_strike', name: 'Lightning Strike', type: 'active', icon: '🗲', maxRank: 5,
-					cooldowns: [0, 22, 20, 18, 16, 14],
-					rankDescs: ['',
-						'Hurl a bolt at a creature — strikes 5 times over 8s for 10 lightning damage each. Click a creature to aim.',
-						'Each strike deals 17 lightning damage.',
-						'Each strike deals 27 lightning damage.',
-						'Each strike deals 40 lightning damage.',
-						'Each strike deals 55 lightning damage — LEGENDARY: divine judgment strikes without mercy!'] },
-				{ id: 'lightning_storm', name: 'Lightning Storm', type: 'active', icon: '🌪️', maxRank: 5,
-					cooldowns: [0, 50, 44, 38, 32, 26],
-					rankDescs: ['',
-						'Channel 2.5s — a storm strikes ALL enemies within 7 units 4 times over 6s for 7 lightning damage each.',
-						'Each strike deals 12 lightning damage.',
-						'Each strike deals 18 lightning damage.',
-						'Each strike deals 27 lightning damage.',
-						'Each strike deals 37 lightning damage — LEGENDARY: the sky is your weapon!'] },
-				{ id: 'lightning_chain', name: 'Chain Lightning', type: 'active', icon: '⚡', maxRank: 5,
-					cooldowns: [0, 18, 16, 14, 12, 10],
-					rankDescs: ['',
-						'Strike a target for 18 lightning damage — arcs to 2 nearby enemies for 9 each.',
-						'Primary 30 dmg, arcs deal 15 each.',
-						'Primary 45 dmg, arcs deal 23 each — arcs to 3 targets.',
-						'Primary 65 dmg, arcs deal 33 each.',
-						'Primary 90 dmg, arcs deal 48 each — LEGENDARY: chain never stops!'] },
-				{ id: 'lightning_discharge', name: 'Discharge', type: 'active', icon: '💥', maxRank: 5,
-					cooldowns: [0, 22, 20, 18, 15, 12],
-					rankDescs: ['',
-						'Consume all shocks/stuns — deal 20 lightning damage per consumed effect.',
-						'25 damage per effect.',
-						'32 damage per effect.',
-						'42 damage per effect.',
-						'55 damage per effect — LEGENDARY: release all the charge at once!'] },
-				{ id: 'lightning_overload', name: 'Overload', type: 'passive', icon: '🌩️', maxRank: 5,
-					rankDescs: ['',
-						'Shocked enemies that die burst-stun nearby enemies within 4 units for 1 cycle.',
-						'Burst-stun radius 5 units.',
-						'Burst-stun radius 6 units, stuns 2 cycles.',
-						'Stun 2 cycles, radius 7 units.',
-						'Stun 3 cycles, radius 8 units — chain overloads cascade!'] },
-				{ id: 'lightning_ball', name: 'Ball Lightning', type: 'active', icon: '🔵', maxRank: 5,
-					cooldowns: [0, 28, 25, 22, 18, 15],
-					rankDescs: ['',
-						'Summon a slow orb that pulses 8 lightning damage/s to enemies within 3 units for 6s.',
-						'Orb pulses 14 dmg/s for 7s.',
-						'Orb pulses 20 dmg/s for 8s.',
-						'Orb pulses 28 dmg/s for 9s.',
-						'Orb pulses 38 dmg/s for 10s — LEGENDARY: a storm contained in a sphere!'] },
-				{ id: 'lightning_crit', name: 'Galvanized Strike', type: 'passive', icon: '🎯', maxRank: 5,
-					rankDescs: ['',
-						'+4% critical strike chance for lightning attacks and spells.',
-						'+7% critical strike chance for lightning attacks and spells.',
-						'+11% critical strike chance for lightning attacks and spells.',
-						'+15% critical strike chance for lightning attacks and spells.',
-						'+20% critical strike chance for lightning attacks and spells — LEGENDARY: thunder without mercy!'] },
-		]
-	},
-	{
-		id: 'ice', name: 'Ice', icon: '❄️', color: '#7dd3fc', borderColor: 'border-sky-400/40', bgColor: 'bg-sky-400/10',
-			talents: [
-				{ id: 'ice_active', name: 'Frost Edge', type: 'active', icon: '❄️', maxRank: 8,
-					cooldowns: [0, 14, 13, 12, 11, 10, 9, 8, 7],
-					rankDescs: ['',
-						'Next attack +10 ice damage.',
-						'Next attack +20 ice damage.',
-						'Next attack +34 ice damage.',
-						'Next attack +52 ice damage — weapon radiates cold.',
-						'Next attack +74 ice damage — frost shards explode.',
-						'Next attack +100 ice damage — glacial devastation.',
-						'Next attack +132 ice damage — absolute zero strike.',
-						'Next attack +170 ice damage — LEGENDARY: an ice age in a single blow!'] },
-				{ id: 'ice_passive', name: 'Chill', type: 'passive', icon: '🌨️', maxRank: 8,
-					rankDescs: ['',
-						'1% chance on hit: Freeze for 1 turn.',
-						'2% chance on hit: Freeze for 1 turn.',
-						'3% chance on hit: Freeze for 2 turns.',
-						'4% chance on hit: Freeze for 2 turns.',
-						'5% chance on hit: Freeze for 2 turns.',
-						'6% chance on hit: Freeze for 3 turns.',
-						'7% chance on hit: Freeze for 3 turns.',
-						'9% chance on hit: Freeze for 4 turns — LEGENDARY: cold seeps into their very soul!'] },
-				{ id: 'ice_shield', name: 'Frost Ward', type: 'active', icon: '🧊', maxRank: 8,
-					cooldowns: [0, 30, 28, 25, 22, 20, 17, 14, 11],
-					rankDescs: ['',
-						'+6 armor for 8s.',
-						'+10 armor for 10s.',
-						'+15 armor for 12s.',
-						'+22 armor for 14s.',
-						'+30 armor for 16s.',
-						'+40 armor for 18s.',
-						'+52 armor for 20s.',
-						'+70 armor for 25s — LEGENDARY: impenetrable glacial shell!'] },
-				{ id: 'ice_brittle', name: 'Brittle', type: 'passive', icon: '🧊', maxRank: 5,
-					rankDescs: ['',
-						'Frozen enemies take 15% increased physical damage.',
-						'Frozen enemies take 25% increased physical damage.',
-						'Frozen enemies take 35% increased physical damage.',
-						'Frozen enemies take 42% increased physical damage.',
-						'Frozen enemies take 50% increased physical damage — shattered by the cold!'] },
-				{ id: 'ice_shatter', name: 'Shatter', type: 'active', icon: '💎', maxRank: 5,
-					cooldowns: [0, 25, 22, 19, 16, 14],
-					rankDescs: ['',
-						'Shatter all frozen enemies for 30 damage each, ending the freeze.',
-						'Shatter deals 60 damage.',
-						'Shatter deals 95 damage.',
-						'Shatter deals 130 damage.',
-						'Shatter deals 170 damage — LEGENDARY: enemies burst like glass!'] },
-				{ id: 'ice_lance', name: 'Ice Lance', type: 'active', icon: '🧊', maxRank: 5,
-					cooldowns: [0, 18, 16, 14, 12, 10],
-					rankDescs: ['',
-						'Hurl an ice lance at a creature for 25 ice damage, freezing it for 3 turns. Click a creature to aim.',
-						'Ice Lance deals 44 ice damage.',
-						'Ice Lance deals 70 ice damage.',
-						'Ice Lance deals 100 ice damage.',
-						'Ice Lance deals 140 ice damage — LEGENDARY: absolute zero on impact!'] },
-				{ id: 'ice_blizzard', name: 'Blizzard', type: 'active', icon: '🌨️', maxRank: 5,
-					cooldowns: [0, 48, 42, 36, 30, 24],
-					rankDescs: ['',
-						'Channel 2.5s — blizzard erupts, dealing 15 ice damage to ALL enemies within 7 units and freezing them for 2 turns.',
-						'Blizzard deals 26 ice damage.',
-						'Blizzard deals 40 ice damage.',
-						'Blizzard deals 58 ice damage.',
-						'Blizzard deals 80 ice damage — LEGENDARY: an ice age descends!'] },
-				{ id: 'ice_frost_nova', name: 'Frost Nova', type: 'active', icon: '❄️', maxRank: 5,
-					cooldowns: [0, 22, 20, 18, 15, 12],
-					rankDescs: ['',
-						'Instantly freeze all enemies within 5 units for 2 turns (no channel).',
-						'Freeze radius 6 units, 2 turns.',
-						'Freeze radius 7 units, 3 turns.',
-						'Freeze radius 8 units, 3 turns.',
-						'Freeze radius 9 units, 4 turns — LEGENDARY: everything stops!'] },
-				{ id: 'ice_glacial_armor', name: 'Glacial Armor', type: 'active', icon: '🧊', maxRank: 5,
-					cooldowns: [0, 35, 32, 28, 24, 20],
-					rankDescs: ['',
-						'Encase yourself in ice — absorb up to 40 damage. On expiry, explode for 20 ice damage in 5 units.',
-						'Absorb 70 damage. Explosion 35 ice damage.',
-						'Absorb 105 damage. Explosion 55 ice damage.',
-						'Absorb 145 damage. Explosion 78 ice damage.',
-						'Absorb 190 damage. Explosion 105 ice damage — LEGENDARY: a glacier detonates!'] },
-				{ id: 'ice_cold_snap', name: 'Cold Snap', type: 'passive', icon: '🌨️', maxRank: 5,
-					rankDescs: ['',
-						'Every 3rd attack automatically Chills the target (slows for 2s).',
-						'Every 3rd attack Chills and deals +8 bonus ice damage.',
-						'Every 3rd attack Chills and deals +15 bonus ice damage.',
-						'Chill becomes a Freeze for 1 turn. +20 bonus ice damage.',
-						'Freeze 2 turns. +28 bonus ice damage — Cold Snap cannot be resisted!'] },
-				{ id: 'ice_permafrost', name: 'Permafrost', type: 'passive', icon: '💎', maxRank: 5,
-					rankDescs: ['',
-						'Frozen enemies that die leave an ice patch (5-unit radius) for 8s — slows enemies that step on it.',
-						'Patch radius 6 units, lasts 10s.',
-						'Ice patch also deals 5 dmg/s to enemies standing on it.',
-						'Patch deals 9 dmg/s, radius 7 units.',
-						'Patch deals 14 dmg/s, lasts 15s — the ground never thaws!'] },
-				{ id: 'ice_crit', name: 'Frozen Precision', type: 'passive', icon: '🎯', maxRank: 5,
-					rankDescs: ['',
-						'+4% critical strike chance for ice attacks and spells.',
-						'+7% critical strike chance for ice attacks and spells.',
-						'+11% critical strike chance for ice attacks and spells.',
-						'+15% critical strike chance for ice attacks and spells.',
-						'+20% critical strike chance for ice attacks and spells — LEGENDARY: ice pierces any defence!'] },
-		]
-	},
-	{
-		id: 'spirit', name: 'Spirit', icon: '💚', color: '#86efac', borderColor: 'border-green-400/40', bgColor: 'bg-green-400/10',
-			talents: [
-				{ id: 'spirit_active', name: 'Mend', type: 'active', icon: '💚', maxRank: 8,
-					cooldowns: [0, 18, 16, 15, 13, 12, 10, 9, 8],
-					rankDescs: ['',
-						'Instantly heal 25 HP.',
-						'Instantly heal 45 HP.',
-						'Instantly heal 70 HP.',
-						'Instantly heal 100 HP.',
-						'Instantly heal 140 HP — a burst of radiant light.',
-						'Instantly heal 190 HP — spirit floods your body.',
-						'Instantly heal 250 HP — divine restoration.',
-						'Instantly heal 325 HP — LEGENDARY: mortality itself retreats!'] },
-				{ id: 'spirit_passive', name: 'Vital Flow', type: 'passive', icon: '🌿', maxRank: 8,
-					rankDescs: ['',
-						'Out-of-combat regen: +1 HP/tick every 0.8s.',
-						'Regen: +2 HP/tick every 0.7s.',
-						'Regen: +3 HP/tick every 0.6s.',
-						'Regen: +4 HP/tick every 0.5s.',
-						'Regen: +5 HP/tick every 0.45s.',
-						'Regen: +7 HP/tick every 0.4s.',
-						'Regen: +9 HP/tick every 0.35s.',
-						'Regen: +12 HP/tick every 0.25s — LEGENDARY: wounds close themselves!'] },
-				{ id: 'spirit_hot', name: 'Renewal', type: 'active', icon: '✨', maxRank: 8,
-					cooldowns: [0, 28, 26, 23, 20, 18, 15, 12, 10],
-					rankDescs: ['',
-						'Healing aura — 20 HP over 10s.',
-						'Healing aura — 40 HP over 12s.',
-						'Healing aura — 65 HP over 14s.',
-						'Healing aura — 100 HP over 16s.',
-						'Healing aura — 145 HP over 18s.',
-						'Healing aura — 200 HP over 20s.',
-						'Healing aura — 270 HP over 22s.',
-						'Healing aura — 360 HP over 25s — LEGENDARY: the isle itself heals you!'] },
-				{ id: 'spirit_siphon', name: 'Siphon', type: 'passive', icon: '🩸', maxRank: 5,
-					rankDescs: ['',
-						'20% chance on attack to leech 3 HP.',
-						'30% chance to leech 7 HP.',
-						'40% chance to leech 12 HP.',
-						'50% chance to leech 16 HP.',
-						'65% chance to leech 22 HP — vital essence flows into you!'] },
-				{ id: 'spirit_fortitude', name: 'Fortitude', type: 'passive', icon: '🛡️', maxRank: 5,
-					rankDescs: ['',
-						'+10 max HP. Incoming damage reduced by 2%.',
-						'+18 max HP. Damage reduced by 4%.',
-						'+25 max HP. Damage reduced by 5%.',
-						'+32 max HP. Damage reduced by 6%.',
-						'+40 max HP. Damage reduced by 8% — unbreakable resolve!'] },
-				{ id: 'spirit_healing_surge', name: 'Healing Surge', type: 'active', icon: '💫', maxRank: 5,
-					cooldowns: [0, 36, 32, 28, 24, 20],
-					rankDescs: ['',
-						'Surge of life — heals you 3 times over 4s: 15 HP per pulse.',
-						'Each pulse heals 28 HP.',
-						'Each pulse heals 45 HP.',
-						'Each pulse heals 65 HP.',
-						'Each pulse heals 90 HP — LEGENDARY: spirit floods your very soul!'] },
-				{ id: 'spirit_soul_leech', name: 'Soul Leech', type: 'active', icon: '🌀', maxRank: 5,
-					cooldowns: [0, 28, 25, 22, 18, 15],
-					rankDescs: ['',
-						'Tether a creature for 5s — drain 8 HP/s from it, healing yourself.',
-						'Drain 14 HP/s for 6s.',
-						'Drain 20 HP/s for 7s.',
-						'Drain 28 HP/s for 8s.',
-						'Drain 38 HP/s for 10s — LEGENDARY: life flows endlessly into you!'] },
-				{ id: 'spirit_spirit_walk', name: 'Spirit Walk', type: 'active', icon: '👻', maxRank: 5,
-					cooldowns: [0, 45, 40, 35, 30, 24],
-					rankDescs: ['',
-						'Become ethereal for 2s — untargetable, immune to damage. Cannot attack.',
-						'Spirit Walk lasts 2.5s.',
-						'Lasts 3s. Movement speed +30% while active.',
-						'Lasts 3.5s. Speed +40%.',
-						'Lasts 4s — LEGENDARY: become one with the spirit realm!'] },
-				{ id: 'spirit_resurrection_mark', name: 'Resurrection Mark', type: 'passive', icon: '✨', maxRank: 5,
-					rankDescs: ['',
-						'Once per combat: when HP drops below 15%, auto-cast Mend (30 HP) instantly.',
-						'Auto-Mend heals 55 HP at 15% HP threshold.',
-						'Auto-Mend heals 85 HP at 20% HP threshold.',
-						'Auto-Mend heals 120 HP at 20% HP threshold.',
-						'Heal 160 HP at 25% HP threshold — LEGENDARY: death cannot claim you!'] },
-				{ id: 'spirit_aegis', name: 'Aegis', type: 'active', icon: '🔮', maxRank: 5,
-					cooldowns: [0, 40, 36, 32, 28, 22],
-					rankDescs: ['',
-						'Conjure a spirit shield that absorbs up to 50 damage for 10s.',
-						'Shield absorbs 90 damage for 10s.',
-						'Shield absorbs 135 damage for 12s.',
-						'Shield absorbs 185 damage for 12s.',
-						'Shield absorbs 240 damage for 15s — LEGENDARY: the spirit protects absolutely!'] },
-				{ id: 'spirit_crit', name: 'Divine Touch', type: 'passive', icon: '🎯', maxRank: 5,
-					rankDescs: ['',
-						'+4% critical strike chance for spirit spells and heals.',
-						'+7% critical strike chance for spirit spells and heals.',
-						'+11% critical strike chance for spirit spells and heals.',
-						'+15% critical strike chance for spirit spells and heals.',
-						'+20% critical strike chance for spirit spells and heals — LEGENDARY: every touch is divine!'] },
-		]
-	},
-];
-
-	// prerequisite chain: talent N requires rank >= 1 in the talent listed here
-	const TALENT_PREREQS = {
-		fire_passive:            'fire_active',
-		fire_backdraft:          'fire_passive',
-		fire_wildfire:           'fire_backdraft',
-		fire_cremation:          'fire_wildfire',
-		fire_fireball:           'fire_cremation',
-		fire_inferno:            'fire_fireball',
-		lightning_passive:       'lightning_active',
-		lightning_conductor:     'lightning_passive',
-		lightning_aftershock:    'lightning_conductor',
-		lightning_static_aura:   'lightning_aftershock',
-		lightning_strike:        'lightning_static_aura',
-		lightning_storm:         'lightning_strike',
-		ice_passive:             'ice_active',
-		ice_shield:              'ice_passive',
-		ice_brittle:             'ice_shield',
-		ice_shatter:             'ice_brittle',
-		ice_lance:               'ice_shatter',
-		ice_blizzard:            'ice_lance',
-		ice_frost_nova:          'ice_blizzard',
-		ice_glacial_armor:       'ice_frost_nova',
-		ice_cold_snap:           'ice_blizzard',
-		ice_permafrost:          'ice_brittle',
-		lightning_chain:         'lightning_storm',
-		lightning_discharge:     'lightning_chain',
-		lightning_overload:      'lightning_conductor',
-		lightning_ball:          'lightning_storm',
-		fire_flame_wall:         'fire_inferno',
-		fire_magma_shell:        'fire_flame_wall',
-		fire_pyroclasm:          'fire_cremation',
-		fire_phoenix_mark:       'fire_fireball',
-		spirit_passive:          'spirit_active',
-		spirit_hot:              'spirit_passive',
-		spirit_siphon:           'spirit_hot',
-		spirit_fortitude:        'spirit_siphon',
-		spirit_healing_surge:    'spirit_fortitude',
-		spirit_soul_leech:       'spirit_healing_surge',
-		spirit_spirit_walk:      'spirit_soul_leech',
-		spirit_resurrection_mark:'spirit_hot',
-		spirit_aegis:            'spirit_fortitude',
-		fire_crit:               'fire_passive',
-		lightning_crit:          'lightning_passive',
-		ice_crit:                'ice_passive',
-		spirit_crit:             'spirit_passive',
-	};
-
-	function getTalentDef(id) {
-		for (const path of TALENT_PATHS) for (const t of path.talents) if (t.id === id) return t;
-		return null;
-	}
-	function talentRank(id) { return player.talents[id] || 0; }
-	function hasTalent(id) { return talentRank(id) > 0; }
-	function talentPointsEarned() { return (player.atkLvl - 1) + (player.defLvl - 1); }
-	function talentRankUpgradeCost(currentRank) { return Math.min(currentRank + 1, 5); }
-	function talentTotalCost(rank) {
-		let n = 0;
-		for (let r = 1; r <= rank; r++) n += Math.min(r, 5);
-		return n;
-	}
-	function talentPointsSpent() {
-		let n = 0;
-		for (const v of Object.values(player.talents)) n += talentTotalCost(v || 0);
-		return n;
-	}
-	function talentPointsAvailable() { return Math.max(0, talentPointsEarned() - talentPointsSpent()); }
-	// minimum rank needed in the prereq talent (default 1, chain talents need more)
-	const TALENT_PREREQ_RANK = {
-		// fire chain — require 2 ranks in previous before going deeper
-		fire_backdraft: 2, fire_wildfire: 2, fire_cremation: 2,
-		fire_fireball: 3, fire_inferno: 3, fire_flame_wall: 3, fire_magma_shell: 3,
-		fire_pyroclasm: 2, fire_phoenix_mark: 2,
-		// lightning chain
-		lightning_conductor: 2, lightning_aftershock: 2, lightning_static_aura: 2,
-		lightning_strike: 3, lightning_storm: 3, lightning_chain: 3,
-		lightning_discharge: 3, lightning_overload: 2, lightning_ball: 3,
-		// ice chain
-		ice_shield: 2, ice_brittle: 2, ice_shatter: 2,
-		ice_lance: 3, ice_blizzard: 3, ice_frost_nova: 3, ice_glacial_armor: 3,
-		ice_cold_snap: 2, ice_permafrost: 2,
-		// spirit chain
-		spirit_hot: 2, spirit_siphon: 2, spirit_fortitude: 2,
-		spirit_healing_surge: 3, spirit_soul_leech: 3, spirit_spirit_walk: 3,
-		spirit_resurrection_mark: 2, spirit_aegis: 2,
-		// crit branches — only rank 1 needed (easy entry)
-	};
-	function talentPrereqMet(id) {
-		const prereq = TALENT_PREREQS[id];
-		if (!prereq) return true;
-		const required = TALENT_PREREQ_RANK[id] || 1;
-		return talentRank(prereq) >= required;
-	}
-
 	// ------------------------------------------------------------------ skill activation
 	function activateSkill(slotIndex) {
 		const id = player.hotbar[slotIndex];
@@ -2623,7 +1911,8 @@
 			if (typeof netCastEffect === 'function') netCastEffect(0x7dd3fc, { spark: true, pillar: true });
 			log('❄️ ' + def.name + ' (Rank ' + rank + '): Your weapon frosts over! Next attack +' + bonus + ' ice.', 'craft');
 		} else if (id === 'ice_shield') {
-			const bonus = Math.ceil(playerDef() * [0, 0.5, 0.8, 1.1, 1.5, 2.0, 2.6, 3.3, 4.2][rank] + 3);
+			const baseDef = playerDef() - (player.frostWardTimer > 0 ? (player.frostWardBonus || 0) : 0);
+			const bonus = Math.ceil(baseDef * [0, 0.15, 0.22, 0.30, 0.38, 0.48, 0.58, 0.70, 0.85][rank] + 3);
 			const dur   = [0, 8, 10, 12, 14, 16, 18, 20, 25][rank];
 			player.frostWardTimer = dur;
 			player.frostWardBonus = bonus;
@@ -4091,20 +3380,24 @@
 	}
 	function playerAtk() {
 		const wAtk = player.equip.weapon ? ITEMS[player.equip.weapon].atk : 0;
+		// weapon contribution scales with atk level: 30% at lvl 1, up to ~60% at lvl 20
+		const weaponScale = 0.30 + player.atkLvl * 0.015;
 		let bonus = 0;
 		for (const s of ['medallion', 'ring', 'ring2', 'belt']) { const it = player.equip[s]; if (it && ITEMS[it].atk) bonus += ITEMS[it].atk; }
 		if (player.consumableAtkTimer > 0) bonus += (player.consumableAtk || 0);
-		return Math.floor(playerBaseAtk() + wAtk * (1 + player.atkLvl * 0.07) + bonus);
+		return Math.floor(playerBaseAtk() + wAtk * weaponScale + bonus);
 	}
 	function playerDef() {
 		let d = playerBaseDef();
+		// gear def dampened by level: 25% at lvl 1, up to ~60% at lvl 20
+		const gearScale = 0.25 + player.defLvl * 0.018;
 		for (const s of ['shield', 'helm', 'armor', 'cuisses', 'greaves', 'medallion', 'ring', 'ring2', 'belt']) {
 			const it = player.equip[s];
-			if (it && ITEMS[it].def) d += ITEMS[it].def;
+			if (it && ITEMS[it].def) d += ITEMS[it].def * gearScale;
 		}
 		if (player.frostWardTimer > 0) d += (player.frostWardBonus || 0);
 		if (player.consumableDefTimer > 0) d += (player.consumableDef || 0);
-		return d;
+		return Math.floor(d);
 	}
 	function refreshStatsUI() {
 		ui.atk.textContent = playerAtk();
@@ -4170,7 +3463,7 @@
 
 	function onLevelUp(skill, lvl, color) {
 		if (skill === 'Attack' || skill === 'Defense') {
-			player.maxhp += 4; player.hp = Math.min(player.hp + 10, player.maxhp); refreshHpUI();
+			player.maxhp += 8; player.hp = Math.min(player.hp + 15, player.maxhp); refreshHpUI();
 			const pts = talentPointsAvailable();
 			if (pts > 0) log('✨ You earned a talent point! (' + pts + ' available — press N to spend)', 'craft');
 		}
@@ -5336,6 +4629,11 @@
 		if (!nm) nm = 'Adventurer';
 		nm = nm.slice(0, 16).replace(/[<>]/g, '');
 		player.name = nm;
+		// Apply server save (multiplayer login) now that player exists
+		if (window._pendingServerSave) {
+			if (typeof _applySave === 'function') _applySave(window._pendingServerSave);
+			window._pendingServerSave = null;
+		}
 		// Skip localStorage if server already populated player data (multiplayer login)
 		const hasSave = window._serverSaveApplied ? true : loadGame();
 		window._serverSaveApplied = false;
@@ -5418,6 +4716,9 @@
 			ring.scale.set(s, s, s);
 			ring.material.opacity = 0.9 * (1 - ringT);
 		} else ring.material.opacity = 0;
+
+		// grass animation
+		grassSystem.update(dt, elapsed, player.group.position, camera.position);
 
 		// water waves
 		{
