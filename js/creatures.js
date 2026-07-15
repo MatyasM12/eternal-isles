@@ -963,6 +963,184 @@ const CREATURE_DEFS = {
             return g;
         },
     },
+    // ---- Icereach Peaks tier-9 creatures ----
+    'Arctic Hare': {
+        count: 8, hp: 55, dmg: 4, speed: 3.8, hopper: true, aggro: 0, barW: 0.9, barY: 0.95, hitY: 0.6, level: 30, xp: 160, tiers: [9],
+        drops: [{item: 'Arctic Hare Pelt', p: 1}, {item: 'Raw Meat', p: 0.65}, {item: 'Bones', p: 0.4}],
+        build() {
+            const g = new THREE.Group();
+            const fur = new THREE.MeshStandardMaterial({color: 0xf0f4f8, flatShading: true, roughness: 0.88});
+            const body = new THREE.Mesh(new THREE.SphereGeometry(0.27, 10, 8), fur);
+            body.scale.set(1, 0.9, 1.3); body.position.y = 0.3; body.castShadow = true;
+            g.add(body);
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 8), fur);
+            head.position.set(0, 0.52, 0.3); head.castShadow = true;
+            g.add(head);
+            for (const s of [-1, 1]) {
+                const ear = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.36, 0.05), fur);
+                ear.position.set(0.08 * s, 0.82, 0.26); ear.rotation.x = -0.22; ear.rotation.z = 0.1 * s;
+                ear.castShadow = true; g.add(ear);
+                const eye = new THREE.Mesh(new THREE.SphereGeometry(0.028, 6, 6),
+                    new THREE.MeshStandardMaterial({color: 0xff3a60, roughness: 0.4}));
+                eye.position.set(0.09 * s, 0.56, 0.44); g.add(eye);
+            }
+            const tail = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), fur);
+            tail.position.set(0, 0.32, -0.36); g.add(tail);
+            return g;
+        },
+    },
+    'Frost Elk': {
+        count: 5, hp: 320, dmg: 20, speed: 3.2, hopper: false, aggro: 0, barW: 1.4, barY: 1.8, hitY: 1.2, level: 38, xp: 260, tiers: [9],
+        drops: [{item: 'Frost Elk Hide', p: 1}, {item: 'Frost Elk Antler', p: 0.75}, {item: 'Raw Meat', p: 0.8}, {item: 'Bones', p: 0.5}],
+        build() {
+            const g = new THREE.Group();
+            const fur = new THREE.MeshStandardMaterial({color: 0xd0dce8, flatShading: true, roughness: 0.92});
+            const antlerM = new THREE.MeshStandardMaterial({color: 0xbcd4e6, flatShading: true, roughness: 0.6});
+            const body = new THREE.Mesh(new THREE.SphereGeometry(0.44, 10, 8), fur);
+            body.scale.set(0.95, 0.82, 1.6); body.position.y = 0.95; body.castShadow = true;
+            g.add(body);
+            const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.22, 0.6, 7), fur);
+            neck.position.set(0, 1.38, 0.4); neck.rotation.x = -0.45; neck.castShadow = true;
+            g.add(neck);
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), fur);
+            head.position.set(0, 1.7, 0.7); head.scale.set(0.85, 0.85, 1.2); head.castShadow = true;
+            g.add(head);
+            for (const s of [-1, 1]) {
+                const antler = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.7, 5), antlerM);
+                antler.position.set(0.18 * s, 1.98, 0.58); antler.rotation.z = 0.55 * s;
+                g.add(antler);
+                const tine = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.04, 0.42, 5), antlerM);
+                tine.position.set(0.36 * s, 2.22, 0.5); tine.rotation.set(0.3, 0, 0.7 * s);
+                g.add(tine);
+                for (const fz of [-0.35, 0.35]) {
+                    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.05, 0.9, 7), fur);
+                    leg.position.set(0.26 * s, 0.38, fz); leg.castShadow = true;
+                    g.add(leg);
+                }
+            }
+            return g;
+        },
+    },
+    'Arctic Wolf': {
+        count: 6, hp: 420, dmg: 28, speed: 3.8, hopper: false, aggro: 10, barW: 1.2, barY: 1.3, hitY: 0.9, level: 44, xp: 330, tiers: [9],
+        drops: [{item: 'Arctic Wolf Fur', p: 1}, {item: 'Glacial Fang', p: 0.6}, {item: 'Raw Meat', p: 0.7}, {item: 'Bones', p: 0.5}],
+        build() {
+            const g = new THREE.Group();
+            const fur = new THREE.MeshStandardMaterial({color: 0xe8eef4, flatShading: true, roughness: 0.9});
+            const dark = new THREE.MeshStandardMaterial({color: 0x9fb0c0, flatShading: true, roughness: 0.9});
+            const eye = new THREE.MeshStandardMaterial({color: 0x44aaff, emissive: 0x2266aa, emissiveIntensity: 0.8, roughness: 0.3});
+            const body = new THREE.Mesh(new THREE.SphereGeometry(0.34, 10, 8), fur);
+            body.scale.set(0.85, 0.78, 1.5); body.position.y = 0.62; body.castShadow = true;
+            g.add(body);
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), fur);
+            head.position.set(0, 0.88, 0.52); head.scale.set(0.9, 0.85, 1.15); head.castShadow = true;
+            g.add(head);
+            const snout = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.11, 0.22), fur);
+            snout.position.set(0, 0.8, 0.72); g.add(snout);
+            const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.03, 0.55, 6), fur);
+            tail.position.set(0, 0.82, -0.6); tail.rotation.x = 0.8; g.add(tail);
+            for (const s of [-1, 1]) {
+                const ear = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.19, 5), dark);
+                ear.position.set(0.13 * s, 1.12, 0.42); ear.rotation.z = 0.15 * s;
+                g.add(ear);
+                const ev = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 6), eye);
+                ev.position.set(0.1 * s, 0.92, 0.7); g.add(ev);
+                for (const fz of [-0.25, 0.25]) {
+                    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.045, 0.6, 6), fur);
+                    leg.position.set(0.22 * s, 0.28, fz); leg.castShadow = true;
+                    g.add(leg);
+                }
+            }
+            return g;
+        },
+    },
+    'Snow Leopard': {
+        count: 4, hp: 780, dmg: 50, speed: 4.4, hopper: false, aggro: 16, barW: 1.4, barY: 1.4, hitY: 1.0, level: 52, xp: 480, tiers: [9],
+        drops: [{item: 'Snow Leopard Pelt', p: 1}, {item: 'Snow Leopard Claw', p: 0.65}, {item: 'Raw Meat', p: 0.7}, {item: 'Glacial Crystal', p: 0.3}],
+        build() {
+            const g = new THREE.Group();
+            const spotM = new THREE.MeshStandardMaterial({color: 0xd8e4ee, flatShading: true, roughness: 0.85});
+            const darkM = new THREE.MeshStandardMaterial({color: 0x7a8ea0, flatShading: true, roughness: 0.85});
+            const eyeM  = new THREE.MeshStandardMaterial({color: 0xaaddff, emissive: 0x66bbff, emissiveIntensity: 1.2});
+            const body = new THREE.Mesh(new THREE.SphereGeometry(0.36, 10, 8), spotM);
+            body.scale.set(0.82, 0.7, 1.7); body.position.y = 0.6; body.castShadow = true;
+            g.add(body);
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.21, 10, 8), spotM);
+            head.position.set(0, 0.82, 0.64); head.scale.set(0.95, 0.88, 1.0); head.castShadow = true;
+            g.add(head);
+            const snout = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.09, 0.18), spotM);
+            snout.position.set(0, 0.74, 0.82); g.add(snout);
+            // fluffy tail
+            const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.04, 0.8, 7), spotM);
+            tail.position.set(0, 0.7, -0.7); tail.rotation.x = 0.9; g.add(tail);
+            for (const s of [-1, 1]) {
+                // spots (dark patches on body)
+                const spot = new THREE.Mesh(new THREE.SphereGeometry(0.09, 6, 6), darkM);
+                spot.position.set(0.28 * s, 0.68, 0.1 * s); g.add(spot);
+                const ear = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.15, 5), darkM);
+                ear.position.set(0.12 * s, 1.05, 0.56); ear.rotation.z = 0.2 * s;
+                g.add(ear);
+                const ev = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 6), eyeM);
+                ev.position.set(0.09 * s, 0.86, 0.8); g.add(ev);
+                for (const fz of [-0.28, 0.28]) {
+                    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.05, 0.62, 6), spotM);
+                    leg.position.set(0.24 * s, 0.25, fz); leg.castShadow = true;
+                    g.add(leg);
+                }
+            }
+            return g;
+        },
+    },
+    'Glacial Mammoth': {
+        count: 2, hp: 3800, dmg: 95, speed: 2.0, hopper: false, aggro: 12, barW: 2.8, barY: 4.0, hitY: 2.2, level: 62, xp: 680, tiers: [9],
+        drops: [
+            {item: 'Mammoth Tusk', p: 1.00},
+            {item: 'Mammoth Hide', p: 1.00},
+            {item: 'Glacial Crystal', p: 0.70},
+            {item: 'Raw Meat', p: 1.00},
+            {item: 'Bones', p: 0.60},
+        ],
+        build() {
+            const g = new THREE.Group();
+            const hideM = new THREE.MeshStandardMaterial({color: 0xb8c8d4, flatShading: true, roughness: 0.92});
+            const tuskM = new THREE.MeshStandardMaterial({color: 0xe8f4ff, flatShading: true, roughness: 0.55});
+            const eyeM  = new THREE.MeshStandardMaterial({color: 0x3a3028, roughness: 0.5});
+            // massive body
+            const body = new THREE.Mesh(new THREE.SphereGeometry(1.0, 10, 8), hideM);
+            body.scale.set(1.1, 0.95, 1.5); body.position.y = 1.8; body.castShadow = true;
+            g.add(body);
+            // shaggy fur effect (slightly larger dark sphere behind)
+            const fur = new THREE.Mesh(new THREE.SphereGeometry(1.06, 8, 6),
+                new THREE.MeshStandardMaterial({color: 0x90a0b0, flatShading: true, roughness: 0.98, side: THREE.BackSide}));
+            fur.scale.copy(body.scale); fur.position.copy(body.position); g.add(fur);
+            // head
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.6, 10, 8), hideM);
+            head.scale.set(0.9, 0.9, 1.2); head.position.set(0, 2.4, 1.45); head.castShadow = true;
+            g.add(head);
+            // trunk
+            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.1, 0.9, 7), hideM);
+            trunk.position.set(0, 1.8, 2.1); trunk.rotation.x = 0.55; g.add(trunk);
+            // tusks
+            for (const s of [-1, 1]) {
+                const tusk = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.03, 1.2, 6), tuskM);
+                tusk.position.set(0.4 * s, 1.9, 1.9); tusk.rotation.set(0.6, 0, 0.35 * -s);
+                g.add(tusk);
+                const eye = new THREE.Mesh(new THREE.SphereGeometry(0.09, 6, 6), eyeM);
+                eye.position.set(0.32 * s, 2.6, 1.8); g.add(eye);
+                // ears
+                const ear = new THREE.Mesh(new THREE.SphereGeometry(0.35, 6, 5), hideM);
+                ear.scale.set(0.4, 0.7, 0.15); ear.position.set(0.65 * s, 2.7, 1.2);
+                g.add(ear);
+                // legs — front and back pair
+                for (const fz of [-0.55, 0.55]) {
+                    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.22, 1.2, 8), hideM);
+                    leg.position.set(0.55 * s, 0.6, fz); leg.castShadow = true;
+                    g.add(leg);
+                }
+            }
+            return g;
+        },
+    },
     'Cave Worm': {
         count: 3, hp: 1190, dmg: 72, speed: 2.4, hopper: false, aggro: 14.0, barW: 2.2, barY: 3.6, hitY: 1.6, level: 58, xp: 520, tiers: [8],
         drops: [{item: 'Bones', p: 1}, {item: 'Raw Meat', p: 1}, {item: 'Sulphur', p: 0.7}, {item: 'Iron Ore', p: 0.6}, {item: 'Gold Coin', p: 0.5}],

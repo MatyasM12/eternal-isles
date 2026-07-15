@@ -21,6 +21,57 @@
 	const lerp = THREE.MathUtils.lerp;
 	const smoothstep = THREE.MathUtils.smoothstep;
 
+	// ------------------------------------------------------------------ procedural noise (FBM + ridged multifractal for terrain)
+	function _createNoise2D(seed) {
+		const perm = new Uint8Array(512);
+		let s = seed;
+		for (let i = 0; i < 256; i++) {
+			s = (s * 16807 + 0) % 2147483647;
+			perm[i] = perm[i + 256] = s & 255;
+		}
+		const G2 = (3 - Math.sqrt(3)) / 6;
+		const grad = [[1,1],[-1,1],[1,-1],[-1,-1],[1,0],[-1,0],[0,1],[0,-1]];
+		return function(x, y) {
+			const s0 = (x + y) * 0.5 * (Math.sqrt(3) - 1);
+			const i = Math.floor(x + s0), j = Math.floor(y + s0);
+			const t0 = (i + j) * G2;
+			const x0 = x - (i - t0), y0 = y - (j - t0);
+			const i1 = x0 > y0 ? 1 : 0, j1 = x0 > y0 ? 0 : 1;
+			const x1 = x0 - i1 + G2, y1 = y0 - j1 + G2;
+			const x2 = x0 - 1 + 2 * G2, y2 = y0 - 1 + 2 * G2;
+			const ii = i & 255, jj = j & 255;
+			let n0 = 0, n1 = 0, n2 = 0;
+			let t = 0.5 - x0*x0 - y0*y0;
+			if (t > 0) { const g = grad[perm[ii + perm[jj]] & 7]; n0 = t*t*t*t * (g[0]*x0 + g[1]*y0); }
+			t = 0.5 - x1*x1 - y1*y1;
+			if (t > 0) { const g = grad[perm[ii+i1 + perm[jj+j1]] & 7]; n1 = t*t*t*t * (g[0]*x1 + g[1]*y1); }
+			t = 0.5 - x2*x2 - y2*y2;
+			if (t > 0) { const g = grad[perm[ii+1 + perm[jj+1]] & 7]; n2 = t*t*t*t * (g[0]*x2 + g[1]*y2); }
+			return 70 * (n0 + n1 + n2);
+		};
+	}
+	function _fbm(noise, x, y, octaves, lacunarity, gain) {
+		octaves = octaves || 5; lacunarity = lacunarity || 2.0; gain = gain || 0.5;
+		let sum = 0, amp = 1, freq = 1, maxAmp = 0;
+		for (let i = 0; i < octaves; i++) {
+			sum += noise(x * freq, y * freq) * amp;
+			maxAmp += amp; amp *= gain; freq *= lacunarity;
+		}
+		return sum / maxAmp;
+	}
+	function _ridged(noise, x, y, octaves, lacunarity, gain) {
+		octaves = octaves || 5; lacunarity = lacunarity || 2.0; gain = gain || 0.5;
+		let sum = 0, amp = 1, freq = 1, prev = 1;
+		for (let i = 0; i < octaves; i++) {
+			let n = 1 - Math.abs(noise(x * freq, y * freq));
+			n = n * n * prev; sum += n * amp; prev = n;
+			amp *= gain; freq *= lacunarity;
+		}
+		return sum;
+	}
+	const _terrainNoise = _createNoise2D(0x5e7a2f9b);
+	const _ridgeNoise   = _createNoise2D(0x1a3c8b4d);
+
 	// ------------------------------------------------------------------ terrain (archipelago)
 	// Several islands sit in a shallow, swimmable lagoon. Beyond the whole cluster
 	// the sea floor plunges into deep ocean you cannot cross. Higher-tier isles are
@@ -44,6 +95,8 @@
 		{ name: 'Eldenmere',       x:    0, z: -235,   r: 120, tier: 7, biome: 'arcane',    peakMult: 0.80, elongX: 1.3,  elongZ: 1.1,  hillFreq: 0.04 },
 		// The Abyssal Maw — dark toxic island far to the southeast, home to the Cave Worms
 		{ name: 'The Abyssal Maw', x:  220, z:  220,   r: 45,  tier: 8, biome: 'volcanic',  peakMult: 1.10, elongX: 1.0,  elongZ: 1.0,  hillFreq: 0.13 },
+		// Icereach Peaks — snowy mountain isle close to Isla Prima, sharp ridged peaks, tier 9
+		{ name: 'Icereach Peaks',  x:   88, z:  -90,   r: 46,  tier: 9, biome: 'frost',     peakMult: 1.05, elongX: 0.85, elongZ: 1.1,  hillFreq: 0.09 },
 	];
 	const ISLAND_R = 52; // legacy alias (fireflies etc. use it)
 
@@ -105,7 +158,6 @@
 		let land = 0, near = null, nearD = 1e9;
 		for (const isle of ISLES) {
 			const dx = x - isle.x, dz = z - isle.z;
-			// apply per-island elongation so each isle has a distinct footprint
 			const ex = isle.elongX || 1, ez = isle.elongZ || 1;
 			const dxe = dx / ex, dze = dz / ez;
 			const d = Math.sqrt(dxe * dxe + dze * dze);
@@ -116,9 +168,19 @@
 				const dome = smoothstep(t, 0, 1);
 				const pm = isle.peakMult || 1.0;
 				const hf = isle.hillFreq || 0.08;
-				let hl = dome * (isle.r * 0.14 + 1.5) * pm;
-				hl += (Math.sin(x * hf) * Math.cos(z * hf * 0.87) * 1.5 +
-					Math.sin((x + z) * hf * 0.65 + isle.tier) * 0.8) * dome;
+				const nx = x * hf * 0.35, nz = z * hf * 0.35;
+				let hl;
+				if (isle.ridged) {
+					// ridged multifractal for sharp snowy mountain peaks
+					const ridge = _ridged(_ridgeNoise, nx, nz, 5, 2.1, 0.48);
+					const fbmD  = _fbm(_terrainNoise, nx + 3.7, nz + 1.9, 4, 2.0, 0.5) * 0.5;
+					hl = dome * (isle.r * 0.14 + 1.5) * pm * (0.6 + ridge * 1.1 + fbmD * 0.4);
+				} else {
+					// FBM-layered hills — richer detail than pure sine
+					const fbmH = _fbm(_terrainNoise, nx, nz, 5, 2.0, 0.5);
+					const fbmD = _fbm(_terrainNoise, nx + 7.3, nz + 2.8, 3, 2.0, 0.6) * 0.3;
+					hl = dome * (isle.r * 0.14 + 1.5) * pm * (0.7 + fbmH * 0.8 + fbmD);
+				}
 				land = Math.max(land, hl);
 			}
 		}
@@ -479,6 +541,10 @@
 	scatterOnIsles(4, 6.5, 5, (p) => buildMineral(p, 'Aether Crystal'), 7, 7);
 	scatterOnIsles(3, 6.5, 5, (p) => buildMineral(p, 'Voidstone'), 7, 7);
 	scatterOnIsles(3, 7.0, 5, (p) => buildMineral(p, 'Starstone'), 7, 7);
+	// Tier 9 (Icereach Peaks): silver + quartz + glacial crystals embedded in ice
+	scatterOnIsles(3, 5.5, 4, (p) => buildMineral(p, 'Silver Ore'), 9, 9);
+	scatterOnIsles(3, 5.5, 4, (p) => buildMineral(p, 'Quartz Ore'), 9, 9);
+	scatterOnIsles(3, 6.0, 5, (p) => buildMineral(p, 'Gold Ore'), 9, 9);
 
 	// ------------------------------------------------------------------ flowers (ez-tree bush base + bloom clusters)
 	const flowerAnchors = []; // for the sparkle particle system

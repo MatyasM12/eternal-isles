@@ -47,6 +47,7 @@ const ISLES = [
   { x:    0, z: -165,   r: 28,  elongX: 1.0,  elongZ: 1.0,  tier: 6, peakMult: 2.40, hillFreq: 0.20 },
   { x:    0, z: -235,   r: 120, elongX: 1.3,  elongZ: 1.1,  tier: 7, peakMult: 0.80, hillFreq: 0.04 },
   { x:  220, z:  220,   r: 45,  elongX: 1.0,  elongZ: 1.0,  tier: 8, peakMult: 1.10, hillFreq: 0.13 },
+  { x:   88, z:  -90,   r: 46,  elongX: 0.85, elongZ: 1.1,  tier: 9, peakMult: 1.05, hillFreq: 0.09 },
 ];
 const WATER_Y  = -1.15;
 const SEA      = WATER_Y - 2.15;
