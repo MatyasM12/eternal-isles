@@ -1684,6 +1684,252 @@
 		scene.add(pts);
 		effects.push({ type: 'sparks', m: pts, vel, t: 0, life: 1.1 });
 	}
+	// ── GLSL ShaderMaterial per-element particle system (Option A) ────────────
+	//
+	// Each element gets a unique vertex+fragment shader that gives it distinct
+	// visual identity: fire = hot core + orange fade, ice = crystalline with
+	// cold-blue refraction glow, lightning = flickering opacity + white bolt
+	// core, earth = tumbling brown dust with gravity drag, spirit = soft
+	// lavender wisps.  All use additive blending and instanced point clouds.
+
+	const ELEM_SHADERS = {
+		fire: {
+			vert: `
+				uniform float uTime;
+				attribute float aAge;
+				attribute float aLife;
+				attribute vec3 aVel;
+				varying float vAge;
+				varying float vLife;
+				void main(){
+					float t = aAge;
+					vec3 p = position + aVel * t - vec3(0.0, 3.8, 0.0) * t * t;
+					vAge = aAge; vLife = aLife;
+					vec4 mv = modelViewMatrix * vec4(p, 1.0);
+					gl_Position = projectionMatrix * mv;
+					float sz = 28.0 * (1.0 - t/aLife) + 8.0;
+					gl_PointSize = sz * (300.0 / -mv.z);
+				}`,
+			frag: `
+				varying float vAge;
+				varying float vLife;
+				void main(){
+					float d = length(gl_PointCoord - 0.5) * 2.0;
+					if(d > 1.0) discard;
+					float t = vAge / vLife;
+					float core = 1.0 - smoothstep(0.0, 0.35, d);
+					vec3 hotCore = vec3(1.0, 0.98, 0.85);
+					vec3 mid = vec3(1.0, 0.42, 0.05);
+					vec3 outer = vec3(0.6, 0.08, 0.0);
+					vec3 col = mix(mix(hotCore, mid, smoothstep(0.0,0.4,d)), outer, smoothstep(0.35,1.0,d));
+					float alpha = (1.0 - d*d) * (1.0 - t) * 0.92;
+					gl_FragColor = vec4(col, alpha);
+				}`
+		},
+		lightning: {
+			vert: `
+				uniform float uTime;
+				attribute float aAge;
+				attribute float aLife;
+				attribute vec3 aVel;
+				varying float vAge;
+				varying float vLife;
+				void main(){
+					float t = aAge;
+					float jx = sin(t * 38.0 + position.z * 4.1) * 0.08;
+					float jz = cos(t * 31.0 + position.x * 3.7) * 0.08;
+					vec3 p = position + aVel * t + vec3(jx, -1.5 * t * t, jz);
+					vAge = aAge; vLife = aLife;
+					vec4 mv = modelViewMatrix * vec4(p, 1.0);
+					gl_Position = projectionMatrix * mv;
+					float sz = 20.0 * (1.0 - t/aLife) + 6.0;
+					gl_PointSize = sz * (300.0 / -mv.z);
+				}`,
+			frag: `
+				uniform float uTime;
+				varying float vAge;
+				varying float vLife;
+				void main(){
+					float d = length(gl_PointCoord - 0.5) * 2.0;
+					if(d > 1.0) discard;
+					float t = vAge / vLife;
+					float flicker = 0.65 + 0.35 * sin(uTime * 48.0 + vAge * 21.0);
+					vec3 bolt = vec3(0.95, 0.98, 1.0);
+					vec3 edge = vec3(0.35, 0.60, 1.0);
+					vec3 col = mix(bolt, edge, smoothstep(0.0, 0.6, d));
+					float alpha = (1.0 - d*d) * (1.0 - t) * flicker * 0.95;
+					gl_FragColor = vec4(col, alpha);
+				}`
+		},
+		ice: {
+			vert: `
+				uniform float uTime;
+				attribute float aAge;
+				attribute float aLife;
+				attribute vec3 aVel;
+				varying float vAge;
+				varying float vLife;
+				void main(){
+					float t = aAge;
+					vec3 p = position + aVel * t - vec3(0.0, 2.2, 0.0) * t * t;
+					vAge = aAge; vLife = aLife;
+					vec4 mv = modelViewMatrix * vec4(p, 1.0);
+					gl_Position = projectionMatrix * mv;
+					float sz = 22.0 * (1.0 - t/aLife) + 10.0;
+					gl_PointSize = sz * (300.0 / -mv.z);
+				}`,
+			frag: `
+				uniform float uTime;
+				varying float vAge;
+				varying float vLife;
+				void main(){
+					float d = length(gl_PointCoord - 0.5) * 2.0;
+					if(d > 1.0) discard;
+					float t = vAge / vLife;
+					// hexagonal snowflake cross pattern
+					vec2 uv = gl_PointCoord - 0.5;
+					float hex = max(abs(uv.x), abs(uv.y * 1.15 + uv.x * 0.0));
+					float crystal = smoothstep(0.3, 0.28, hex * 2.0);
+					vec3 core = vec3(0.88, 0.97, 1.0);
+					vec3 edge = vec3(0.18, 0.55, 0.95);
+					vec3 col = mix(edge, core, crystal);
+					float alpha = (1.0 - d*d) * (1.0 - t) * 0.88 + crystal * 0.15;
+					gl_FragColor = vec4(col, alpha);
+				}`
+		},
+		earth: {
+			vert: `
+				uniform float uTime;
+				attribute float aAge;
+				attribute float aLife;
+				attribute vec3 aVel;
+				attribute float aRot;
+				varying float vAge;
+				varying float vLife;
+				varying float vRot;
+				void main(){
+					float t = aAge;
+					// tumble: slower lateral, heavier gravity
+					vec3 p = position + aVel * t - vec3(0.0, 5.5, 0.0) * t * t;
+					vAge = aAge; vLife = aLife; vRot = aRot + t * 3.0;
+					vec4 mv = modelViewMatrix * vec4(p, 1.0);
+					gl_Position = projectionMatrix * mv;
+					float sz = 18.0 * (1.0 - t/aLife) + 6.0;
+					gl_PointSize = sz * (300.0 / -mv.z);
+				}`,
+			frag: `
+				varying float vAge;
+				varying float vLife;
+				varying float vRot;
+				void main(){
+					float d = length(gl_PointCoord - 0.5) * 2.0;
+					if(d > 1.0) discard;
+					float t = vAge / vLife;
+					// rough rocky look: rotate UV then threshold
+					vec2 uv = gl_PointCoord - 0.5;
+					float cs = cos(vRot), ss = sin(vRot);
+					vec2 ruv = vec2(cs*uv.x - ss*uv.y, ss*uv.x + cs*uv.y);
+					float crack = step(0.08, abs(ruv.x)) * step(0.08, abs(ruv.y));
+					vec3 rock  = vec3(0.55, 0.38, 0.20);
+					vec3 dirt  = vec3(0.34, 0.22, 0.10);
+					vec3 col = mix(dirt, rock, crack * (1.0 - d));
+					float alpha = (1.0 - d*d) * (1.0 - t*t) * 0.90;
+					gl_FragColor = vec4(col, alpha);
+				}`
+		},
+		spirit: {
+			vert: `
+				uniform float uTime;
+				attribute float aAge;
+				attribute float aLife;
+				attribute vec3 aVel;
+				varying float vAge;
+				varying float vLife;
+				void main(){
+					float t = aAge;
+					float drift = sin(uTime * 2.1 + position.x * 3.3) * 0.12;
+					vec3 p = position + aVel * t + vec3(drift, 0.0, drift * 0.6);
+					vAge = aAge; vLife = aLife;
+					vec4 mv = modelViewMatrix * vec4(p, 1.0);
+					gl_Position = projectionMatrix * mv;
+					float sz = 30.0 * sin(3.1415 * t / aLife) + 5.0;
+					gl_PointSize = sz * (300.0 / -mv.z);
+				}`,
+			frag: `
+				uniform float uTime;
+				varying float vAge;
+				varying float vLife;
+				void main(){
+					float d = length(gl_PointCoord - 0.5) * 2.0;
+					if(d > 1.0) discard;
+					float t = vAge / vLife;
+					float pulse = 0.75 + 0.25 * sin(uTime * 4.0 + vAge * 8.0);
+					vec3 col = mix(vec3(0.82,0.70,1.0), vec3(0.96,0.92,1.0), 1.0 - d);
+					float alpha = (1.0 - d*d) * sin(3.1415 * t) * pulse * 0.85;
+					gl_FragColor = vec4(col, alpha);
+				}`
+		},
+	};
+
+	function _buildElementParticles(elem, n, speed, rise) {
+		const sh = ELEM_SHADERS[elem] || ELEM_SHADERS.fire;
+		const ages  = new Float32Array(n);
+		const lives = new Float32Array(n);
+		const vels  = new Float32Array(n * 3);
+		const rots  = new Float32Array(n);
+		for (let i = 0; i < n; i++) {
+			ages[i]  = 0;
+			lives[i] = rand(0.55, 1.1);
+			const a = rand(0, Math.PI * 2), s = speed * rand(0.35, 1.05);
+			const vy = rise * rand(0.6, 1.4);
+			vels[i*3+0] = Math.cos(a) * s;
+			vels[i*3+1] = vy;
+			vels[i*3+2] = Math.sin(a) * s;
+			rots[i]  = rand(0, Math.PI * 2);
+		}
+		const geo = new THREE.BufferGeometry();
+		geo.setAttribute('aAge',  new THREE.BufferAttribute(ages,  1));
+		geo.setAttribute('aLife', new THREE.BufferAttribute(lives, 1));
+		geo.setAttribute('aVel',  new THREE.BufferAttribute(vels,  3));
+		geo.setAttribute('aRot',  new THREE.BufferAttribute(rots,  1));
+		const mat = new THREE.ShaderMaterial({
+			vertexShader:   sh.vert,
+			fragmentShader: sh.frag,
+			uniforms: { uTime: { value: 0 } },
+			transparent: true,
+			depthWrite: false,
+			blending: THREE.AdditiveBlending,
+		});
+		return { geo, mat, ages, lives, n };
+	}
+
+	/**
+	 * Spawn a per-element GLSL particle burst at `pos`.
+	 * elem = 'fire'|'lightning'|'ice'|'earth'|'spirit'
+	 */
+	function spawnElementBurst(pos, elem, n, speed, rise) {
+		n = n || 28;  speed = speed || 2.5;  rise = rise || 3.5;
+		const { geo, mat, ages, lives, n: count } = _buildElementParticles(elem, n, speed, rise);
+		// Seed positions at spawn point
+		const posArr = new Float32Array(count * 3);
+		for (let i = 0; i < count; i++) {
+			posArr[i*3] = pos.x + rand(-0.15, 0.15);
+			posArr[i*3+1] = pos.y + 0.5 + rand(-0.1, 0.2);
+			posArr[i*3+2] = pos.z + rand(-0.15, 0.15);
+		}
+		geo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
+		const pts = new THREE.Points(geo, mat);
+		scene.add(pts);
+		effects.push({ type: 'elemBurst', m: pts, geo, mat, ages, lives, count, t: 0, life: 1.2 });
+	}
+
+	/** Screen shake (for capstones) */
+	let _screenShakeTimer = 0, _screenShakeMag = 0;
+	function screenShake(mag, dur) {
+		_screenShakeMag = mag;
+		_screenShakeTimer = dur;
+	}
+
 	function spawnLevelUpEffect(color) {
 		const p = player.group.position;
 		spawnGroundRing(p, color, 0.5, 3.6, 0.95, 0.1);
@@ -1705,6 +1951,15 @@
 		effects.push({ type: 'swirl', grp, bits, t: 0, life });
 	}
 	function updateEffects(dt) {
+		// Screen shake
+		if (_screenShakeTimer > 0) {
+			_screenShakeTimer -= dt;
+			const mag = _screenShakeMag * (_screenShakeTimer / Math.max(_screenShakeTimer, 0.001));
+			camera.position.x += (rand(-1, 1)) * mag * dt * 60;
+			camera.position.y += (rand(-1, 1)) * mag * dt * 30;
+			if (_screenShakeTimer <= 0) { _screenShakeTimer = 0; }
+		}
+
 		for (let i = effects.length - 1; i >= 0; i--) {
 			const e = effects[i];
 			e.t += dt;
@@ -1737,6 +1992,19 @@
 					b.sp.position.set(Math.cos(b.ang) * b.rad, b.yb, Math.sin(b.ang) * b.rad);
 					b.sp.material.opacity = fade;
 				}
+			} else if (e.type === 'elemBurst') {
+				// Advance per-particle age in the GPU attribute buffer
+				e.mat.uniforms.uTime.value = e.t;
+				const ageAttr = e.geo.attributes.aAge;
+				let allDone = true;
+				for (let j = 0; j < e.count; j++) {
+					const newAge = ageAttr.getX(j) + dt;
+					ageAttr.setX(j, newAge);
+					if (newAge < e.lives[j]) allDone = false;
+				}
+				ageAttr.needsUpdate = true;
+				// Override life with particle-driven fade — clean up when all particles expired
+				if (!allDone) continue;
 			}
 			if (e.t >= e.life) {
 				if (e.type === 'swirl') { e.grp.traverse((o) => { if (o.material) o.material.dispose(); }); scene.remove(e.grp); }
@@ -1923,6 +2191,20 @@
 		resurrectionMarkUsed: false,
 		aegisTimer: 0, aegisAbsorb: 0,
 		overloadDeadStunned: [], // for Overload passive cascades
+		// Earth path state
+		earthStoneFistBonus: 0,  // pending next-attack earth bonus
+		earthEntangleTargets: [], // [{creature, timer, dmgAmpPct}]
+		earthPetrifyTargets: [],  // [{creature, timer, dmgAmpPct}]
+		earthPoisonTargets: [],   // [{creature, dmgPerTick, timer, tickTimer}]
+		earthTremorTimers: [],    // [{timer, dmg, radius}] pending aftershock waves
+		earthWallObj: null,       // {mesh, timer}
+		earthStoneSkinBonus: 0,   // cached armor bonus from Stone Skin
+		earthLivingMountainTimer: 0,
+		// Capstone timers
+		phoenixAscendantTimer: 0, phoenixAscendantRank: 0, phoenixAscendantTrailDmg: 0,
+		stormSovereignTimer: 0,   stormSovereignRank: 0, stormSovereignBoltTimer: 0,
+		glacialDominionTimer: 0,  glacialDominionRank: 0, glacialDominionPulseTimer: 0,
+		undyingWillTimer: 0,      undyingWillRank: 0,
 	};
 	// XP curve + level helpers ---------------------------------------------------
 	function xpForLevel(l) { return Math.floor(40 * Math.pow(1.28, l - 1)); }
@@ -2030,16 +2312,19 @@
 		} else if (id === 'fire_inferno') {
 			const dmg = Math.ceil(playerAtk() * [0, 0.40, 0.75, 1.20, 1.80, 2.60][rank]);
 			player.infernoCast = { timer: 0, duration: 2.5, dmg, rank };
+			spawnElementBurst(headPos(), 'fire', 35, 2.0, 3.5);
 			if (typeof netCastEffect === 'function') netCastEffect(0xff4400, { ring: true, spark: true, radius: 5 });
 			log('🌋 Inferno — channeling… stand your ground!', 'craft');
 		} else if (id === 'ice_blizzard') {
 			const dmg = Math.ceil(playerAtk() * [0, 0.30, 0.55, 0.85, 1.25, 1.75][rank]);
 			player.blizzardCast = { timer: 0, duration: 2.5, dmg, rank };
+			spawnElementBurst(headPos(), 'ice', 35, 2.0, 3.5);
 			if (typeof netCastEffect === 'function') netCastEffect(0x7dd3fc, { ring: true, spark: true, radius: 6 });
 			log('🌨️ Blizzard — channeling… the air turns arctic!', 'craft');
 		} else if (id === 'lightning_storm') {
 			const dmgPerHit = Math.ceil(playerAtk() * [0, 0.14, 0.24, 0.37, 0.55, 0.78][rank]);
 			player.lightningStormCast = { timer: 0, duration: 2.5, dmgPerHit, rank, hitsLeft: 4, hitTimer: 0 };
+			spawnElementBurst(headPos(), 'lightning', 35, 2.5, 4.0);
 			if (typeof netCastEffect === 'function') netCastEffect(0xfacc15, { ring: true, spark: true, radius: 5 });
 			log('🌪️ Lightning Storm — channeling… the sky blackens!', 'craft');
 		} else if (id === 'spirit_healing_surge') {
@@ -2085,6 +2370,7 @@
 				}
 			}
 			spawnGroundRing(player.group.position.clone(), radius, 0x7dd3fc, 0.7);
+			spawnElementBurst(headPos(), 'ice', 40, 2.5, 4.0);
 			floatText('❄️ Nova!', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#7dd3fc', 1.1);
 			if (typeof netCastEffect === 'function') netCastEffect(0x7dd3fc, { ring: true, spark: true, radius: radius });
 			log('❄️ Frost Nova (Rank ' + rank + '): Froze ' + frozen + ' enemies for ' + freeze + ' turns!', 'craft');
@@ -2203,6 +2489,228 @@
 			floatText('🔮 Aegis +' + absorbs, headPos().add(new THREE.Vector3(0, 0.5, 0)), '#a78bfa', 1.0);
 			if (typeof netCastEffect === 'function') netCastEffect(0xa78bfa, { ring: true, spark: true, pillar: true, radius: 2.4 });
 			log('🔮 Aegis (Rank ' + rank + '): Spirit shield absorbs ' + absorbs + ' damage for ' + dur + 's.', 'craft');
+
+		// ── Earth actives ──────────────────────────────────────────────────────
+		} else if (id === 'earth_stone_fist') {
+			const bonusMults = [0, 0.7, 1.2, 1.8, 2.5, 3.2, 4.0, 5.0, 6.2];
+			const bonus = Math.ceil(playerAtk() * bonusMults[rank]);
+			player.earthStoneFistBonus = bonus;
+			spawnSparkBurst(headPos(), 0x92400e, 18, 2.2, 3.5);
+			spawnElementBurst(headPos(), 'earth', 22, 2.2, 3.5);
+			spawnPillar(player.group.position.clone(), 0xa3734c, 0.5);
+			floatText('👊 +' + bonus + ' Stone!', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#a3734c', 1.0);
+			if (typeof netCastEffect === 'function') netCastEffect(0xa3734c, { spark: true, pillar: true });
+			log('👊 Stone Fist (Rank ' + rank + '): Your fist becomes stone! Next attack +' + bonus + ' earth.', 'craft');
+
+		} else if (id === 'earth_entangle') {
+			const rootDur = [0, 3, 4, 5, 6, 8][rank];
+			const ampPct  = [0, 0, 10, 15, 20, 25][rank];
+			const nearby = [...creatures].filter(c => c.state !== 'dead').sort((a, b) =>
+				a.group.position.distanceTo(player.group.position) - b.group.position.distanceTo(player.group.position));
+			if (nearby.length === 0) { log('🌱 No targets.', 'warn'); return; }
+			const target = nearby[0];
+			player.earthEntangleTargets = player.earthEntangleTargets.filter(e => e.creature !== target);
+			player.earthEntangleTargets.push({ creature: target, timer: rootDur, dmgAmpPct: ampPct });
+			target.attackTimer = Math.max(target.attackTimer, rootDur);
+			spawnGroundRing(target.group.position.clone(), 0x4d7c0f, 0.2, 1.8, 1.2, 0.05);
+			floatText('🌱 Rooted!', target.group.position.clone().add(new THREE.Vector3(0, 2, 0)), '#86efac', 1.0);
+			if (typeof netCastCreatureHit === 'function') netCastCreatureHit([target], 0x4d7c0f);
+			log('🌱 Entangle (Rank ' + rank + '): ' + target.def.name + ' rooted for ' + rootDur + 's.' + (ampPct ? ' (' + ampPct + '% more dmg taken)' : ''), 'craft');
+
+		} else if (id === 'earth_seismic_slam') {
+			const dmg    = [0, 22, 35, 52, 72, 95][rank];
+			const radius = [0, 5, 6, 6, 7, 8][rank];
+			const stun   = [0, 1, 1, 2, 2, 3][rank];
+			let hit = 0;
+			const slamTargets = [];
+			for (const c of creatures) {
+				if (c.state === 'dead') continue;
+				if (c.group.position.distanceTo(player.group.position) <= radius) {
+					creatureTakeDamage(c, dmg);
+					c.justHitByEarth = true;
+					floatText('💥 ' + dmg, c.group.position.clone().add(new THREE.Vector3(0, 2, 0)), '#a3734c', 1.1);
+					const existingStun = player.lightningStuns.find(s => s.creature === c);
+					if (existingStun) existingStun.timer = Math.max(existingStun.timer, stun * 1.6);
+					else { player.lightningStuns.push({ creature: c, timer: stun * 1.6 }); c.attackTimer = stun * 1.6; }
+					slamTargets.push(c);
+					hit++;
+					// Tremor aftershock
+					const tremorRank = talentRank('earth_tremor');
+					if (tremorRank > 0) {
+						const aftershockChance = [0, 0.20, 0.30, 0.40, 0.50, 0.65][tremorRank];
+						if (Math.random() < aftershockChance) {
+							const afterDmg = [0, 18, 30, 45, 62, 80][tremorRank];
+							player.earthTremorTimers.push({ timer: 2, dmg: afterDmg, radius: 6 });
+						}
+					}
+				}
+			}
+			spawnGroundRing(player.group.position.clone(), 0x92400e, 0.3, radius, 0.8, 0.0);
+			spawnSparkBurst(player.group.position.clone(), 0xa3734c, 24, 2.0, 3.0);
+			spawnElementBurst(headPos(), 'earth', 30, 2.0, 3.5);
+			if (slamTargets.length && typeof netCastCreatureHit === 'function') netCastCreatureHit(slamTargets, 0xa3734c);
+			if (hit === 0) log('💥 No targets in range.', 'warn');
+			else log('💥 Seismic Slam (Rank ' + rank + '): Hit ' + hit + ' enemies for ' + dmg + ' earth, stunned ' + stun + ' cycle(s).', 'craft');
+
+		} else if (id === 'earth_petrify') {
+			const petrifyDur = [0, 4, 5, 6, 8, 10][rank];
+			const ampPct     = [0, 0, 10, 20, 30, 40][rank];
+			const nearby = [...creatures].filter(c => c.state !== 'dead').sort((a, b) =>
+				a.group.position.distanceTo(player.group.position) - b.group.position.distanceTo(player.group.position));
+			if (nearby.length === 0) { log('🗿 No targets.', 'warn'); return; }
+			const target = nearby[0];
+			player.earthPetrifyTargets = player.earthPetrifyTargets.filter(p => p.creature !== target);
+			player.earthPetrifyTargets.push({ creature: target, timer: petrifyDur, dmgAmpPct: ampPct });
+			target.attackTimer = Math.max(target.attackTimer, petrifyDur);
+			spawnPillar(target.group.position.clone(), 0x92400e, 0.8);
+			floatText('🗿 Petrified!', target.group.position.clone().add(new THREE.Vector3(0, 2, 0)), '#a3734c', 1.0);
+			if (typeof netCastCreatureHit === 'function') netCastCreatureHit([target], 0x92400e);
+			log('🗿 Petrify (Rank ' + rank + '): ' + target.def.name + ' turned to stone for ' + petrifyDur + 's! (+' + ampPct + '% dmg taken)', 'craft');
+
+		} else if (id === 'earth_earthen_wall') {
+			const dur = [0, 6, 8, 10, 12, 15][rank];
+			const touchDmg = [0, 0, 15, 25, 35, 50][rank];
+			if (player.earthWallObj) { scene.remove(player.earthWallObj.mesh); player.earthWallObj = null; }
+			const wallGeo = new THREE.BoxGeometry(0.4, 3.0, 3.0);
+			const wallMat = new THREE.MeshBasicMaterial({ color: 0x78350f });
+			const wallMesh = new THREE.Mesh(wallGeo, wallMat);
+			wallMesh.position.copy(player.group.position).add(new THREE.Vector3(0, 1.5, 0));
+			// Orient wall between player and nearest enemy
+			const nearest = [...creatures].filter(c => c.state !== 'dead').sort((a, b) =>
+				a.group.position.distanceTo(player.group.position) - b.group.position.distanceTo(player.group.position))[0];
+			if (nearest) {
+				const dir = nearest.group.position.clone().sub(player.group.position).normalize();
+				wallMesh.position.copy(player.group.position).add(dir.multiplyScalar(1.5)).setY(1.5);
+				wallMesh.lookAt(new THREE.Vector3(wallMesh.position.x + dir.x, wallMesh.position.y, wallMesh.position.z + dir.z));
+			}
+			scene.add(wallMesh);
+			player.earthWallObj = { mesh: wallMesh, timer: dur, touchDmg, rank };
+			spawnSparkBurst(wallMesh.position.clone(), 0x92400e, 20, 1.5, 2.5);
+			floatText('🏔️ Wall!', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#a3734c', 1.0);
+			if (typeof netCastEffect === 'function') netCastEffect(0x92400e, { pillar: true });
+			log('🏔️ Earthen Wall (Rank ' + rank + '): Stone wall raised for ' + dur + 's.' + (touchDmg ? ' Deals ' + touchDmg + ' to touchers.' : ''), 'craft');
+
+		} else if (id === 'earth_crystal_spikes') {
+			const spikes  = [0, 3, 4, 5, 6, 7][rank];
+			const dmgEach = [0, 28, 44, 62, 82, 105][rank];
+			const stunChance = [0, 0, 0, 0, 0.20, 0.35][rank];
+			const nearby = [...creatures].filter(c => c.state !== 'dead').sort((a, b) =>
+				a.group.position.distanceTo(player.group.position) - b.group.position.distanceTo(player.group.position));
+			if (nearby.length === 0) { log('💎 No targets.', 'warn'); return; }
+			const target = nearby[0];
+			let totalDmg = 0;
+			for (let i = 0; i < spikes; i++) {
+				creatureTakeDamage(target, dmgEach);
+				totalDmg += dmgEach;
+			}
+			target.justHitByEarth = true;
+			floatText('💎 ' + totalDmg, target.group.position.clone().add(new THREE.Vector3(0, 2, 0)), '#c7d2fe', 1.2);
+			if (stunChance > 0 && Math.random() < stunChance) {
+				const existingStun = player.lightningStuns.find(s => s.creature === target);
+				if (existingStun) existingStun.timer = Math.max(existingStun.timer, 1.6);
+				else { player.lightningStuns.push({ creature: target, timer: 1.6 }); target.attackTimer = 1.6; }
+				floatText('💎 Stunned!', target.group.position.clone().add(new THREE.Vector3(0, 2.5, 0)), '#818cf8', 1.0);
+			}
+			spawnSparkBurst(target.group.position.clone().add(new THREE.Vector3(0, 1, 0)), 0xc7d2fe, 20, 2.0, 3.5);
+			spawnElementBurst(target.group.position.clone().add(new THREE.Vector3(0, 1, 0)), 'earth', 28, 2.0, 3.5);
+			spawnPillar(target.group.position.clone(), 0x6366f1, 0.6);
+			if (typeof netCastCreatureHit === 'function') netCastCreatureHit([target], 0xc7d2fe);
+			log('💎 Crystal Spikes (Rank ' + rank + '): ' + spikes + ' spikes for ' + dmgEach + ' each = ' + totalDmg + ' earth dmg.', 'craft');
+
+		// ── Capstone actives ───────────────────────────────────────────────────
+		} else if (id === 'fire_phoenix_ascendant') {
+			const dur = [0, 8, 10, 14][rank];
+			const trailDmg = [0, 35, 55, 80][rank];
+			player.phoenixAscendantTimer = dur;
+			player.phoenixAscendantRank = rank;
+			player.phoenixAscendantTrailDmg = trailDmg;
+			spawnGroundRing(player.group.position.clone(), 0xff4400, 0.5, 5, 1.2, 0.0);
+			spawnSparkBurst(headPos(), 0xff6600, 40, 3.0, 5.0);
+			spawnElementBurst(headPos(), 'fire', 60, 3.5, 5.5);
+			spawnPillar(player.group.position.clone(), 0xff4400, 1.2);
+			screenShake(0.08, 0.45);
+			floatText('🔱 PHOENIX!', headPos().add(new THREE.Vector3(0, 1, 0)), '#ff6600', 1.5);
+			if (typeof netCastEffect === 'function') netCastEffect(0xff4400, { ring: true, spark: true, pillar: true, radius: 5 });
+			log('🔱 Phoenix Ascendant (Rank ' + rank + '): TRANSFORMED! Immune to damage, ' + trailDmg + ' fire/s trail for ' + dur + 's.', 'craft');
+
+		} else if (id === 'lightning_storm_sovereign') {
+			const dur = [0, 8, 10, 14][rank];
+			const boltDmg = [0, 60, 90, 130][rank];
+			player.stormSovereignTimer = dur;
+			player.stormSovereignRank = rank;
+			player.stormSovereignBoltTimer = 0.8;
+			spawnGroundRing(player.group.position.clone(), 0xfacc15, 0.5, 6, 1.2, 0.0);
+			spawnSparkBurst(headPos(), 0xfde047, 40, 3.0, 5.0);
+			spawnElementBurst(headPos(), 'lightning', 60, 4.0, 6.0);
+			spawnPillar(player.group.position.clone(), 0xfacc15, 1.2);
+			screenShake(0.10, 0.5);
+			floatText('⚜️ STORM!', headPos().add(new THREE.Vector3(0, 1, 0)), '#facc15', 1.5);
+			if (typeof netCastEffect === 'function') netCastEffect(0xfacc15, { ring: true, spark: true, pillar: true, radius: 6 });
+			log('⚜️ Storm Sovereign (Rank ' + rank + '): Lightning incarnate for ' + dur + 's! Bolts every 0.8s for ' + boltDmg + ' each.', 'craft');
+
+		} else if (id === 'ice_glacial_dominion') {
+			const dur = [0, 10, 12, 16][rank];
+			const armorBonus = [0, 50, 75, 75][rank];
+			player.glacialDominionTimer = dur;
+			player.glacialDominionRank = rank;
+			player.glacialDominionPulseTimer = [0, 3, 2, 2][rank];
+			player.frostWardBonus = (player.frostWardBonus || 0) + armorBonus;
+			player.frostWardTimer = Math.max(player.frostWardTimer, dur);
+			spawnGroundRing(player.group.position.clone(), 0x7dd3fc, 0.5, 7, 1.2, 0.0);
+			spawnSparkBurst(headPos(), 0xbae6fd, 40, 3.0, 5.0);
+			spawnElementBurst(headPos(), 'ice', 60, 3.5, 5.5);
+			spawnPillar(player.group.position.clone(), 0x7dd3fc, 1.2);
+			screenShake(0.07, 0.40);
+			floatText('👑 GLACIAL!', headPos().add(new THREE.Vector3(0, 1, 0)), '#7dd3fc', 1.5);
+			refreshStatsUI();
+			if (typeof netCastEffect === 'function') netCastEffect(0x7dd3fc, { ring: true, spark: true, pillar: true, radius: 7 });
+			log('👑 Glacial Dominion (Rank ' + rank + '): Absolute zero for ' + dur + 's! +' + armorBonus + ' armor, mass freeze every ' + [0, 3, 2, 2][rank] + 's.', 'craft');
+
+		} else if (id === 'spirit_undying_will') {
+			const dur = [0, 10, 12, 16][rank];
+			player.undyingWillTimer = dur;
+			player.undyingWillRank = rank;
+			// Reset Spirit Walk and Aegis cooldowns
+			if (player.skillCooldowns['spirit_spirit_walk']) player.skillCooldowns['spirit_spirit_walk'] = 0;
+			if (player.skillCooldowns['spirit_aegis']) player.skillCooldowns['spirit_aegis'] = 0;
+			spawnGroundRing(player.group.position.clone(), 0x86efac, 0.5, 5, 1.2, 0.0);
+			spawnSparkBurst(headPos(), 0xd1fae5, 40, 3.0, 5.0);
+			spawnElementBurst(headPos(), 'spirit', 60, 3.5, 5.5);
+			spawnPillar(player.group.position.clone(), 0x86efac, 1.2);
+			screenShake(0.06, 0.35);
+			floatText('🌟 UNDYING!', headPos().add(new THREE.Vector3(0, 1, 0)), '#4ade80', 1.5);
+			if (typeof netCastEffect === 'function') netCastEffect(0x86efac, { ring: true, spark: true, pillar: true, radius: 5 });
+			log('🌟 Undying Will (Rank ' + rank + '): Life bends to your will for ' + dur + 's! Immune to instant death, 2×+ heals.', 'craft');
+
+		} else if (id === 'earth_living_mountain') {
+			const dur = [0, 10, 12, 15][rank];
+			const armorBonus = [0, 150, 220, 220][rank];
+			const rootRadius = [0, 8, 10, 10][rank];
+			player.earthLivingMountainTimer = dur;
+			player.earthStoneSkinBonus = armorBonus;
+			// Reset Seismic Slam and Crystal Spikes cooldowns
+			if (player.skillCooldowns['earth_seismic_slam']) player.skillCooldowns['earth_seismic_slam'] = 0;
+			if (player.skillCooldowns['earth_crystal_spikes']) player.skillCooldowns['earth_crystal_spikes'] = 0;
+			// Root all enemies within range
+			let rooted = 0;
+			for (const c of creatures) {
+				if (c.state === 'dead') continue;
+				if (c.group.position.distanceTo(player.group.position) <= rootRadius) {
+					player.earthEntangleTargets = player.earthEntangleTargets.filter(e => e.creature !== c);
+					player.earthEntangleTargets.push({ creature: c, timer: dur, dmgAmpPct: 0 });
+					c.attackTimer = Math.max(c.attackTimer, dur);
+					rooted++;
+				}
+			}
+			spawnGroundRing(player.group.position.clone(), 0x92400e, 0.5, rootRadius, 1.5, 0.0);
+			spawnSparkBurst(headPos(), 0xa3734c, 40, 3.0, 5.0);
+			spawnElementBurst(headPos(), 'earth', 60, 3.0, 4.5);
+			spawnPillar(player.group.position.clone(), 0x78350f, 1.5);
+			screenShake(0.10, 0.55);
+			floatText('🏔️ MOUNTAIN!', headPos().add(new THREE.Vector3(0, 1, 0)), '#a3734c', 1.5);
+			refreshStatsUI();
+			if (typeof netCastEffect === 'function') netCastEffect(0x92400e, { ring: true, spark: true, pillar: true, radius: rootRadius });
+			log('🏔️ Living Mountain (Rank ' + rank + '): +' + armorBonus + ' armor, 100% thorns, ' + rooted + ' enemies rooted for ' + dur + 's!', 'craft');
 		}
 		refreshHotbarUI();
 	}
@@ -2288,6 +2796,8 @@
 
 	// ------------------------------------------------------------------ update talent DoT/HoT/cooldowns
 	function updateTalentEffects(dt) {
+		// Clear per-frame hit flags
+		for (const c of creatures) c.justHitByEarth = false;
 		// burn DoT
 		for (let i = player.burnTargets.length - 1; i >= 0; i--) {
 			const b = player.burnTargets[i];
@@ -2741,6 +3251,218 @@
 				}
 			}
 		}
+		// ── Earth: Entangle timer ─────────────────────────────────────────────
+		for (let i = player.earthEntangleTargets.length - 1; i >= 0; i--) {
+			const e = player.earthEntangleTargets[i];
+			e.timer -= dt;
+			if (e.timer <= 0 || e.creature.state === 'dead') {
+				player.earthEntangleTargets.splice(i, 1);
+			}
+		}
+		// ── Earth: Petrify timer ──────────────────────────────────────────────
+		for (let i = player.earthPetrifyTargets.length - 1; i >= 0; i--) {
+			const p = player.earthPetrifyTargets[i];
+			p.timer -= dt;
+			if (p.timer <= 0 || p.creature.state === 'dead') {
+				player.earthPetrifyTargets.splice(i, 1);
+			}
+		}
+		// ── Earth: Poison Spores DoT ──────────────────────────────────────────
+		const sporesRank = talentRank('earth_poison_spores');
+		if (sporesRank > 0) {
+			const tickDmg  = [0, 5, 8, 12, 16, 22][sporesRank];
+			const chance   = [0, 0.15, 0.25, 0.35, 0.45, 0.60][sporesRank];
+			for (const c of creatures) {
+				if (c.state === 'dead') continue;
+				if (player.earthPoisonTargets.find(pt => pt.creature === c)) continue;
+				if (c.justHitByEarth && Math.random() < chance) {
+					const dur = [0, 4, 5, 6, 7, 8][sporesRank];
+					player.earthPoisonTargets.push({ creature: c, dmgPerTick: tickDmg, timer: dur, tickTimer: 1 });
+				}
+			}
+		}
+		for (let i = player.earthPoisonTargets.length - 1; i >= 0; i--) {
+			const pt = player.earthPoisonTargets[i];
+			pt.timer -= dt;
+			pt.tickTimer -= dt;
+			if (pt.creature.state === 'dead' || pt.timer <= 0) { player.earthPoisonTargets.splice(i, 1); continue; }
+			if (pt.tickTimer <= 0) {
+				pt.tickTimer = 1;
+				creatureTakeDamage(pt.creature, pt.dmgPerTick, true);
+				floatText('☠️ ' + pt.dmgPerTick, pt.creature.group.position.clone().add(new THREE.Vector3(0, 2, 0)), '#86efac', 0.8);
+			}
+		}
+		// ── Earth: Tremor aftershock ──────────────────────────────────────────
+		for (let i = player.earthTremorTimers.length - 1; i >= 0; i--) {
+			const t = player.earthTremorTimers[i];
+			t.timer -= dt;
+			if (t.timer <= 0) {
+				player.earthTremorTimers.splice(i, 1);
+				for (const c of creatures) {
+					if (c.state === 'dead') continue;
+					if (c.group.position.distanceTo(player.group.position) <= t.radius) {
+						creatureTakeDamage(c, t.dmg);
+						floatText('🌍 ' + t.dmg, c.group.position.clone().add(new THREE.Vector3(0, 2, 0)), '#a3734c', 1.0);
+					}
+				}
+				spawnGroundRing(player.group.position.clone(), 0x92400e, 0.2, t.radius, 0.6, 0.0);
+			}
+		}
+		// ── Earth: Earthen Wall tick ──────────────────────────────────────────
+		if (player.earthWallObj) {
+			player.earthWallObj.timer -= dt;
+			if (player.earthWallObj.timer <= 0) {
+				scene.remove(player.earthWallObj.mesh);
+				player.earthWallObj = null;
+				log('🏔️ Earthen Wall crumbled.', 'sys');
+			} else if (player.earthWallObj.touchDmg > 0) {
+				const wallPos = player.earthWallObj.mesh.position;
+				for (const c of creatures) {
+					if (c.state === 'dead') continue;
+					if (c.group.position.distanceTo(wallPos) < 1.8) {
+						creatureTakeDamage(c, player.earthWallObj.touchDmg * dt, true);
+					}
+				}
+			}
+		}
+		// ── Earth: Overgrowth (HP regen when stationary) ──────────────────────
+		{
+			const overgrowthRank = talentRank('earth_overgrowth');
+			if (overgrowthRank > 0) {
+				const regenPerSec = [0, 3, 5, 8, 11, 15][overgrowthRank];
+				const isStationary = !player.dest || player.group.position.distanceTo(player.dest) < 0.5;
+				if (isStationary) {
+					const healed = regenPerSec * dt;
+					player.hp = Math.min(player.maxhp, player.hp + healed);
+					setBar(player.bar, player.hp / player.maxhp, player.hp, player.maxhp);
+					refreshHpUI();
+				}
+			}
+		}
+		// ── Earth: Stone Skin armor ───────────────────────────────────────────
+		{
+			const stoneSkinRank = talentRank('earth_stone_skin');
+			const ssBonus = [0, 15, 25, 38, 52, 70][stoneSkinRank];
+			player.earthStoneSkinBonus = ssBonus;
+		}
+		// ── Earth: Living Mountain timer ──────────────────────────────────────
+		if (player.earthLivingMountainTimer > 0) {
+			player.earthLivingMountainTimer -= dt;
+			if (player.earthLivingMountainTimer <= 0) {
+				player.earthLivingMountainTimer = 0;
+				player.earthStoneSkinBonus = 0;
+				log('🏔️ Living Mountain ended.', 'sys');
+				refreshStatsUI();
+			}
+		}
+
+		// ── Phoenix Ascendant timer ───────────────────────────────────────────
+		if (player.phoenixAscendantTimer > 0) {
+			player.phoenixAscendantTimer -= dt;
+			// Trail damage to nearby enemies
+			const trailDmgPerSec = player.phoenixAscendantTrailDmg || 0;
+			if (trailDmgPerSec > 0) {
+				for (const c of creatures) {
+					if (c.state === 'dead') continue;
+					if (c.group.position.distanceTo(player.group.position) <= 2.5) {
+						creatureTakeDamage(c, trailDmgPerSec * dt, true);
+					}
+				}
+			}
+			if (player.phoenixAscendantTimer <= 0) {
+				player.phoenixAscendantTimer = 0;
+				// Explosion at end
+				const rank = player.phoenixAscendantRank || 1;
+				const explDmg = [0, 200, 350, 500][rank];
+				for (const c of creatures) {
+					if (c.state === 'dead') continue;
+					if (c.group.position.distanceTo(player.group.position) <= 6) {
+						creatureTakeDamage(c, explDmg);
+						floatText('💥 ' + explDmg, c.group.position.clone().add(new THREE.Vector3(0, 2, 0)), '#ff6600', 1.4);
+					}
+				}
+				spawnGroundRing(player.group.position.clone(), 0xff4400, 0.4, 6, 1.0, 0.0);
+				spawnSparkBurst(headPos(), 0xff6600, 30, 3.0, 4.0);
+				log('🔱 Phoenix Ascendant ended — EXPLOSION for ' + explDmg + '!', 'craft');
+			}
+		}
+
+		// ── Storm Sovereign timer ─────────────────────────────────────────────
+		if (player.stormSovereignTimer > 0) {
+			player.stormSovereignTimer -= dt;
+			player.stormSovereignBoltTimer -= dt;
+			if (player.stormSovereignBoltTimer <= 0) {
+				player.stormSovereignBoltTimer = 0.8;
+				const rank = player.stormSovereignRank || 1;
+				const boltDmg = [0, 60, 90, 130][rank];
+				const stunMult = [0, 2.0, 2.2, 2.5][rank];
+				// Hit closest enemy with a bolt
+				const boltTargets = [...creatures].filter(c => c.state !== 'dead')
+					.sort((a, b) => a.group.position.distanceTo(player.group.position) - b.group.position.distanceTo(player.group.position))
+					.slice(0, 1);
+				for (const c of boltTargets) {
+					creatureTakeDamage(c, boltDmg);
+					floatText('⚡ ' + boltDmg, c.group.position.clone().add(new THREE.Vector3(0, 2, 0)), '#facc15', 1.1);
+					// Stun chance
+					if (Math.random() < 0.35) {
+						const existing = player.lightningStuns.find(s => s.creature === c);
+						if (existing) existing.timer = Math.max(existing.timer, 1.6 * stunMult);
+						else { player.lightningStuns.push({ creature: c, timer: 1.6 * stunMult }); c.attackTimer = 1.6 * stunMult; }
+					}
+				}
+				spawnSparkBurst(boltTargets[0]?.group.position.clone() || headPos(), 0xfde047, 12, 1.5, 2.5);
+			}
+			if (player.stormSovereignTimer <= 0) {
+				player.stormSovereignTimer = 0;
+				log('⚜️ Storm Sovereign ended.', 'sys');
+			}
+		}
+
+		// ── Glacial Dominion timer ────────────────────────────────────────────
+		if (player.glacialDominionTimer > 0) {
+			player.glacialDominionTimer -= dt;
+			player.glacialDominionPulseTimer -= dt;
+			if (player.glacialDominionPulseTimer <= 0) {
+				const rank = player.glacialDominionRank || 1;
+				player.glacialDominionPulseTimer = [0, 3, 2, 2][rank];
+				// Mass freeze: apply freeze to all creatures in 8-radius
+				const freezeDur = [0, 2, 3, 4][rank];
+				for (const c of creatures) {
+					if (c.state === 'dead') continue;
+					if (c.group.position.distanceTo(player.group.position) <= 8) {
+						const existing = player.lightningStuns.find(s => s.creature === c);
+						if (existing) existing.timer = Math.max(existing.timer, freezeDur);
+						else { player.lightningStuns.push({ creature: c, timer: freezeDur }); c.attackTimer = freezeDur; }
+						floatText('❄️ Frozen!', c.group.position.clone().add(new THREE.Vector3(0, 2, 0)), '#bae6fd', 0.9);
+					}
+				}
+				spawnGroundRing(player.group.position.clone(), 0x7dd3fc, 0.2, 8, 0.6, 0.0);
+			}
+			// If Ice Lance kills, reset its CD
+			if (player.glacialDominionTimer <= 0) {
+				player.glacialDominionTimer = 0;
+				player.frostWardBonus = Math.max(0, (player.frostWardBonus || 0) - [0, 50, 75, 75][player.glacialDominionRank || 1]);
+				player.frostWardTimer = 0;
+				log('👑 Glacial Dominion ended.', 'sys');
+				refreshStatsUI();
+			}
+		}
+
+		// ── Undying Will timer ────────────────────────────────────────────────
+		if (player.undyingWillTimer > 0) {
+			player.undyingWillTimer -= dt;
+			// Passive HP regen during buff
+			const rank = player.undyingWillRank || 1;
+			const regenPerSec = [0, 15, 18, 22][rank];
+			player.hp = Math.min(player.maxhp, player.hp + regenPerSec * dt);
+			setBar(player.bar, player.hp / player.maxhp, player.hp, player.maxhp);
+			refreshHpUI();
+			if (player.undyingWillTimer <= 0) {
+				player.undyingWillTimer = 0;
+				log('🌟 Undying Will ended.', 'sys');
+			}
+		}
+
 		// cooldowns
 		for (const id of Object.keys(player.skillCooldowns)) {
 			player.skillCooldowns[id] -= dt;
@@ -2796,59 +3518,98 @@
 	// Node layout: [x%, y%] within the constellation canvas (0-100 range)
 	const TALENT_NODE_LAYOUT = {
 		// Fire path — main chain goes left→right, branches drop down
-		fire_active:       [8,  30],
-		fire_passive:      [20, 30],
-		fire_backdraft:    [32, 30],
-		fire_wildfire:     [44, 30],
-		fire_cremation:    [56, 30],
-		fire_fireball:     [68, 30],
-		fire_inferno:      [80, 30],
-		fire_flame_wall:   [80, 55],
-		fire_magma_shell:  [80, 78],
-		fire_pyroclasm:    [56, 55],
-		fire_phoenix_mark: [68, 55],
-		fire_crit:         [20, 55],
+		// T1
+		fire_active:              [8,  30],
+		fire_passive:             [20, 30],
+		// T2
+		fire_backdraft:           [32, 18],
+		fire_wildfire:            [44, 18],
+		fire_cremation:           [56, 18],
+		fire_pyroclasm:           [44, 42],
+		fire_crit:                [20, 52],
+		fire_fireball:            [68, 30],
+		// T3
+		fire_inferno:             [80, 18],
+		fire_flame_wall:          [80, 42],
+		fire_magma_shell:         [80, 64],
+		fire_phoenix_mark:        [68, 52],
+		// T4 capstone
+		fire_phoenix_ascendant:   [50, 82],
 
 		// Lightning path
-		lightning_active:      [8,  30],
-		lightning_passive:     [20, 30],
-		lightning_conductor:   [32, 30],
-		lightning_aftershock:  [44, 30],
-		lightning_static_aura: [56, 30],
-		lightning_strike:      [68, 30],
-		lightning_storm:       [80, 30],
-		lightning_chain:       [80, 55],
-		lightning_discharge:   [80, 78],
-		lightning_overload:    [32, 55],
-		lightning_ball:        [80, 8],
-		lightning_crit:        [20, 55],
+		// T1
+		lightning_active:         [8,  30],
+		lightning_passive:        [20, 30],
+		// T2
+		lightning_conductor:      [32, 18],
+		lightning_aftershock:     [44, 18],
+		lightning_static_aura:    [56, 18],
+		lightning_overload:       [32, 42],
+		lightning_crit:           [20, 52],
+		// T3
+		lightning_strike:         [68, 18],
+		lightning_storm:          [80, 18],
+		lightning_chain:          [68, 42],
+		lightning_discharge:      [80, 42],
+		lightning_ball:           [80, 64],
+		// T4 capstone
+		lightning_storm_sovereign:[50, 82],
 
 		// Ice path
-		ice_active:       [8,  30],
-		ice_passive:      [20, 30],
-		ice_shield:       [32, 30],
-		ice_brittle:      [44, 30],
-		ice_shatter:      [56, 30],
-		ice_lance:        [68, 30],
-		ice_blizzard:     [80, 30],
-		ice_frost_nova:   [80, 55],
-		ice_glacial_armor:[80, 78],
-		ice_cold_snap:    [80, 8],
-		ice_permafrost:   [44, 55],
-		ice_crit:         [20, 55],
+		// T1
+		ice_active:               [8,  30],
+		ice_passive:              [20, 30],
+		// T2
+		ice_shield:               [32, 18],
+		ice_brittle:              [44, 18],
+		ice_cold_snap:            [32, 42],
+		ice_shatter:              [56, 18],
+		ice_permafrost:           [44, 42],
+		ice_crit:                 [20, 52],
+		// T3
+		ice_lance:                [68, 18],
+		ice_blizzard:             [80, 18],
+		ice_frost_nova:           [68, 42],
+		ice_glacial_armor:        [80, 42],
+		// T4 capstone
+		ice_glacial_dominion:     [50, 82],
 
 		// Spirit path
-		spirit_active:           [8,  35],
-		spirit_passive:          [20, 35],
-		spirit_hot:              [32, 35],
-		spirit_siphon:           [44, 35],
-		spirit_fortitude:        [56, 35],
-		spirit_healing_surge:    [68, 35],
-		spirit_soul_leech:       [80, 35],
-		spirit_spirit_walk:      [80, 60],
-		spirit_resurrection_mark:[32, 62],
-		spirit_aegis:            [56, 62],
-		spirit_crit:             [20, 62],
+		// T1
+		spirit_active:            [8,  30],
+		spirit_passive:           [20, 30],
+		// T2
+		spirit_hot:               [32, 18],
+		spirit_siphon:            [44, 18],
+		spirit_fortitude:         [32, 42],
+		spirit_resurrection_mark: [44, 42],
+		spirit_crit:              [20, 52],
+		// T3
+		spirit_healing_surge:     [56, 18],
+		spirit_soul_leech:        [68, 18],
+		spirit_spirit_walk:       [80, 18],
+		spirit_aegis:             [80, 42],
+		// T4 capstone
+		spirit_undying_will:      [50, 82],
+
+		// Earth path
+		// T1
+		earth_stone_fist:         [8,  30],
+		earth_thorns:             [20, 30],
+		// T2
+		earth_entangle:           [32, 18],
+		earth_seismic_slam:       [44, 18],
+		earth_stone_skin:         [32, 42],
+		earth_poison_spores:      [20, 52],
+		// T3
+		earth_overgrowth:         [56, 18],
+		earth_tremor:             [68, 18],
+		earth_petrify:            [56, 42],
+		earth_natures_wrath:      [68, 42],
+		earth_earthen_wall:       [80, 18],
+		earth_crystal_spikes:     [80, 42],
+		// T4 capstone
+		earth_living_mountain:    [50, 82],
 	};
 
 	function renderTalentTree() {
@@ -2905,13 +3666,19 @@
 		function showTalentTooltip(talent, path) {
 			const rank = talentRank(talent.id);
 			const maxed = rank >= talent.maxRank;
+			const canUnlock = talentCanUnlock(talent.id);
 			const prereqMet = talentPrereqMet(talent.id);
+			const tierGateMet = talentTierGateMet(talent.id);
+			const exclusionOk = talentExclusionAllowed(talent.id);
 			const cost = talentRankUpgradeCost(rank);
 			const prereqId = TALENT_PREREQS[talent.id];
 			const prereqTalent = prereqId ? path.talents.find(t => t.id === prereqId) || { name: prereqId.replace(/_/g,' ') } : null;
+			const tier = TALENT_TIERS[talent.id] || 1;
 
 			let html = '<div style="font-size:24px;text-align:center;margin-bottom:6px">' + talent.icon + '</div>';
 			html += '<div style="font-size:13px;font-weight:700;color:#f1f5f9;margin-bottom:2px">' + talent.name + '</div>';
+			if (talent.capstone) html += '<div style="font-size:10px;color:#fbbf24;font-weight:700;margin-bottom:2px">★ CAPSTONE — Tier 4</div>';
+			else html += '<div style="font-size:10px;color:#6b7280;margin-bottom:2px">Tier ' + tier + '</div>';
 			html += '<div style="font-size:10px;margin-bottom:8px;color:' + (talent.type === 'active' ? '#fdba74' : '#93c5fd') + '">' + (talent.type === 'active' ? '⚡ Active Skill' : '🔰 Passive') + ' &nbsp;·&nbsp; Rank ' + rank + ' / ' + talent.maxRank + '</div>';
 			if (rank > 0) {
 				html += '<div style="font-size:10px;color:#9ca3af;font-style:italic;margin-bottom:6px;line-height:1.4">' + talent.rankDescs[rank] + '</div>';
@@ -2920,6 +3687,8 @@
 			}
 			if (maxed) {
 				html += '<div style="font-size:11px;color:#fbbf24;font-weight:700;text-align:center">★ Maxed</div>';
+			} else if (!exclusionOk) {
+				html += '<div style="font-size:10px;color:#ef4444;margin-top:6px">🚫 You chose the other exclusive — locked forever.</div>';
 			} else {
 				const nr = rank + 1;
 				html += '<div style="font-size:10px;color:#c4b5fd;line-height:1.4;margin-bottom:4px"><b>Rank ' + nr + ':</b> ' + talent.rankDescs[nr] + '</div>';
@@ -2928,6 +3697,10 @@
 					const reqRank = TALENT_PREREQ_RANK[talent.id] || 1;
 					const prereqName = prereqTalent ? prereqTalent.name : (prereqId ? prereqId.replace(/_/g, ' ') : '');
 					html += '<div style="font-size:10px;color:#ef4444;margin-top:6px">🔒 Requires rank ' + reqRank + ' in ' + prereqName + '</div>';
+				} else if (!tierGateMet) {
+					const gateRequired = tier === 2 ? TALENT_TIER_GATES.T2 : tier === 3 ? TALENT_TIER_GATES.T3 : TALENT_TIER_GATES.T4;
+					const spent = talentPathPointsSpent(path.id);
+					html += '<div style="font-size:10px;color:#f59e0b;margin-top:6px">🔒 Tier ' + tier + ' gate: need ' + gateRequired + ' pts in ' + path.name + ' (' + spent + '/' + gateRequired + ')</div>';
 				} else {
 					const avail = talentPointsAvailable();
 					if (avail >= cost) {
@@ -2968,7 +3741,9 @@
 			lineSvg.innerHTML = '';
 
 			const NODE_SIZE = 46;
+			const CAPSTONE_SIZE = 54;
 			const HALF = NODE_SIZE / 2;
+			const CHALF = CAPSTONE_SIZE / 2;
 
 			// draw prereq connector lines first (behind nodes)
 			for (const talent of path.talents) {
@@ -2978,11 +3753,17 @@
 				const toPos   = TALENT_NODE_LAYOUT[talent.id];
 				if (!fromPos || !toPos) continue;
 				const prereqRank = talentRank(prereqId);
+				const isCapstoneLink = !!talent.capstone;
 				const line = document.createElementNS('http://www.w3.org/2000/svg','line');
 				line.setAttribute('x1', fromPos[0] + '%'); line.setAttribute('y1', fromPos[1] + '%');
 				line.setAttribute('x2', toPos[0] + '%');   line.setAttribute('y2', toPos[1] + '%');
-				line.setAttribute('stroke', prereqRank > 0 ? path.color : 'rgba(255,255,255,0.10)');
-				line.setAttribute('stroke-width', '2');
+				if (isCapstoneLink) {
+					line.setAttribute('stroke', prereqRank > 0 ? '#fbbf24' : 'rgba(251,191,36,0.25)');
+					line.setAttribute('stroke-width', '3');
+				} else {
+					line.setAttribute('stroke', prereqRank > 0 ? path.color : 'rgba(255,255,255,0.10)');
+					line.setAttribute('stroke-width', '2');
+				}
 				line.setAttribute('stroke-linecap','round');
 				if (prereqRank === 0) line.setAttribute('stroke-dasharray','4 4');
 				lineSvg.appendChild(line);
@@ -2994,16 +3775,31 @@
 				if (!pos) continue;
 				const rank = talentRank(talent.id);
 				const maxed = rank >= talent.maxRank;
-				const prereqMet = talentPrereqMet(talent.id);
+				const canUnlock = talentCanUnlock(talent.id);
+				const exclusionOk = talentExclusionAllowed(talent.id);
+				const isExcluded = !exclusionOk && rank === 0; // locked out by rival choice
 				const upgradeCost = talentRankUpgradeCost(rank);
-				const canUpgrade = !maxed && prereqMet && talentPointsAvailable() >= upgradeCost;
+				const canUpgrade = !maxed && canUnlock && talentPointsAvailable() >= upgradeCost;
+				const isCapstone = !!talent.capstone;
+				const nodeSize = isCapstone ? CAPSTONE_SIZE : NODE_SIZE;
+				const halfSize = nodeSize / 2;
 
 				let borderColor, bgColor, glowColor = 'transparent';
-				if (maxed) {
+				if (isExcluded) {
+					borderColor = 'rgba(239,68,68,0.25)'; bgColor = 'rgba(60,0,0,0.2)';
+				} else if (isCapstone && maxed) {
+					borderColor = '#fbbf24'; bgColor = 'rgba(251,191,36,0.30)'; glowColor = '#fbbf24';
+				} else if (isCapstone && rank > 0) {
+					borderColor = '#fbbf24'; bgColor = 'rgba(251,191,36,0.18)'; glowColor = '#fbbf24';
+				} else if (isCapstone && canUnlock) {
+					borderColor = '#fbbf24'; bgColor = 'rgba(251,191,36,0.08)'; glowColor = '#fbbf24';
+				} else if (isCapstone) {
+					borderColor = 'rgba(251,191,36,0.20)'; bgColor = 'rgba(0,0,0,0.15)';
+				} else if (maxed) {
 					borderColor = '#fbbf24'; bgColor = 'rgba(251,191,36,0.22)'; glowColor = '#fbbf24';
 				} else if (rank > 0) {
 					borderColor = path.color; bgColor = 'rgba(0,0,0,0.5)'; glowColor = path.color;
-				} else if (prereqMet) {
+				} else if (canUnlock) {
 					borderColor = path.color; bgColor = 'rgba(0,0,0,0.3)';
 					if (canUpgrade) glowColor = path.color;
 				} else {
@@ -3015,49 +3811,63 @@
 				node.className = 'tt-node';
 				node.style.cssText =
 					'position:absolute;' +
-					'left:calc(' + pos[0] + '% - ' + HALF + 'px);' +
-					'top:calc(' + pos[1] + '% - ' + HALF + 'px);' +
-					'width:' + NODE_SIZE + 'px;height:' + NODE_SIZE + 'px;' +
-					'border:2px solid ' + borderColor + ';' +
+					'left:calc(' + pos[0] + '% - ' + halfSize + 'px);' +
+					'top:calc(' + pos[1] + '% - ' + halfSize + 'px);' +
+					'width:' + nodeSize + 'px;height:' + nodeSize + 'px;' +
+					'border:' + (isCapstone ? '3' : '2') + 'px solid ' + borderColor + ';' +
 					'background:' + bgColor + ';' +
-					'border-radius:' + (isPassive ? '50%' : '10px') + ';' +
+					'border-radius:' + (isCapstone ? '12px' : isPassive ? '50%' : '10px') + ';' +
 					'display:flex;align-items:center;justify-content:center;' +
-					'font-size:20px;' +
-					'cursor:' + (prereqMet && !maxed ? 'pointer' : 'default') + ';' +
-					'opacity:' + (prereqMet || rank > 0 ? '1' : '0.35') + ';' +
+					'font-size:' + (isCapstone ? '26' : '20') + 'px;' +
+					'cursor:' + (canUnlock && !maxed && !isExcluded ? 'pointer' : 'default') + ';' +
+					'opacity:' + (isExcluded ? '0.22' : canUnlock || rank > 0 ? '1' : '0.35') + ';' +
 					'transition:box-shadow 0.15s,transform 0.1s;' +
 					'user-select:none;' +
-					(glowColor !== 'transparent' && canUpgrade ? 'box-shadow:0 0 10px 2px ' + glowColor + '44,0 0 3px ' + glowColor + ';' : '') +
-					(rank > 0 && !maxed ? 'box-shadow:0 0 6px ' + glowColor + '66;' : '') +
-					(maxed ? 'box-shadow:0 0 14px 3px #fbbf2466,0 0 4px #fbbf24;' : '');
+					(isCapstone && (rank > 0 || canUnlock) ? 'box-shadow:0 0 18px 4px #fbbf2444,0 0 6px #fbbf24;' :
+					 glowColor !== 'transparent' && canUpgrade ? 'box-shadow:0 0 10px 2px ' + glowColor + '44,0 0 3px ' + glowColor + ';' :
+					 rank > 0 && !maxed ? 'box-shadow:0 0 6px ' + glowColor + '66;' :
+					 maxed ? 'box-shadow:0 0 14px 3px #fbbf2466,0 0 4px #fbbf24;' : '');
 				node.textContent = talent.icon;
 
 				// rank badge
 				if (rank > 0) {
 					const badge = document.createElement('div');
 					badge.style.cssText = 'position:absolute;bottom:-2px;right:-2px;font-size:8px;font-weight:700;' +
-						'background:#0f0a1e;color:' + (maxed ? '#fbbf24' : path.color) + ';' +
+						'background:#0f0a1e;color:' + (maxed || isCapstone ? '#fbbf24' : path.color) + ';' +
 						'border-radius:4px;padding:0 3px;line-height:13px;min-width:13px;text-align:center;' +
-						'border:1px solid ' + (maxed ? '#fbbf24' : borderColor);
+						'border:1px solid ' + (maxed || isCapstone ? '#fbbf24' : borderColor);
 					badge.textContent = rank + '/' + talent.maxRank;
 					node.appendChild(badge);
 				}
 
-				// locked overlay indicator
-				if (!prereqMet) {
+				// locked / excluded overlay
+				if (isExcluded) {
+					const lock = document.createElement('div');
+					lock.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;border-radius:inherit;background:rgba(0,0,0,0.55)';
+					lock.textContent = '🚫';
+					node.appendChild(lock);
+				} else if (!canUnlock && rank === 0) {
 					const lock = document.createElement('div');
 					lock.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;border-radius:inherit;background:rgba(0,0,0,0.45)';
-					lock.textContent = '🔒';
+					lock.textContent = isCapstone ? '★' : '🔒';
 					node.appendChild(lock);
 				}
 
+				// capstone crown label
+				if (isCapstone && rank === 0 && canUnlock) {
+					const crown = document.createElement('div');
+					crown.style.cssText = 'position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:700;color:#fbbf24;letter-spacing:0.06em;white-space:nowrap';
+					crown.textContent = 'CAPSTONE';
+					node.appendChild(crown);
+				}
+
 				node.addEventListener('mouseenter', () => {
-					if (prereqMet || rank > 0) node.style.transform = 'scale(1.12)';
+					if (canUnlock || rank > 0) node.style.transform = 'scale(' + (isCapstone ? '1.08' : '1.12') + ')';
 					showTalentTooltip(talent, path);
 				});
 				node.addEventListener('mouseleave', () => { node.style.transform = ''; });
 
-				if (prereqMet && !maxed) {
+				if (canUnlock && !maxed && !isExcluded) {
 					node.addEventListener('click', () => {
 						if (talentPointsAvailable() < upgradeCost) {
 							log('✗ Not enough talent points.', 'warn'); return;
@@ -3463,6 +4273,7 @@
 		}
 		if (player.frostWardTimer > 0) d += (player.frostWardBonus || 0);
 		if (player.consumableDefTimer > 0) d += (player.consumableDef || 0);
+		d += (player.earthStoneSkinBonus || 0);
 		return Math.floor(d);
 	}
 	function refreshStatsUI() {
@@ -3586,6 +4397,13 @@
 			floatText('❄️ +' + player.nextAttackIceBonus, headPos().add(new THREE.Vector3(0.5, 0.4, 0)), '#7dd3fc', 0.9);
 			player.nextAttackIceBonus = 0;
 		}
+		if (player.earthStoneFistBonus > 0) {
+			dmg += player.earthStoneFistBonus;
+			floatText('👊 +' + player.earthStoneFistBonus, headPos().add(new THREE.Vector3(0, 0.4, -0.5)), '#a3734c', 0.9);
+			player.earthStoneFistBonus = 0;
+			creatureTakeDamage(c, 0);  // trigger justHitByEarth flag for spores
+			c.justHitByEarth = true;
+		}
 		// critical hit check
 		if (Math.random() < playerCritChance('melee')) {
 			dmg = Math.floor(dmg * 1.75);
@@ -3650,6 +4468,26 @@
 				player.glacialArmorTimer = 0.01;
 			}
 			if (dmg <= 0) return;
+		}
+		// Thorns: reflect a portion of melee damage back to attacker
+		{
+			const thornsRank = talentRank('earth_thorns');
+			const livingMountainActive = player.earthLivingMountainTimer > 0;
+			const reflectPct = thornsRank > 0 ? (livingMountainActive ? 1.0 : [0, 0.10, 0.18, 0.27, 0.37, 0.50][thornsRank]) : 0;
+			if (reflectPct > 0) {
+				const reflectDmg = Math.ceil(dmg * reflectPct);
+				creatureTakeDamage(c, reflectDmg);
+				floatText('🌿 ' + reflectDmg, c.group.position.clone().add(new THREE.Vector3(0, 2, 0)), '#4ade80', 0.8);
+			}
+		}
+		// Undying Will: immune to instant death
+		if (player.undyingWillTimer > 0 && player.hp - dmg <= 0) {
+			player.hp = 1;
+			floatText('🌟 Undying!', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#4ade80', 1.0);
+			player.lastHurt = elapsed;
+			setBar(player.bar, player.hp / player.maxhp, player.hp, player.maxhp);
+			refreshHpUI();
+			return;
 		}
 		// creature critical hit (5% base)
 		if (Math.random() < 0.05) {

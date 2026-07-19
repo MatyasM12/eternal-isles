@@ -1278,6 +1278,19 @@ function creatureTakeDamage(c, dmg, silent) {
         const brittleBonus = [0, 0.15, 0.25, 0.35, 0.42, 0.50][brittleRank];
         dmg = Math.ceil(dmg * (1 + brittleBonus));
     }
+// Earth Entangle / Petrify / Nature's Wrath: rooted/petrified enemies take bonus damage
+    {
+        const entangleEntry = player.earthEntangleTargets && player.earthEntangleTargets.find(e => e.creature === c);
+        const petrifyEntry  = player.earthPetrifyTargets  && player.earthPetrifyTargets.find(p => p.creature === c);
+        const ampPct = Math.max(entangleEntry ? entangleEntry.dmgAmpPct : 0, petrifyEntry ? petrifyEntry.dmgAmpPct : 0);
+        if (ampPct > 0) dmg = Math.ceil(dmg * (1 + ampPct / 100));
+        // Nature's Wrath: extra multiplier when target is immobilised
+        const nwRank = talentRank('earth_natures_wrath');
+        if (nwRank > 0 && (entangleEntry || petrifyEntry)) {
+            const nwBonus = [0, 0.10, 0.18, 0.27, 0.37, 0.50][nwRank];
+            dmg = Math.ceil(dmg * (1 + nwBonus));
+        }
+    }
 // Forward hit to server (multiplayer authoritative HP); still subtract locally for
 // immediate feedback — the server will echo creature:damaged which may correct it.
     if (typeof netAttackCreature === 'function') netAttackCreature(c, dmg);
