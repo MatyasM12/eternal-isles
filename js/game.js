@@ -1257,6 +1257,7 @@
 		mfgVal: $('mfgVal'), mfgXpBar: $('mfgXpBar'), mfgHudXpText: $('mfgHudXpText'),
 		mfgVal2: $('mfgVal2'), mfgXpBar2: $('mfgXpBar2'), mfgXpText: $('mfgXpText'), mfgBonus: $('mfgBonus'),
 		nameTag: $('nameTag'),
+		castBar: $('castBar'), castBarFill: $('castBarFill'), castBarLabel: $('castBarLabel'),
 		invGrid: $('invGrid'), invCount: $('invCount'), log: $('logBox'),
 		progressWrap: $('progressWrap'), progressRing: $('progressRing'),
 		progressLabel: $('progressLabel'), progressIcon: $('progressIcon'),
@@ -1904,6 +1905,30 @@
 	}
 
 	/**
+	/** Build a glowing fireball mesh: core sphere + outer glow shell + PointLight. */
+	function makeFireballMesh(radius, coreColor, glowColor, lightIntensity, lightRange) {
+		const group = new THREE.Group();
+		// Core
+		const core = new THREE.Mesh(
+			new THREE.SphereGeometry(radius, 12, 12),
+			new THREE.MeshBasicMaterial({ color: coreColor })
+		);
+		group.add(core);
+		// Outer glow shell (transparent, additive)
+		const shell = new THREE.Mesh(
+			new THREE.SphereGeometry(radius * 1.7, 10, 10),
+			new THREE.MeshBasicMaterial({ color: glowColor, transparent: true, opacity: 0.35 })
+		);
+		group.add(shell);
+		// Dynamic light
+		const light = new THREE.PointLight(coreColor, lightIntensity, lightRange);
+		group.add(light);
+		group.userData._fireLight = light;
+		group.userData._shellMat = shell.material;
+		return group;
+	}
+
+	/*
 	 * Spawn a per-element GLSL particle burst at `pos`.
 	 * elem = 'fire'|'lightning'|'ice'|'earth'|'spirit'
 	 */
@@ -2169,9 +2194,15 @@
 		staticAuraTimer: 0,
 		staticAuraDmg: 0,
 		fireballMode: false,
+		pyroblastMode: false,    // waiting for target click to begin cast
+		pyroblastCast: null,     // { timer, duration, target, damage, mesh } while channeling
 		fireballs: [],           // active fireball projectiles { mesh, target, startPos, endPos, t, damage }
+		pyroblasts: [],          // active pyroblast projectiles { mesh, light, trail[], target, startPos, endPos, t, damage }
 		iceLanceMode: false,
+		iceGlacialBoltMode: false,
+		glacialBoltCast: null,     // { timer, duration, target, damage, mesh } while channeling
 		iceLances: [],           // active ice lance projectiles
+		iceGlacialBolts: [],     // active glacial bolt projectiles
 		lightningStrikeMode: false,
 		lightningStrikes: [],    // active multi-hit sequences { creature, hitsLeft, interval, timer, damage }
 		infernoCast: null,       // { timer, duration, dmg, rank } while channeling
@@ -2191,8 +2222,15 @@
 		resurrectionMarkUsed: false,
 		aegisTimer: 0, aegisAbsorb: 0,
 		overloadDeadStunned: [], // for Overload passive cascades
+		selectedTarget: null,     // creature locked by last click for single-target spells
+		// Imbue state (replaces one-shot nextAttack bonuses)
+		imbueFire:      null,  // { bonusPerHit, timer, duration } or null
+		imbueLightning: null,
+		imbueIce:       null,
+		imbueEarth:     null,
+		_imbueLight:    null,  // THREE.PointLight attached to weaponMount while imbued
 		// Earth path state
-		earthStoneFistBonus: 0,  // pending next-attack earth bonus
+		earthStoneFistBonus: 0,  // pending next-attack earth bonus (legacy, now unused by stone_fist)
 		earthEntangleTargets: [], // [{creature, timer, dmgAmpPct}]
 		earthPetrifyTargets: [],  // [{creature, timer, dmgAmpPct}]
 		earthPoisonTargets: [],   // [{creature, dmgPerTick, timer, tickTimer}]
@@ -2235,29 +2273,35 @@
 		player.skillCooldowns[id] = def.cooldowns[rank];
 
 		if (id === 'fire_active') {
-			const bonus = Math.ceil(playerAtk() * [0, 1.0, 1.5, 2.0, 2.6, 3.2, 4.0, 5.0, 6.2][rank]);
-			player.nextAttackFireBonus = bonus;
+			const bonus = Math.ceil(playerAtk() * [0, 0.30, 0.45, 0.60, 0.78, 0.96, 1.20, 1.50, 1.85][rank]);
+			const dur   = [0, 10, 11, 12, 13, 14, 15, 17, 20][rank];
+			player.imbueFire = { bonusPerHit: bonus, timer: dur, duration: dur };
+			applyWeaponImbue(0xff5500, 0xff3300);
 			spawnSparkBurst(headPos(), 0xff4400, 18, 2.2, 3.5);
 			spawnPillar(player.group.position.clone(), 0xff6600, 0.5);
-			floatText('🔥 +' + bonus + ' Fire!', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#fb923c', 1.0);
+			floatText('🔥 Flame Imbue!', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#fb923c', 1.0);
 			if (typeof netCastEffect === 'function') netCastEffect(0xff4400, { spark: true, pillar: true });
-			log('🔥 ' + def.name + ' (Rank ' + rank + '): Your weapon blazes! Next attack +' + bonus + ' fire.', 'craft');
+			log('🔥 ' + def.name + ' (Rank ' + rank + '): Weapon imbued with fire! +' + bonus + ' fire per hit for ' + dur + 's.', 'craft');
 		} else if (id === 'lightning_active') {
-			const bonus = Math.ceil(playerAtk() * [0, 0.9, 1.4, 1.9, 2.5, 3.1, 3.8, 4.7, 5.8][rank]);
-			player.nextAttackLightningBonus = bonus;
+			const bonus = Math.ceil(playerAtk() * [0, 0.27, 0.42, 0.57, 0.75, 0.93, 1.14, 1.41, 1.74][rank]);
+			const dur   = [0, 10, 11, 12, 13, 14, 15, 17, 20][rank];
+			player.imbueLightning = { bonusPerHit: bonus, timer: dur, duration: dur };
+			applyWeaponImbue(0xfde047, 0xfbbf24);
 			spawnSparkBurst(headPos(), 0xfacc15, 18, 2.2, 3.5);
 			spawnPillar(player.group.position.clone(), 0xfde047, 0.5);
-			floatText('⚡ +' + bonus + ' Lightning!', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#facc15', 1.0);
+			floatText('⚡ Static Imbue!', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#facc15', 1.0);
 			if (typeof netCastEffect === 'function') netCastEffect(0xfacc15, { spark: true, pillar: true });
-			log('⚡ ' + def.name + ' (Rank ' + rank + '): Your weapon crackles! Next attack +' + bonus + ' lightning.', 'craft');
+			log('⚡ ' + def.name + ' (Rank ' + rank + '): Weapon charged with lightning! +' + bonus + ' lightning per hit for ' + dur + 's.', 'craft');
 		} else if (id === 'ice_active') {
-			const bonus = Math.ceil(playerAtk() * [0, 0.9, 1.4, 1.9, 2.5, 3.1, 3.8, 4.7, 5.8][rank]);
-			player.nextAttackIceBonus = bonus;
+			const bonus = Math.ceil(playerAtk() * [0, 0.27, 0.42, 0.57, 0.75, 0.93, 1.14, 1.41, 1.74][rank]);
+			const dur   = [0, 10, 11, 12, 13, 14, 15, 17, 20][rank];
+			player.imbueIce = { bonusPerHit: bonus, timer: dur, duration: dur };
+			applyWeaponImbue(0x7dd3fc, 0x38bdf8);
 			spawnSparkBurst(headPos(), 0x7dd3fc, 18, 2.2, 3.5);
 			spawnPillar(player.group.position.clone(), 0xbae6fd, 0.5);
-			floatText('❄️ +' + bonus + ' Ice!', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#7dd3fc', 1.0);
+			floatText('❄️ Frost Imbue!', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#7dd3fc', 1.0);
 			if (typeof netCastEffect === 'function') netCastEffect(0x7dd3fc, { spark: true, pillar: true });
-			log('❄️ ' + def.name + ' (Rank ' + rank + '): Your weapon frosts over! Next attack +' + bonus + ' ice.', 'craft');
+			log('❄️ ' + def.name + ' (Rank ' + rank + '): Weapon imbued with frost! +' + bonus + ' ice per hit for ' + dur + 's.', 'craft');
 		} else if (id === 'ice_shield') {
 			const baseDef = playerDef() - (player.frostWardTimer > 0 ? (player.frostWardBonus || 0) : 0);
 			const bonus = Math.ceil(baseDef * [0, 0.15, 0.22, 0.30, 0.38, 0.48, 0.58, 0.70, 0.85][rank] + 3);
@@ -2303,9 +2347,15 @@
 		} else if (id === 'fire_fireball') {
 			player.fireballMode = true;
 			log('🔮 Fireball ready — click a creature to launch!', 'craft');
+		} else if (id === 'fire_pyroblast') {
+			player.pyroblastMode = true;
+			log('☄️ Pyroblast — click a creature to begin casting!', 'craft');
 		} else if (id === 'ice_lance') {
 			player.iceLanceMode = true;
 			log('🧊 Ice Lance ready — click a creature to launch!', 'craft');
+		} else if (id === 'ice_glacial_bolt') {
+			player.iceGlacialBoltMode = true;
+			log('🧊 Glacial bolt ready — click a creature to launch!', 'craft');
 		} else if (id === 'lightning_strike') {
 			player.lightningStrikeMode = true;
 			log('🗲 Lightning Strike ready — click a creature to target!', 'craft');
@@ -2410,14 +2460,15 @@
 			const primaryDmg = [0, 18, 30, 45, 65, 90][rank];
 			const arcDmg = [0, 9, 15, 23, 33, 48][rank];
 			const arcCount = rank >= 3 ? 3 : 2;
-			const nearby = [...creatures].filter(c => c.state !== 'dead').sort((a, b) =>
+			const sorted = [...creatures].filter(c => c.state !== 'dead').sort((a, b) =>
 				a.group.position.distanceTo(player.group.position) - b.group.position.distanceTo(player.group.position));
-			if (nearby.length === 0) { log('⚡ No targets.', 'warn'); return; }
-			const primary = nearby[0];
+			if (sorted.length === 0) { log('⚡ No targets.', 'warn'); return; }
+			const primary = (player.selectedTarget && player.selectedTarget.state !== 'dead') ? player.selectedTarget : sorted[0];
+			const nearby = sorted.filter(c => c !== primary);
 			creatureTakeDamage(primary, primaryDmg);
 			floatText('⚡ ' + primaryDmg, primary.group.position.clone().add(new THREE.Vector3(0, 2, 0)), '#facc15', 1.1);
 			spawnSparkBurst(primary.group.position.clone().add(new THREE.Vector3(0, 1, 0)), 0xfacc15);
-			const arcs = nearby.slice(1, arcCount + 1);
+			const arcs = nearby.slice(0, arcCount);
 			for (const arc of arcs) {
 				creatureTakeDamage(arc, arcDmg);
 				floatText('⚡ ' + arcDmg, arc.group.position.clone().add(new THREE.Vector3(0, 2, 0)), '#fde047', 1.0);
@@ -2492,23 +2543,24 @@
 
 		// ── Earth actives ──────────────────────────────────────────────────────
 		} else if (id === 'earth_stone_fist') {
-			const bonusMults = [0, 0.7, 1.2, 1.8, 2.5, 3.2, 4.0, 5.0, 6.2];
-			const bonus = Math.ceil(playerAtk() * bonusMults[rank]);
-			player.earthStoneFistBonus = bonus;
+			const bonus = Math.ceil(playerAtk() * [0, 0.21, 0.36, 0.54, 0.75, 0.96, 1.20, 1.50, 1.86][rank]);
+			const dur   = [0, 10, 11, 12, 13, 14, 15, 17, 20][rank];
+			player.imbueEarth = { bonusPerHit: bonus, timer: dur, duration: dur };
+			applyWeaponImbue(0x92400e, 0x78350f);
 			spawnSparkBurst(headPos(), 0x92400e, 18, 2.2, 3.5);
 			spawnElementBurst(headPos(), 'earth', 22, 2.2, 3.5);
 			spawnPillar(player.group.position.clone(), 0xa3734c, 0.5);
-			floatText('👊 +' + bonus + ' Stone!', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#a3734c', 1.0);
+			floatText('👊 Stone Imbue!', headPos().add(new THREE.Vector3(0, 0.5, 0)), '#a3734c', 1.0);
 			if (typeof netCastEffect === 'function') netCastEffect(0xa3734c, { spark: true, pillar: true });
-			log('👊 Stone Fist (Rank ' + rank + '): Your fist becomes stone! Next attack +' + bonus + ' earth.', 'craft');
+			log('👊 ' + def.name + ' (Rank ' + rank + '): Weapon imbued with stone! +' + bonus + ' earth per hit for ' + dur + 's.', 'craft');
 
 		} else if (id === 'earth_entangle') {
 			const rootDur = [0, 3, 4, 5, 6, 8][rank];
 			const ampPct  = [0, 0, 10, 15, 20, 25][rank];
-			const nearby = [...creatures].filter(c => c.state !== 'dead').sort((a, b) =>
-				a.group.position.distanceTo(player.group.position) - b.group.position.distanceTo(player.group.position));
-			if (nearby.length === 0) { log('🌱 No targets.', 'warn'); return; }
-			const target = nearby[0];
+			const target = (player.selectedTarget && player.selectedTarget.state !== 'dead') ? player.selectedTarget
+				: [...creatures].filter(c => c.state !== 'dead').sort((a, b) =>
+					a.group.position.distanceTo(player.group.position) - b.group.position.distanceTo(player.group.position))[0];
+			if (!target) { log('🌱 No targets. Click a creature first.', 'warn'); return; }
 			player.earthEntangleTargets = player.earthEntangleTargets.filter(e => e.creature !== target);
 			player.earthEntangleTargets.push({ creature: target, timer: rootDur, dmgAmpPct: ampPct });
 			target.attackTimer = Math.max(target.attackTimer, rootDur);
@@ -2555,10 +2607,10 @@
 		} else if (id === 'earth_petrify') {
 			const petrifyDur = [0, 4, 5, 6, 8, 10][rank];
 			const ampPct     = [0, 0, 10, 20, 30, 40][rank];
-			const nearby = [...creatures].filter(c => c.state !== 'dead').sort((a, b) =>
-				a.group.position.distanceTo(player.group.position) - b.group.position.distanceTo(player.group.position));
-			if (nearby.length === 0) { log('🗿 No targets.', 'warn'); return; }
-			const target = nearby[0];
+			const target = (player.selectedTarget && player.selectedTarget.state !== 'dead') ? player.selectedTarget
+				: [...creatures].filter(c => c.state !== 'dead').sort((a, b) =>
+					a.group.position.distanceTo(player.group.position) - b.group.position.distanceTo(player.group.position))[0];
+			if (!target) { log('🗿 No targets. Click a creature first.', 'warn'); return; }
 			player.earthPetrifyTargets = player.earthPetrifyTargets.filter(p => p.creature !== target);
 			player.earthPetrifyTargets.push({ creature: target, timer: petrifyDur, dmgAmpPct: ampPct });
 			target.attackTimer = Math.max(target.attackTimer, petrifyDur);
@@ -2594,10 +2646,10 @@
 			const spikes  = [0, 3, 4, 5, 6, 7][rank];
 			const dmgEach = [0, 28, 44, 62, 82, 105][rank];
 			const stunChance = [0, 0, 0, 0, 0.20, 0.35][rank];
-			const nearby = [...creatures].filter(c => c.state !== 'dead').sort((a, b) =>
-				a.group.position.distanceTo(player.group.position) - b.group.position.distanceTo(player.group.position));
-			if (nearby.length === 0) { log('💎 No targets.', 'warn'); return; }
-			const target = nearby[0];
+			const target = (player.selectedTarget && player.selectedTarget.state !== 'dead') ? player.selectedTarget
+				: [...creatures].filter(c => c.state !== 'dead').sort((a, b) =>
+					a.group.position.distanceTo(player.group.position) - b.group.position.distanceTo(player.group.position))[0];
+			if (!target) { log('💎 No targets. Click a creature first.', 'warn'); return; }
 			let totalDmg = 0;
 			for (let i = 0; i < spikes; i++) {
 				creatureTakeDamage(target, dmgEach);
@@ -3058,6 +3110,41 @@
 				player.iceFreeze.splice(i, 1);
 			}
 		}
+		// imbue timers
+		const _imbuePairs = [
+			['imbueFire', '🔥 Flame imbue'],
+			['imbueLightning', '⚡ Static imbue'],
+			['imbueIce', '❄️ Frost imbue'],
+			['imbueEarth', '👊 Stone imbue'],
+		];
+		let _anyImbueActive = false;
+		let _imbueLightColor = null;
+		for (const [key, label] of _imbuePairs) {
+			const ib = player[key];
+			if (ib && ib.timer > 0) {
+				ib.timer -= dt;
+				_anyImbueActive = true;
+				if (key === 'imbueFire') _imbueLightColor = 0xff5500;
+				else if (key === 'imbueLightning') _imbueLightColor = 0xfde047;
+				else if (key === 'imbueIce') _imbueLightColor = 0x7dd3fc;
+				else if (key === 'imbueEarth') _imbueLightColor = 0x92400e;
+				if (ib.timer <= 0) {
+					ib.timer = 0;
+					player[key] = null;
+					log(label + ' faded.', 'sys');
+				}
+			}
+		}
+		// update weapon glow light intensity
+		if (player._imbueLight) {
+			if (_anyImbueActive) {
+				player._imbueLight.color.setHex(_imbueLightColor);
+				// pulse intensity slightly for visual feel
+				player._imbueLight.intensity = 1.4 + Math.sin(Date.now() * 0.006) * 0.4;
+			} else {
+				clearWeaponImbue();
+			}
+		}
 		// frost ward timer
 		if (player.frostWardTimer > 0) {
 			player.frostWardTimer -= dt;
@@ -3468,10 +3555,59 @@
 			player.skillCooldowns[id] -= dt;
 			if (player.skillCooldowns[id] <= 0) delete player.skillCooldowns[id];
 		}
-		refreshHotbarUI();
+		tickHotbarCooldowns();
+	}
+
+	// ------------------------------------------------------------------ hotbar tooltip
+	let _hotbarTipEl = null;
+	function _ensureHotbarTip() {
+		if (_hotbarTipEl) return _hotbarTipEl;
+		_hotbarTipEl = document.createElement('div');
+		_hotbarTipEl.id = 'hotbarTip';
+		_hotbarTipEl.style.cssText = 'position:fixed;z-index:9999;pointer-events:none;display:none;' +
+			'background:rgba(8,6,22,0.97);border:1px solid rgba(255,255,255,0.12);border-radius:10px;' +
+			'padding:10px 12px;min-width:160px;max-width:220px;box-shadow:0 4px 24px rgba(0,0,0,0.7);font-family:inherit';
+		document.body.appendChild(_hotbarTipEl);
+		return _hotbarTipEl;
+	}
+
+	function showHotbarTip(def, rank, slotIdx, anchorEl) {
+		const tip = _ensureHotbarTip();
+		if (!def || rank === 0) {
+			tip.innerHTML = '<div style="font-size:11px;color:#6b7280">Empty slot [' + (slotIdx + 1) + ']</div>';
+		} else {
+			const pathColor = (() => {
+				for (const p of TALENT_PATHS) { if (p.talents.some(t => t.id === def.id)) return p.color; }
+				return '#a78bfa';
+			})();
+			const cd = def.cooldowns ? def.cooldowns[rank] : 0;
+			const desc = def.rankDescs[rank] || '';
+			tip.innerHTML =
+				'<div style="display:flex;align-items:center;gap:7px;margin-bottom:6px">' +
+					'<div style="font-size:22px">' + def.icon + '</div>' +
+					'<div>' +
+						'<div style="font-size:12px;font-weight:700;color:#f1f5f9">' + def.name + '</div>' +
+						'<div style="font-size:10px;color:' + pathColor + '">' +
+							(def.type === 'active' ? '⚡ Active' : '🔰 Passive') + ' · Rank ' + rank + ' / ' + def.maxRank +
+						'</div>' +
+					'</div>' +
+				'</div>' +
+				(desc ? '<div style="font-size:10px;color:#9ca3af;line-height:1.45;margin-bottom:4px">' + desc + '</div>' : '') +
+				(def.type === 'active' && cd ? '<div style="font-size:10px;color:#6b7280">⏱ ' + cd + 's cooldown · press [' + (slotIdx + 1) + ']</div>' : '');
+		}
+		const rect = anchorEl.getBoundingClientRect();
+		tip.style.display = 'block';
+		const tipH = tip.offsetHeight;
+		tip.style.left = Math.max(4, rect.left + rect.width / 2 - tip.offsetWidth / 2) + 'px';
+		tip.style.top = (rect.top - tipH - 8) + 'px';
+	}
+
+	function hideHotbarTip() {
+		if (_hotbarTipEl) _hotbarTipEl.style.display = 'none';
 	}
 
 	// ------------------------------------------------------------------ hotbar UI
+	// Full rebuild — call only when slot assignments or ranks change, NOT every frame.
 	function refreshHotbarUI() {
 		const container = document.getElementById('hotbarSlots');
 		if (!container) return;
@@ -3480,21 +3616,46 @@
 			const id = player.hotbar[i];
 			const def = id ? getTalentDef(id) : null;
 			const rank = id ? talentRank(id) : 0;
-			const cd = id ? (player.skillCooldowns[id] || 0) : 0;
-			const btn = document.createElement('div');
 			const active = def && rank > 0;
+			const btn = document.createElement('div');
 			btn.className = 'relative flex flex-col items-center justify-center w-14 h-14 rounded-xl border cursor-pointer transition select-none ' +
 				(active ? 'border-purple-400/50 bg-purple-400/15 hover:bg-purple-400/25' : 'border-white/10 bg-white/5 opacity-60');
-			btn.title = def ? def.name + ' (Rank ' + rank + ')' + (def.type === 'active' ? ' — press ' + (i + 1) : ' (passive)') : 'Empty slot';
-			const frostActive = id === 'ice_shield' && player.frostWardTimer > 0;
+			btn.dataset.slot = i;
 			btn.innerHTML =
 				'<div class="text-xl">' + (def ? def.icon : '▫️') + '</div>' +
 				'<div class="text-[9px] font-bold text-zinc-400">[' + (i + 1) + ']' + (rank > 0 ? ' R' + rank : '') + '</div>' +
-				(frostActive ? '<div class="absolute inset-0 flex items-center justify-center rounded-xl bg-sky-400/30 text-[10px] font-bold text-sky-200">' + Math.ceil(player.frostWardTimer) + 's</div>' :
-					cd > 0 ? '<div class="absolute inset-0 flex items-center justify-center rounded-xl bg-black/60 text-[11px] font-bold text-white">' + Math.ceil(cd) + 's</div>' : '');
+				'<div class="hotbar-cd-overlay"></div>';
 			btn.addEventListener('click', () => activateSkill(i));
+			btn.addEventListener('mouseenter', () => showHotbarTip(def, rank, i, btn));
+			btn.addEventListener('mouseleave', hideHotbarTip);
 			container.appendChild(btn);
 		}
+		tickHotbarCooldowns();
+	}
+
+	// Lightweight per-frame update — only touches the cooldown overlay text, no DOM rebuild.
+	function tickHotbarCooldowns() {
+		const container = document.getElementById('hotbarSlots');
+		if (!container) return;
+		const btns = container.querySelectorAll('[data-slot]');
+		btns.forEach(btn => {
+			const i = parseInt(btn.dataset.slot);
+			const id = player.hotbar[i];
+			const overlay = btn.querySelector('.hotbar-cd-overlay');
+			if (!overlay) return;
+			const frostActive = id === 'ice_shield' && player.frostWardTimer > 0;
+			const cd = id ? (player.skillCooldowns[id] || 0) : 0;
+			if (frostActive) {
+				overlay.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:inherit;background:rgba(56,189,248,0.3);font-size:10px;font-weight:700;color:#bae6fd';
+				overlay.textContent = Math.ceil(player.frostWardTimer) + 's';
+			} else if (cd > 0) {
+				overlay.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:inherit;background:rgba(0,0,0,0.6);font-size:11px;font-weight:700;color:#fff';
+				overlay.textContent = Math.ceil(cd) + 's';
+			} else {
+				overlay.style.cssText = 'display:none';
+				overlay.textContent = '';
+			}
+		});
 	}
 
 	// ------------------------------------------------------------------ talent tree UI
@@ -3515,216 +3676,144 @@
 	let _activePathTab = 'fire';
 	let _openRecipeTiers = null; // Set of tier names the user has opened; null = uninitialized
 
-	// Node layout: [x%, y%] within the constellation canvas (0-100 range)
-	const TALENT_NODE_LAYOUT = {
-		// Fire path — main chain goes left→right, branches drop down
-		// T1
-		fire_active:              [8,  30],
-		fire_passive:             [20, 30],
-		// T2
-		fire_backdraft:           [32, 18],
-		fire_wildfire:            [44, 18],
-		fire_cremation:           [56, 18],
-		fire_pyroclasm:           [44, 42],
-		fire_crit:                [20, 52],
-		fire_fireball:            [68, 30],
-		// T3
-		fire_inferno:             [80, 18],
-		fire_flame_wall:          [80, 42],
-		fire_magma_shell:         [80, 64],
-		fire_phoenix_mark:        [68, 52],
-		// T4 capstone
-		fire_phoenix_ascendant:   [50, 82],
-
-		// Lightning path
-		// T1
-		lightning_active:         [8,  30],
-		lightning_passive:        [20, 30],
-		// T2
-		lightning_conductor:      [32, 18],
-		lightning_aftershock:     [44, 18],
-		lightning_static_aura:    [56, 18],
-		lightning_overload:       [32, 42],
-		lightning_crit:           [20, 52],
-		// T3
-		lightning_strike:         [68, 18],
-		lightning_storm:          [80, 18],
-		lightning_chain:          [68, 42],
-		lightning_discharge:      [80, 42],
-		lightning_ball:           [80, 64],
-		// T4 capstone
-		lightning_storm_sovereign:[50, 82],
-
-		// Ice path
-		// T1
-		ice_active:               [8,  30],
-		ice_passive:              [20, 30],
-		// T2
-		ice_shield:               [32, 18],
-		ice_brittle:              [44, 18],
-		ice_cold_snap:            [32, 42],
-		ice_shatter:              [56, 18],
-		ice_permafrost:           [44, 42],
-		ice_crit:                 [20, 52],
-		// T3
-		ice_lance:                [68, 18],
-		ice_blizzard:             [80, 18],
-		ice_frost_nova:           [68, 42],
-		ice_glacial_armor:        [80, 42],
-		// T4 capstone
-		ice_glacial_dominion:     [50, 82],
-
-		// Spirit path
-		// T1
-		spirit_active:            [8,  30],
-		spirit_passive:           [20, 30],
-		// T2
-		spirit_hot:               [32, 18],
-		spirit_siphon:            [44, 18],
-		spirit_fortitude:         [32, 42],
-		spirit_resurrection_mark: [44, 42],
-		spirit_crit:              [20, 52],
-		// T3
-		spirit_healing_surge:     [56, 18],
-		spirit_soul_leech:        [68, 18],
-		spirit_spirit_walk:       [80, 18],
-		spirit_aegis:             [80, 42],
-		// T4 capstone
-		spirit_undying_will:      [50, 82],
-
-		// Earth path
-		// T1
-		earth_stone_fist:         [8,  30],
-		earth_thorns:             [20, 30],
-		// T2
-		earth_entangle:           [32, 18],
-		earth_seismic_slam:       [44, 18],
-		earth_stone_skin:         [32, 42],
-		earth_poison_spores:      [20, 52],
-		// T3
-		earth_overgrowth:         [56, 18],
-		earth_tremor:             [68, 18],
-		earth_petrify:            [56, 42],
-		earth_natures_wrath:      [68, 42],
-		earth_earthen_wall:       [80, 18],
-		earth_crystal_spikes:     [80, 42],
-		// T4 capstone
-		earth_living_mountain:    [50, 82],
-	};
-
 	function renderTalentTree() {
 		const ptDisplay = document.getElementById('talentPointsDisplay');
 		if (ptDisplay) ptDisplay.textContent = talentPointsAvailable();
 		const pathsEl = document.getElementById('talentPaths');
 		if (!pathsEl) return;
-		// Rescue tooltip before clearing so it isn't garbage-collected
-		const tooltip = document.getElementById('talentTooltip');
-		if (tooltip && tooltip.parentNode) tooltip.parentNode.removeChild(tooltip);
 		pathsEl.innerHTML = '';
 		pathsEl.style.cssText = 'display:flex;flex-direction:column;gap:0;padding:0;overflow:hidden;height:100%';
 
-		// ── Path tab bar ─────────────────────────────────────────────────
+		// ── Path tab bar ──────────────────────────────────────────────
 		const tabBar = document.createElement('div');
-		tabBar.style.cssText = 'display:flex;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,0.08);background:rgba(0,0,0,0.25)';
+		tabBar.style.cssText = 'display:flex;flex-shrink:0;border-bottom:2px solid rgba(255,255,255,0.06);background:rgba(0,0,0,0.30)';
 		pathsEl.appendChild(tabBar);
 
-		// ── Body: constellation canvas + tooltip sidebar ──────────────
+		// ── Body: tier grid + tooltip sidebar ────────────────────────
 		const body = document.createElement('div');
-		body.style.cssText = 'display:flex;flex:1;overflow:hidden';
+		body.style.cssText = 'display:flex;flex:1;overflow:hidden;min-height:0';
 		pathsEl.appendChild(body);
-
-		// ── Constellation area ────────────────────────────────────────
-		const canvas = document.createElement('div');
-		canvas.style.cssText = 'position:relative;flex:1;overflow:hidden;background:radial-gradient(ellipse at 50% 50%,rgba(30,20,60,0.95) 0%,rgba(5,5,15,0.98) 100%)';
-		body.appendChild(canvas);
 
 		// ── Tooltip sidebar ───────────────────────────────────────────
 		const sidebar = document.createElement('div');
-		sidebar.style.cssText = 'width:200px;flex-shrink:0;padding:14px 12px;border-left:1px solid rgba(255,255,255,0.07);background:rgba(0,0,0,0.4);font-size:11px;color:#d1d5db;overflow-y:auto';
-		sidebar.innerHTML = '<div style="color:#4b5563;font-size:11px">Hover a node</div>';
+		sidebar.style.cssText = 'width:210px;flex-shrink:0;padding:14px 12px;border-left:1px solid rgba(255,255,255,0.07);background:rgba(0,0,0,0.45);font-size:11px;color:#d1d5db;overflow-y:auto;display:flex;flex-direction:column;gap:0';
+		sidebar.innerHTML = '<div style="color:#4b5563;font-size:11px;margin-top:8px">Hover a talent</div>';
 		body.appendChild(sidebar);
 
-		// ── Star-field dots ───────────────────────────────────────────
-		const starSvg = document.createElementNS('http://www.w3.org/2000/svg','svg');
-		starSvg.setAttribute('width','100%'); starSvg.setAttribute('height','100%');
-		starSvg.style.cssText = 'position:absolute;inset:0;pointer-events:none';
-		for (let s = 0; s < 70; s++) {
-			const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
-			c.setAttribute('cx', (Math.random()*100)+'%'); c.setAttribute('cy', (Math.random()*100)+'%');
-			c.setAttribute('r', (Math.random()*1.2+0.3).toFixed(1));
-			c.setAttribute('fill','rgba(255,255,255,'+(Math.random()*0.25+0.05).toFixed(2)+')');
-			starSvg.appendChild(c);
-		}
-		canvas.appendChild(starSvg);
+		// ── Tier grid area ────────────────────────────────────────────
+		const grid = document.createElement('div');
+		grid.style.cssText = 'flex:1;overflow-y:auto;padding:10px 10px 10px 14px;display:flex;flex-direction:column;gap:6px;background:rgba(8,6,20,0.92)';
+		// insert grid before sidebar in DOM order
+		body.insertBefore(grid, sidebar);
 
-		// ── SVG overlay for connector lines ───────────────────────────
-		const lineSvg = document.createElementNS('http://www.w3.org/2000/svg','svg');
-		lineSvg.setAttribute('width','100%'); lineSvg.setAttribute('height','100%');
-		lineSvg.style.cssText = 'position:absolute;inset:0;pointer-events:none';
-		canvas.appendChild(lineSvg);
+		const TIER_LABELS  = { 1: 'Tier 1', 2: 'Tier 2', 3: 'Tier 3', 4: 'Tier 4 — Capstone' };
+		const TIER_GATES   = { 1: 0, 2: TALENT_TIER_GATES.T2, 3: TALENT_TIER_GATES.T3, 4: TALENT_TIER_GATES.T4 };
+		const TIER_COLORS  = { 1: '#6b7280', 2: '#60a5fa', 3: '#c084fc', 4: '#fbbf24' };
+
+		function buildRequirementLines(talent, path) {
+			// Returns array of {text, met} for every requirement, always shown all at once.
+			const reqs = [];
+			const tier = TALENT_TIERS[talent.id] || 1;
+			const rank = talentRank(talent.id);
+
+			// Prereq
+			const prereqId = TALENT_PREREQS[talent.id];
+			if (prereqId) {
+				const reqRank = TALENT_PREREQ_RANK[talent.id] || 1;
+				const prereqDef = path.talents.find(t => t.id === prereqId);
+				const prereqName = prereqDef ? prereqDef.name : prereqId.replace(/_/g, ' ');
+				const met = talentRank(prereqId) >= reqRank;
+				reqs.push({ text: 'Requires ' + prereqName + ' rank ' + reqRank + ' (' + talentRank(prereqId) + '/' + reqRank + ')', met });
+			}
+
+			// Tier gate
+			if (tier >= 2) {
+				const need = TIER_GATES[tier];
+				const have = talentPathPointsSpent(path.id);
+				const met = have >= need;
+				reqs.push({ text: 'Requires ' + need + ' pts spent in ' + path.name + ' (' + have + '/' + need + ')', met });
+			}
+
+			// Exclusion
+			if (!talentExclusionAllowed(talent.id) && rank === 0) {
+				reqs.push({ text: 'Locked — you chose the other exclusive talent', met: false });
+			}
+
+			// Talent points
+			if (rank < talent.maxRank && talentExclusionAllowed(talent.id)) {
+				const cost = talentRankUpgradeCost(rank);
+				const avail = talentPointsAvailable();
+				const met = avail >= cost;
+				reqs.push({ text: cost + ' talent point' + (cost > 1 ? 's' : '') + ' needed (' + avail + ' available)', met });
+			}
+
+			return reqs;
+		}
 
 		function showTalentTooltip(talent, path) {
 			const rank = talentRank(talent.id);
 			const maxed = rank >= talent.maxRank;
-			const canUnlock = talentCanUnlock(talent.id);
-			const prereqMet = talentPrereqMet(talent.id);
-			const tierGateMet = talentTierGateMet(talent.id);
 			const exclusionOk = talentExclusionAllowed(talent.id);
-			const cost = talentRankUpgradeCost(rank);
-			const prereqId = TALENT_PREREQS[talent.id];
-			const prereqTalent = prereqId ? path.talents.find(t => t.id === prereqId) || { name: prereqId.replace(/_/g,' ') } : null;
+			const isExcluded = !exclusionOk && rank === 0;
 			const tier = TALENT_TIERS[talent.id] || 1;
+			const cost = talentRankUpgradeCost(rank);
 
-			let html = '<div style="font-size:24px;text-align:center;margin-bottom:6px">' + talent.icon + '</div>';
+			let html = '<div style="font-size:28px;text-align:center;margin-bottom:5px">' + talent.icon + '</div>';
 			html += '<div style="font-size:13px;font-weight:700;color:#f1f5f9;margin-bottom:2px">' + talent.name + '</div>';
-			if (talent.capstone) html += '<div style="font-size:10px;color:#fbbf24;font-weight:700;margin-bottom:2px">★ CAPSTONE — Tier 4</div>';
-			else html += '<div style="font-size:10px;color:#6b7280;margin-bottom:2px">Tier ' + tier + '</div>';
-			html += '<div style="font-size:10px;margin-bottom:8px;color:' + (talent.type === 'active' ? '#fdba74' : '#93c5fd') + '">' + (talent.type === 'active' ? '⚡ Active Skill' : '🔰 Passive') + ' &nbsp;·&nbsp; Rank ' + rank + ' / ' + talent.maxRank + '</div>';
+			if (talent.capstone) {
+				html += '<div style="font-size:10px;color:#fbbf24;font-weight:700;letter-spacing:0.07em;margin-bottom:2px">★ CAPSTONE</div>';
+			} else {
+				html += '<div style="font-size:10px;color:' + TIER_COLORS[tier] + ';margin-bottom:2px">' + TIER_LABELS[tier] + '</div>';
+			}
+			html += '<div style="font-size:10px;margin-bottom:8px;color:' + (talent.type === 'active' ? '#fdba74' : '#93c5fd') + '">';
+			html += (talent.type === 'active' ? '⚡ Active' : '🔰 Passive') + '  ·  Rank ' + rank + ' / ' + talent.maxRank + '</div>';
+
+			// Current rank description
 			if (rank > 0) {
-				html += '<div style="font-size:10px;color:#9ca3af;font-style:italic;margin-bottom:6px;line-height:1.4">' + talent.rankDescs[rank] + '</div>';
-				if (talent.type === 'active') html += '<div style="font-size:10px;color:#6b7280;margin-bottom:6px">⏱ ' + talent.cooldowns[rank] + 's cooldown</div>';
+				html += '<div style="font-size:10px;color:#9ca3af;font-style:italic;line-height:1.45;margin-bottom:4px">' + talent.rankDescs[rank] + '</div>';
+				if (talent.type === 'active' && talent.cooldowns) {
+					html += '<div style="font-size:10px;color:#6b7280;margin-bottom:6px">⏱ ' + talent.cooldowns[rank] + 's cooldown</div>';
+				}
 				html += '<div style="border-top:1px solid rgba(255,255,255,0.07);margin:6px 0"></div>';
 			}
+
 			if (maxed) {
-				html += '<div style="font-size:11px;color:#fbbf24;font-weight:700;text-align:center">★ Maxed</div>';
-			} else if (!exclusionOk) {
-				html += '<div style="font-size:10px;color:#ef4444;margin-top:6px">🚫 You chose the other exclusive — locked forever.</div>';
+				html += '<div style="font-size:11px;color:#fbbf24;font-weight:700;text-align:center;margin-top:4px">★ Maxed</div>';
 			} else {
+				// Next rank preview
 				const nr = rank + 1;
 				html += '<div style="font-size:10px;color:#c4b5fd;line-height:1.4;margin-bottom:4px"><b>Rank ' + nr + ':</b> ' + talent.rankDescs[nr] + '</div>';
-				if (talent.type === 'active' && nr <= talent.maxRank) html += '<div style="font-size:10px;color:#6b7280;margin-bottom:6px">⏱ ' + talent.cooldowns[nr] + 's</div>';
-				if (!prereqMet) {
-					const reqRank = TALENT_PREREQ_RANK[talent.id] || 1;
-					const prereqName = prereqTalent ? prereqTalent.name : (prereqId ? prereqId.replace(/_/g, ' ') : '');
-					html += '<div style="font-size:10px;color:#ef4444;margin-top:6px">🔒 Requires rank ' + reqRank + ' in ' + prereqName + '</div>';
-				} else if (!tierGateMet) {
-					const gateRequired = tier === 2 ? TALENT_TIER_GATES.T2 : tier === 3 ? TALENT_TIER_GATES.T3 : TALENT_TIER_GATES.T4;
-					const spent = talentPathPointsSpent(path.id);
-					html += '<div style="font-size:10px;color:#f59e0b;margin-top:6px">🔒 Tier ' + tier + ' gate: need ' + gateRequired + ' pts in ' + path.name + ' (' + spent + '/' + gateRequired + ')</div>';
-				} else {
-					const avail = talentPointsAvailable();
-					if (avail >= cost) {
-						html += '<div style="font-size:11px;color:#a78bfa;font-weight:700;margin-top:8px;text-align:center">▲ Click to upgrade<br><span style="font-size:10px;font-weight:400">(' + cost + ' pt' + (cost > 1 ? 's' : '') + ')</span></div>';
-					} else {
-						html += '<div style="font-size:11px;color:#ef4444;margin-top:6px;text-align:center">Need ' + cost + ' pts<br><span style="font-size:10px">(have ' + avail + ')</span></div>';
+				if (talent.type === 'active' && talent.cooldowns && nr <= talent.maxRank) {
+					html += '<div style="font-size:10px;color:#6b7280;margin-bottom:8px">⏱ ' + talent.cooldowns[nr] + 's</div>';
+				}
+
+				// All requirements, always shown
+				const reqs = buildRequirementLines(talent, path);
+				if (reqs.length > 0) {
+					html += '<div style="border-top:1px solid rgba(255,255,255,0.07);margin:6px 0 4px;font-size:10px;font-weight:700;color:#6b7280;letter-spacing:0.05em">REQUIREMENTS</div>';
+					for (const req of reqs) {
+						html += '<div style="font-size:10px;line-height:1.45;margin-bottom:3px;color:' + (req.met ? '#4ade80' : '#ef4444') + '">';
+						html += (req.met ? '✓ ' : '✗ ') + req.text + '</div>';
 					}
 				}
 			}
-			// hotbar assignment for known active skills
+
+			// Hotbar assignment for active skills with rank
 			if (rank > 0 && talent.type === 'active') {
-				html += '<div style="border-top:1px solid rgba(255,255,255,0.07);margin:8px 0 4px;font-size:10px;color:#6b7280">Hotbar slots</div>';
-				html += '<div id="ttHotbarSlots" style="display:flex;gap:4px;flex-wrap:wrap">';
+				html += '<div style="border-top:1px solid rgba(255,255,255,0.07);margin:8px 0 4px;font-size:10px;color:#6b7280">HOTBAR</div>';
+				html += '<div id="ttHotbarSlots" style="display:flex;gap:5px;flex-wrap:wrap">';
 				for (let si = 0; si < 5; si++) {
 					const assigned = player.hotbar[si] === talent.id;
-					html += '<div data-slot="' + si + '" data-tid="' + talent.id + '" style="width:24px;height:24px;border-radius:4px;border:1px solid ' +
+					html += '<div data-slot="' + si + '" data-tid="' + talent.id + '" style="width:26px;height:26px;border-radius:5px;border:1px solid ' +
 						(assigned ? path.color : 'rgba(255,255,255,0.15)') +
-						';background:' + (assigned ? 'rgba(139,92,246,0.3)' : 'rgba(0,0,0,0.3)') +
-						';color:' + (assigned ? '#e9d5ff' : '#6b7280') + ';display:flex;align-items:center;justify-content:center;font-size:10px;cursor:pointer">' + (si+1) + '</div>';
+						';background:' + (assigned ? 'rgba(139,92,246,0.25)' : 'rgba(0,0,0,0.3)') +
+						';color:' + (assigned ? '#e9d5ff' : '#6b7280') +
+						';display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer;font-weight:700">' + (si+1) + '</div>';
 				}
 				html += '</div>';
 			}
+
 			sidebar.innerHTML = html;
-			// wire hotbar slot clicks
 			sidebar.querySelectorAll('[data-slot]').forEach(btn => {
 				btn.addEventListener('click', () => {
 					const si = parseInt(btn.dataset.slot);
@@ -3735,182 +3824,260 @@
 			});
 		}
 
-		function renderConstellation(path) {
-			// clear canvas nodes (keep SVGs)
-			canvas.querySelectorAll('.tt-node').forEach(n => n.remove());
-			lineSvg.innerHTML = '';
+		function renderTierGrid(path) {
+			grid.innerHTML = '';
+			grid.style.position = 'relative';
 
-			const NODE_SIZE = 46;
-			const CAPSTONE_SIZE = 54;
-			const HALF = NODE_SIZE / 2;
-			const CHALF = CAPSTONE_SIZE / 2;
+			// map talentId → the node <div> element (the icon square/circle)
+			const nodeElMap = {};
 
-			// draw prereq connector lines first (behind nodes)
+			// Group talents by tier
+			const byTier = { 1: [], 2: [], 3: [], 4: [] };
 			for (const talent of path.talents) {
-				const prereqId = TALENT_PREREQS[talent.id];
-				if (!prereqId) continue;
-				const fromPos = TALENT_NODE_LAYOUT[prereqId];
-				const toPos   = TALENT_NODE_LAYOUT[talent.id];
-				if (!fromPos || !toPos) continue;
-				const prereqRank = talentRank(prereqId);
-				const isCapstoneLink = !!talent.capstone;
-				const line = document.createElementNS('http://www.w3.org/2000/svg','line');
-				line.setAttribute('x1', fromPos[0] + '%'); line.setAttribute('y1', fromPos[1] + '%');
-				line.setAttribute('x2', toPos[0] + '%');   line.setAttribute('y2', toPos[1] + '%');
-				if (isCapstoneLink) {
-					line.setAttribute('stroke', prereqRank > 0 ? '#fbbf24' : 'rgba(251,191,36,0.25)');
-					line.setAttribute('stroke-width', '3');
-				} else {
-					line.setAttribute('stroke', prereqRank > 0 ? path.color : 'rgba(255,255,255,0.10)');
-					line.setAttribute('stroke-width', '2');
-				}
-				line.setAttribute('stroke-linecap','round');
-				if (prereqRank === 0) line.setAttribute('stroke-dasharray','4 4');
-				lineSvg.appendChild(line);
+				const t = TALENT_TIERS[talent.id] || 1;
+				if (byTier[t]) byTier[t].push(talent);
 			}
 
-			// draw nodes
-			for (const talent of path.talents) {
-				const pos = TALENT_NODE_LAYOUT[talent.id];
-				if (!pos) continue;
-				const rank = talentRank(talent.id);
-				const maxed = rank >= talent.maxRank;
-				const canUnlock = talentCanUnlock(talent.id);
-				const exclusionOk = talentExclusionAllowed(talent.id);
-				const isExcluded = !exclusionOk && rank === 0; // locked out by rival choice
-				const upgradeCost = talentRankUpgradeCost(rank);
-				const canUpgrade = !maxed && canUnlock && talentPointsAvailable() >= upgradeCost;
-				const isCapstone = !!talent.capstone;
-				const nodeSize = isCapstone ? CAPSTONE_SIZE : NODE_SIZE;
-				const halfSize = nodeSize / 2;
+			for (const tier of [1, 2, 3, 4]) {
+				const talents = byTier[tier];
+				if (!talents || talents.length === 0) continue;
 
-				let borderColor, bgColor, glowColor = 'transparent';
-				if (isExcluded) {
-					borderColor = 'rgba(239,68,68,0.25)'; bgColor = 'rgba(60,0,0,0.2)';
-				} else if (isCapstone && maxed) {
-					borderColor = '#fbbf24'; bgColor = 'rgba(251,191,36,0.30)'; glowColor = '#fbbf24';
-				} else if (isCapstone && rank > 0) {
-					borderColor = '#fbbf24'; bgColor = 'rgba(251,191,36,0.18)'; glowColor = '#fbbf24';
-				} else if (isCapstone && canUnlock) {
-					borderColor = '#fbbf24'; bgColor = 'rgba(251,191,36,0.08)'; glowColor = '#fbbf24';
-				} else if (isCapstone) {
-					borderColor = 'rgba(251,191,36,0.20)'; bgColor = 'rgba(0,0,0,0.15)';
-				} else if (maxed) {
-					borderColor = '#fbbf24'; bgColor = 'rgba(251,191,36,0.22)'; glowColor = '#fbbf24';
-				} else if (rank > 0) {
-					borderColor = path.color; bgColor = 'rgba(0,0,0,0.5)'; glowColor = path.color;
-				} else if (canUnlock) {
-					borderColor = path.color; bgColor = 'rgba(0,0,0,0.3)';
-					if (canUpgrade) glowColor = path.color;
-				} else {
-					borderColor = 'rgba(255,255,255,0.10)'; bgColor = 'rgba(0,0,0,0.15)';
+				const tierColor = TIER_COLORS[tier];
+				const gateRequired = TIER_GATES[tier];
+				const pathSpent = talentPathPointsSpent(path.id);
+				const gateOpen = pathSpent >= gateRequired;
+
+				// Tier header row
+				const header = document.createElement('div');
+				header.style.cssText = 'display:flex;align-items:center;gap:8px;padding:4px 2px 2px;flex-shrink:0';
+				const label = document.createElement('div');
+				label.style.cssText = 'font-size:10px;font-weight:700;letter-spacing:0.08em;color:' + tierColor + ';white-space:nowrap';
+				label.textContent = TIER_LABELS[tier].toUpperCase();
+				header.appendChild(label);
+				if (gateRequired > 0) {
+					const gate = document.createElement('div');
+					gate.style.cssText = 'font-size:9px;padding:1px 6px;border-radius:8px;border:1px solid ' +
+						(gateOpen ? 'rgba(74,222,128,0.4)' : 'rgba(239,68,68,0.4)') +
+						';color:' + (gateOpen ? '#4ade80' : '#f87171') +
+						';background:' + (gateOpen ? 'rgba(74,222,128,0.08)' : 'rgba(239,68,68,0.08)');
+					gate.textContent = (gateOpen ? '✓ ' : '✗ ') + gateRequired + ' pts to unlock';
+					header.appendChild(gate);
 				}
+				const line = document.createElement('div');
+				line.style.cssText = 'flex:1;height:1px;background:linear-gradient(to right,' + tierColor + '44,transparent)';
+				header.appendChild(line);
+				grid.appendChild(header);
 
-				const isPassive = talent.type === 'passive';
-				const node = document.createElement('div');
-				node.className = 'tt-node';
-				node.style.cssText =
-					'position:absolute;' +
-					'left:calc(' + pos[0] + '% - ' + halfSize + 'px);' +
-					'top:calc(' + pos[1] + '% - ' + halfSize + 'px);' +
-					'width:' + nodeSize + 'px;height:' + nodeSize + 'px;' +
-					'border:' + (isCapstone ? '3' : '2') + 'px solid ' + borderColor + ';' +
-					'background:' + bgColor + ';' +
-					'border-radius:' + (isCapstone ? '12px' : isPassive ? '50%' : '10px') + ';' +
-					'display:flex;align-items:center;justify-content:center;' +
-					'font-size:' + (isCapstone ? '26' : '20') + 'px;' +
-					'cursor:' + (canUnlock && !maxed && !isExcluded ? 'pointer' : 'default') + ';' +
-					'opacity:' + (isExcluded ? '0.22' : canUnlock || rank > 0 ? '1' : '0.35') + ';' +
-					'transition:box-shadow 0.15s,transform 0.1s;' +
-					'user-select:none;' +
-					(isCapstone && (rank > 0 || canUnlock) ? 'box-shadow:0 0 18px 4px #fbbf2444,0 0 6px #fbbf24;' :
-					 glowColor !== 'transparent' && canUpgrade ? 'box-shadow:0 0 10px 2px ' + glowColor + '44,0 0 3px ' + glowColor + ';' :
-					 rank > 0 && !maxed ? 'box-shadow:0 0 6px ' + glowColor + '66;' :
-					 maxed ? 'box-shadow:0 0 14px 3px #fbbf2466,0 0 4px #fbbf24;' : '');
-				node.textContent = talent.icon;
+				// Node row
+				const row = document.createElement('div');
+				row.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;padding:4px 2px 8px;flex-shrink:0';
 
-				// rank badge
-				if (rank > 0) {
-					const badge = document.createElement('div');
-					badge.style.cssText = 'position:absolute;bottom:-2px;right:-2px;font-size:8px;font-weight:700;' +
-						'background:#0f0a1e;color:' + (maxed || isCapstone ? '#fbbf24' : path.color) + ';' +
-						'border-radius:4px;padding:0 3px;line-height:13px;min-width:13px;text-align:center;' +
-						'border:1px solid ' + (maxed || isCapstone ? '#fbbf24' : borderColor);
-					badge.textContent = rank + '/' + talent.maxRank;
-					node.appendChild(badge);
-				}
+				for (const talent of talents) {
+					const rank = talentRank(talent.id);
+					const maxed = rank >= talent.maxRank;
+					const canUnlock = talentCanUnlock(talent.id);
+					const exclusionOk = talentExclusionAllowed(talent.id);
+					const isExcluded = !exclusionOk && rank === 0;
+					const upgradeCost = talentRankUpgradeCost(rank);
+					const canUpgrade = !maxed && canUnlock && talentPointsAvailable() >= upgradeCost;
+					const isCapstone = !!talent.capstone;
+					const isPassive = talent.type === 'passive';
 
-				// locked / excluded overlay
-				if (isExcluded) {
-					const lock = document.createElement('div');
-					lock.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;border-radius:inherit;background:rgba(0,0,0,0.55)';
-					lock.textContent = '🚫';
-					node.appendChild(lock);
-				} else if (!canUnlock && rank === 0) {
-					const lock = document.createElement('div');
-					lock.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;border-radius:inherit;background:rgba(0,0,0,0.45)';
-					lock.textContent = isCapstone ? '★' : '🔒';
-					node.appendChild(lock);
-				}
+					let borderColor, bgColor, glowCss = '';
+					if (isExcluded) {
+						borderColor = 'rgba(239,68,68,0.25)'; bgColor = 'rgba(60,0,0,0.18)';
+					} else if (maxed) {
+						borderColor = '#fbbf24'; bgColor = 'rgba(251,191,36,0.20)';
+						glowCss = 'box-shadow:0 0 12px 3px #fbbf2455,0 0 4px #fbbf24;';
+					} else if (rank > 0) {
+						borderColor = path.color; bgColor = 'rgba(0,0,0,0.5)';
+						glowCss = 'box-shadow:0 0 7px ' + path.color + '66;';
+					} else if (canUpgrade) {
+						borderColor = path.color; bgColor = 'rgba(0,0,0,0.3)';
+						glowCss = 'box-shadow:0 0 10px 2px ' + path.color + '44;';
+					} else if (canUnlock) {
+						borderColor = path.color + '99'; bgColor = 'rgba(0,0,0,0.25)';
+					} else {
+						borderColor = 'rgba(255,255,255,0.08)'; bgColor = 'rgba(0,0,0,0.12)';
+					}
 
-				// capstone crown label
-				if (isCapstone && rank === 0 && canUnlock) {
-					const crown = document.createElement('div');
-					crown.style.cssText = 'position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:700;color:#fbbf24;letter-spacing:0.06em;white-space:nowrap';
-					crown.textContent = 'CAPSTONE';
-					node.appendChild(crown);
-				}
+					const nodeSize = isCapstone ? 58 : 50;
+					const fontSize = isCapstone ? 28 : 22;
+					const borderRadius = isCapstone ? '12px' : isPassive ? '50%' : '10px';
+					const borderW = isCapstone ? '2px' : '2px';
 
-				node.addEventListener('mouseenter', () => {
-					if (canUnlock || rank > 0) node.style.transform = 'scale(' + (isCapstone ? '1.08' : '1.12') + ')';
-					showTalentTooltip(talent, path);
-				});
-				node.addEventListener('mouseleave', () => { node.style.transform = ''; });
+					const cell = document.createElement('div');
+					cell.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:3px;width:' + nodeSize + 'px;flex-shrink:0';
 
-				if (canUnlock && !maxed && !isExcluded) {
-					node.addEventListener('click', () => {
-						if (talentPointsAvailable() < upgradeCost) {
-							log('✗ Not enough talent points.', 'warn'); return;
-						}
-						player.talents[talent.id] = (player.talents[talent.id] || 0) + 1;
-						const newRank = player.talents[talent.id];
-						log('✨ ' + talent.name + ' → Rank ' + newRank + '! (' + talentPointsAvailable() + ' pts left)', 'craft');
-						if (talent.type === 'active' && newRank === 1) {
-							const emptySlot = player.hotbar.findIndex(s => s === null);
-							if (emptySlot !== -1) {
-								player.hotbar[emptySlot] = talent.id;
-								log('→ Hotbar slot ' + (emptySlot + 1) + '.', 'sys');
-							}
-						}
-						saveGame();
-						renderTalentTree();
-						refreshHotbarUI();
+					const node = document.createElement('div');
+					node.style.cssText =
+						'position:relative;width:' + nodeSize + 'px;height:' + nodeSize + 'px;' +
+						'border:' + borderW + ' solid ' + borderColor + ';' +
+						'background:' + bgColor + ';' +
+						'border-radius:' + borderRadius + ';' +
+						'display:flex;align-items:center;justify-content:center;' +
+						'font-size:' + fontSize + 'px;' +
+						'cursor:' + (canUpgrade ? 'pointer' : canUnlock && !maxed && !isExcluded ? 'pointer' : 'default') + ';' +
+						'opacity:' + (isExcluded ? '0.25' : canUnlock || rank > 0 ? '1' : '0.35') + ';' +
+						'transition:transform 0.1s,box-shadow 0.15s;user-select:none;' +
+						glowCss;
+					node.textContent = talent.icon;
+					nodeElMap[talent.id] = node;
+
+					// rank badge
+					if (rank > 0) {
+						const badge = document.createElement('div');
+						badge.style.cssText = 'position:absolute;bottom:-3px;right:-3px;font-size:8px;font-weight:700;' +
+							'background:#0c0a1e;color:' + (maxed ? '#fbbf24' : path.color) + ';' +
+							'border-radius:4px;padding:0 3px;line-height:14px;min-width:14px;text-align:center;' +
+							'border:1px solid ' + (maxed ? '#fbbf24' : borderColor);
+						badge.textContent = rank + '/' + talent.maxRank;
+						node.appendChild(badge);
+					}
+
+					// lock / exclusion overlay
+					if (isExcluded) {
+						const lock = document.createElement('div');
+						lock.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;border-radius:inherit;background:rgba(0,0,0,0.6)';
+						lock.textContent = '🚫';
+						node.appendChild(lock);
+					} else if (!canUnlock && rank === 0) {
+						const lock = document.createElement('div');
+						lock.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;border-radius:inherit;background:rgba(0,0,0,0.45)';
+						lock.textContent = '🔒';
+						node.appendChild(lock);
+					}
+
+					// name label below node
+					const nameLabel = document.createElement('div');
+					nameLabel.style.cssText = 'font-size:9px;text-align:center;color:' +
+						(isExcluded ? '#4b5563' : rank > 0 ? '#e5e7eb' : canUnlock ? '#9ca3af' : '#4b5563') +
+						';line-height:1.2;max-width:' + (nodeSize + 6) + 'px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+					nameLabel.textContent = talent.name;
+					cell.appendChild(node);
+					cell.appendChild(nameLabel);
+
+					// exclusive badge
+					const exclusivePair = Object.values(TALENT_EXCLUSIVE_GROUPS).find(pair => pair.includes(talent.id));
+					if (exclusivePair) {
+						const exBadge = document.createElement('div');
+						exBadge.style.cssText = 'font-size:8px;color:#f59e0b;font-weight:700;letter-spacing:0.04em';
+						exBadge.textContent = 'EXCL';
+						cell.appendChild(exBadge);
+					}
+
+					node.addEventListener('mouseenter', () => {
+						if ((canUnlock && !maxed) || rank > 0) node.style.transform = 'scale(1.1)';
+						showTalentTooltip(talent, path);
 					});
-				}
+					node.addEventListener('mouseleave', () => { node.style.transform = ''; });
 
-				canvas.appendChild(node);
+					if (canUnlock && !maxed && !isExcluded) {
+						node.addEventListener('click', () => {
+							if (talentPointsAvailable() < upgradeCost) {
+								log('✗ Not enough talent points.', 'warn'); return;
+							}
+							player.talents[talent.id] = (player.talents[talent.id] || 0) + 1;
+							const newRank = player.talents[talent.id];
+							log('✨ ' + talent.name + ' → Rank ' + newRank + '! (' + talentPointsAvailable() + ' pts left)', 'craft');
+							if (talent.type === 'active' && newRank === 1) {
+								const emptySlot = player.hotbar.findIndex(s => s === null);
+								if (emptySlot !== -1) {
+									player.hotbar[emptySlot] = talent.id;
+									log('→ Auto-assigned to hotbar slot ' + (emptySlot + 1) + '.', 'sys');
+								}
+							}
+							saveGame(); renderTalentTree(); refreshHotbarUI();
+						});
+					}
+
+					row.appendChild(cell);
+				}
+				grid.appendChild(row);
 			}
+
+			// Draw SVG arrows between prereq-linked nodes for this path
+			requestAnimationFrame(() => {
+				const pathTalentIds = new Set(path.talents.map(t => t.id));
+				const links = [];
+				for (const [depId, prereqId] of Object.entries(TALENT_PREREQS)) {
+					if (pathTalentIds.has(depId) && pathTalentIds.has(prereqId) &&
+						nodeElMap[depId] && nodeElMap[prereqId]) {
+						links.push({ from: prereqId, to: depId });
+					}
+				}
+				if (links.length === 0) return;
+
+				const gridRect = grid.getBoundingClientRect();
+				const scrollTop = grid.scrollTop;
+
+				const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+				svg.style.cssText = 'position:absolute;inset:0;width:100%;height:' + grid.scrollHeight + 'px;pointer-events:none;overflow:visible;z-index:0';
+				grid.insertBefore(svg, grid.firstChild);
+
+				// arrowhead marker
+				const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+				const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+				marker.setAttribute('id', 'arr-' + path.id);
+				marker.setAttribute('markerWidth', '6'); marker.setAttribute('markerHeight', '6');
+				marker.setAttribute('refX', '5'); marker.setAttribute('refY', '3');
+				marker.setAttribute('orient', 'auto');
+				const arrowPoly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+				arrowPoly.setAttribute('points', '0 0, 6 3, 0 6');
+				arrowPoly.setAttribute('fill', path.color + 'aa');
+				marker.appendChild(arrowPoly);
+				defs.appendChild(marker);
+				svg.appendChild(defs);
+
+				for (const link of links) {
+					const fromEl = nodeElMap[link.from];
+					const toEl   = nodeElMap[link.to];
+					const fr = fromEl.getBoundingClientRect();
+					const tr = toEl.getBoundingClientRect();
+
+					// coords relative to grid top-left (accounting for scroll)
+					const fx = fr.left - gridRect.left + fr.width / 2;
+					const fy = fr.top  - gridRect.top  + scrollTop + fr.height;
+					const tx = tr.left - gridRect.left + tr.width / 2;
+					const ty = tr.top  - gridRect.top  + scrollTop;
+
+					// cubic bezier for a smooth arc
+					const cy = (fy + ty) / 2;
+					const pathD = 'M ' + fx + ' ' + fy + ' C ' + fx + ' ' + cy + ', ' + tx + ' ' + cy + ', ' + tx + ' ' + ty;
+
+					const prereqMet = talentPrereqMet(link.to) && talentRank(link.from) > 0;
+					const lineColor = prereqMet ? path.color + 'cc' : 'rgba(255,255,255,0.12)';
+
+					const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+					pathEl.setAttribute('d', pathD);
+					pathEl.setAttribute('fill', 'none');
+					pathEl.setAttribute('stroke', lineColor);
+					pathEl.setAttribute('stroke-width', '1.5');
+					pathEl.setAttribute('stroke-dasharray', prereqMet ? 'none' : '4 3');
+					pathEl.setAttribute('marker-end', 'url(#arr-' + path.id + ')');
+					svg.appendChild(pathEl);
+				}
+			});
 		}
 
-		// ── Build tabs + render first / active path ───────────────────
+		// ── Build tabs ────────────────────────────────────────────────
 		for (const path of TALENT_PATHS) {
 			const tab = document.createElement('div');
 			const isActive = path.id === _activePathTab;
-			tab.style.cssText = 'flex:1;padding:9px 4px;text-align:center;font-size:11px;font-weight:700;letter-spacing:0.08em;cursor:pointer;' +
+			tab.style.cssText = 'flex:1;padding:9px 4px;text-align:center;font-size:11px;font-weight:700;letter-spacing:0.07em;cursor:pointer;' +
 				'border-bottom:2px solid ' + (isActive ? path.color : 'transparent') + ';' +
-				'color:' + (isActive ? path.color : '#6b7280') + ';' +
+				'color:' + (isActive ? path.color : '#4b5563') + ';' +
 				'background:' + (isActive ? 'rgba(255,255,255,0.04)' : 'transparent') + ';' +
-				'transition:color 0.15s,border-color 0.15s';
-			tab.textContent = path.icon + ' ' + path.name;
-			tab.addEventListener('click', () => {
-				_activePathTab = path.id;
-				renderTalentTree();
-			});
+				'transition:color 0.12s,border-color 0.12s';
+			const pts = talentPathPointsSpent(path.id);
+			tab.innerHTML = path.icon + ' ' + path.name +
+				(pts > 0 ? ' <span style="font-size:9px;opacity:0.75;font-weight:600">[' + pts + ']</span>' : '');
+			tab.addEventListener('click', () => { _activePathTab = path.id; renderTalentTree(); });
 			tabBar.appendChild(tab);
 		}
 
 		const activePath = TALENT_PATHS.find(p => p.id === _activePathTab) || TALENT_PATHS[0];
-		renderConstellation(activePath);
+		renderTierGrid(activePath);
 	}
 
 	(function buildPlayer() {
@@ -4237,9 +4404,55 @@
 	};
 	const LEG_TINT = { iron: 0x8a92a1, steel: 0xb9c0cc, leather: 0x6b4a2c };
 	function legTint(name) { return name && name.includes('Steel') ? LEG_TINT.steel : name && name.includes('Iron') ? LEG_TINT.iron : LEG_TINT.leather; }
+	function applyWeaponImbue(lightColor, emissiveColor) {
+		// set emissive on all meshes in the weapon mount
+		player.parts.weaponMount.traverse(m => {
+			if (m.isMesh && m.material) {
+				m.material = m.material.clone();
+				m.material.emissive = new THREE.Color(emissiveColor);
+				m.material.emissiveIntensity = 0.9;
+			}
+		});
+		// add or recolor a point light on the weapon mount
+		if (!player._imbueLight) {
+			const light = new THREE.PointLight(lightColor, 1.6, 4.0);
+			light.position.set(0, -0.5, 0);
+			player.parts.weaponMount.add(light);
+			player._imbueLight = light;
+		} else {
+			player._imbueLight.color.setHex(lightColor);
+			player._imbueLight.intensity = 1.6;
+		}
+	}
+	function clearWeaponImbue() {
+		if (!player._imbueLight) return;
+		player.parts.weaponMount.remove(player._imbueLight);
+		player._imbueLight = null;
+		// reset emissive on weapon meshes
+		player.parts.weaponMount.traverse(m => {
+			if (m.isMesh && m.material) {
+				m.material.emissive = new THREE.Color(0x000000);
+				m.material.emissiveIntensity = 0;
+			}
+		});
+	}
+
 	function refreshEquipVisuals() {
+		// clearGroup removes the imbue light too — detach it first, re-add after
+		const savedImbueLight = player._imbueLight;
+		if (savedImbueLight) player.parts.weaponMount.remove(savedImbueLight);
 		clearGroup(player.parts.weaponMount);
 		if (player.equip.weapon) player.parts.weaponMount.add(buildWeaponMesh(player.equip.weapon));
+		// re-apply imbue visuals if still active
+		const activeImbue = player.imbueFire || player.imbueLightning || player.imbueIce || player.imbueEarth;
+		if (activeImbue && activeImbue.timer > 0) {
+			const lc = player.imbueFire ? 0xff5500 : player.imbueLightning ? 0xfde047 : player.imbueIce ? 0x7dd3fc : 0x92400e;
+			const ec = player.imbueFire ? 0xff3300 : player.imbueLightning ? 0xfbbf24 : player.imbueIce ? 0x38bdf8 : 0x78350f;
+			player._imbueLight = savedImbueLight || null;
+			applyWeaponImbue(lc, ec);
+		} else {
+			player._imbueLight = null;
+		}
 		clearGroup(player.parts.helmMount);
 		if (player.equip.helm) player.parts.helmMount.add(buildHelmMesh(player.equip.helm));
 		clearGroup(player.parts.shieldMount);
@@ -4382,26 +4595,22 @@
 // ------------------------------------------------------------------ combat helpers
 	function playerHit(c) {
 		let dmg = Math.max(1, playerAtk() + randInt(0, 2) - 1);
-		if (player.nextAttackFireBonus) {
-			dmg += player.nextAttackFireBonus;
-			floatText('🔥 +' + player.nextAttackFireBonus, headPos().add(new THREE.Vector3(-0.5, 0.4, 0)), '#fb923c', 0.9);
-			player.nextAttackFireBonus = 0;
+		if (player.imbueFire && player.imbueFire.timer > 0) {
+			dmg += player.imbueFire.bonusPerHit;
+			floatText('🔥 +' + player.imbueFire.bonusPerHit, headPos().add(new THREE.Vector3(-0.5, 0.4, 0)), '#fb923c', 0.9);
 		}
-		if (player.nextAttackLightningBonus) {
-			dmg += player.nextAttackLightningBonus;
-			floatText('⚡ +' + player.nextAttackLightningBonus, headPos().add(new THREE.Vector3(0, 0.4, 0)), '#facc15', 0.9);
-			player.nextAttackLightningBonus = 0;
+		if (player.imbueLightning && player.imbueLightning.timer > 0) {
+			dmg += player.imbueLightning.bonusPerHit;
+			floatText('⚡ +' + player.imbueLightning.bonusPerHit, headPos().add(new THREE.Vector3(0, 0.4, 0)), '#facc15', 0.9);
 		}
-		if (player.nextAttackIceBonus) {
-			dmg += player.nextAttackIceBonus;
-			floatText('❄️ +' + player.nextAttackIceBonus, headPos().add(new THREE.Vector3(0.5, 0.4, 0)), '#7dd3fc', 0.9);
-			player.nextAttackIceBonus = 0;
+		if (player.imbueIce && player.imbueIce.timer > 0) {
+			dmg += player.imbueIce.bonusPerHit;
+			floatText('❄️ +' + player.imbueIce.bonusPerHit, headPos().add(new THREE.Vector3(0.5, 0.4, 0)), '#7dd3fc', 0.9);
 		}
-		if (player.earthStoneFistBonus > 0) {
-			dmg += player.earthStoneFistBonus;
-			floatText('👊 +' + player.earthStoneFistBonus, headPos().add(new THREE.Vector3(0, 0.4, -0.5)), '#a3734c', 0.9);
-			player.earthStoneFistBonus = 0;
-			creatureTakeDamage(c, 0);  // trigger justHitByEarth flag for spores
+		if (player.imbueEarth && player.imbueEarth.timer > 0) {
+			dmg += player.imbueEarth.bonusPerHit;
+			floatText('👊 +' + player.imbueEarth.bonusPerHit, headPos().add(new THREE.Vector3(0, 0.4, -0.5)), '#a3734c', 0.9);
+			creatureTakeDamage(c, 0);
 			c.justHitByEarth = true;
 		}
 		// critical hit check
@@ -4423,7 +4632,13 @@
 			floatText('👻 Ethereal!', headPos(), '#e9d5ff', 0.8);
 			return;
 		}
-		const raw = c.def.dmg + randInt(0, 2);
+		let raw = c.def.dmg + randInt(0, 2);
+		// Frostborn Warlord ice imbue: +40% bonus ice damage per melee hit
+		if (c.name === 'Frostborn Warlord' && c._imbueTimer > 0) {
+			const iceBonusDmg = Math.round(c.def.dmg * 0.40);
+			raw += iceBonusDmg;
+			floatText('❄️ +' + iceBonusDmg, headPos().add(new THREE.Vector3(0.5, 0.3, 0)), '#7dd3fc', 0.85);
+		}
 		let dmg = Math.max(1, raw - playerDef());
 		// Fortitude: reduce incoming damage
 		const fortRank = talentRank('spirit_fortitude');
@@ -4473,7 +4688,7 @@
 		{
 			const thornsRank = talentRank('earth_thorns');
 			const livingMountainActive = player.earthLivingMountainTimer > 0;
-			const reflectPct = thornsRank > 0 ? (livingMountainActive ? 1.0 : [0, 0.10, 0.18, 0.27, 0.37, 0.50][thornsRank]) : 0;
+			const reflectPct = thornsRank > 0 ? (livingMountainActive ? 1.0 : [0, 0.05, 0.09, 0.13, 0.18, 0.24, 0.30, 0.38, 0.48][thornsRank]) : 0;
 			if (reflectPct > 0) {
 				const reflectDmg = Math.ceil(dmg * reflectPct);
 				creatureTakeDamage(c, reflectDmg);
@@ -4533,9 +4748,17 @@
 		if (player.dead) return;
 		player.dead = true;
 		player.action = null; player.moveTarget = null; player.harvesting = null;
+		// Cancel any pending casts
+		if (player.pyroblastCast || player.pyroblastMode || player.glacialBoltCast) {
+			player.pyroblastCast = null; player.pyroblastMode = false; player.glacialBoltCast = null; player.iceGlacialBoltMode = false;
+			if (ui.castBar) ui.castBar.classList.add('hidden');
+		}
 		hideProgress();
 		log('You died! You awaken back at the beach…', 'warn');
 		for (const c of creatures) if (c.state === 'combat') { c.state = 'wander'; c.hp = c.maxhp; setBar(c.bar, 1, c.hp, c.maxhp); }
+		// clear in-flight boss projectiles so they don't chase the player to spawn
+		for (const fb of bossIceLances) scene.remove(fb.mesh);
+		bossIceLances.length = 0;
 		setTimeout(() => {
 			player.group.position.set(0, terrainHeight(0, 4), 4);
 			player.hp = player.maxhp;
@@ -4616,16 +4839,13 @@
 			if (o) {
 				const it = o.userData.interact;
 				if (it.kind === 'creature' && it.creature.state !== 'dead') {
+					player.selectedTarget = it.creature;
 					// Fireball targeting mode
 					if (player.fireballMode) {
 						player.fireballMode = false;
 						const rank = talentRank('fire_fireball');
 						const dmg = Math.ceil(playerAtk() * ([0, 1.8, 2.8, 4.0, 5.5, 7.2][rank]));
-						const geo = new THREE.SphereGeometry(0.18, 8, 8);
-						const mat = new THREE.MeshBasicMaterial({ color: 0xff4400 });
-						const mesh = new THREE.Mesh(geo, mat);
-						const light = new THREE.PointLight(0xff4400, 1, 4);
-						mesh.add(light);
+						const mesh = makeFireballMesh(0.32, 0xff4400, 0xff8800, 1.8, 6);
 						const startPos = headPos();
 						const endPos = it.creature.group.position.clone().add(new THREE.Vector3(0, 1, 0));
 						mesh.position.copy(startPos);
@@ -4633,6 +4853,17 @@
 						player.fireballs.push({ mesh, target: it.creature, startPos, endPos, t: 0, damage: dmg });
 						log('🔮 Fireball launched at ' + it.creature.name + '!', 'craft');
 						if (typeof netCastSpell === 'function') netCastSpell('fireball', it.creature, 0xff4400, dmg);
+						return;
+					}
+					// Pyroblast targeting mode — begin cast
+					if (player.pyroblastMode) {
+						player.pyroblastMode = false;
+						const rank = talentRank('fire_pyroblast');
+						const dmg = Math.ceil(playerAtk() * ([0, 4.5, 7.0, 10.0, 14.0, 18.5][rank]));
+						const castDur = 4.5;
+						player.pyroblastCast = { timer: 0, duration: castDur, target: it.creature, damage: dmg };
+						if (ui.castBar) { ui.castBar.classList.remove('hidden'); ui.castBarLabel.textContent = '☄️ Pyroblast'; ui.castBarFill.style.width = '0%'; }
+						log('☄️ Casting Pyroblast on ' + it.creature.name + '…', 'craft');
 						return;
 					}
 					// Ice Lance targeting mode
@@ -4652,6 +4883,18 @@
 						player.iceLances.push({ mesh, target: it.creature, startPos, endPos, t: 0, damage: dmg });
 						log('🧊 Ice Lance launched at ' + it.creature.name + '!', 'craft');
 						if (typeof netCastSpell === 'function') netCastSpell('iceLance', it.creature, 0x7dd3fc, dmg);
+						return;
+					}
+					// Glacial bolt targeting mode
+					if (player.iceGlacialBoltMode) {
+						player.iceGlacialBoltMode = false;
+						const rank = talentRank('ice_glacial_bolt');
+						const dmg = Math.ceil(playerAtk() * ([0, 1.1, 1.9, 2.9, 4.1, 5.6][rank]));
+						const castDur = 3;
+						player.glacialBoltCast = { timer: 0, duration: castDur, target: it.creature, damage: dmg };
+						if (ui.castBar) { ui.castBar.classList.remove('hidden'); ui.castBarLabel.textContent = '❄️️ Glacial Bolt'; ui.castBarFill.style.width = '0%'; }
+						log('☄️ Casting Glacial Bolt on ' + it.creature.name + '…', 'craft');
+
 						return;
 					}
 					// Lightning Strike targeting mode
@@ -4708,10 +4951,7 @@
 						player.fireballMode = false;
 						const rank = talentRank('fire_fireball');
 						const dmg = Math.ceil(playerAtk() * ([0, 1.8, 2.8, 4.0, 5.5, 7.2][rank]));
-						const geo = new THREE.SphereGeometry(0.18, 8, 8);
-						const mat = new THREE.MeshBasicMaterial({ color: 0xff4400 });
-						const fmesh = new THREE.Mesh(geo, mat);
-						const fl = new THREE.PointLight(0xff4400, 1, 4); fmesh.add(fl);
+						const fmesh = makeFireballMesh(0.32, 0xff4400, 0xff8800, 1.8, 6);
 						fmesh.position.copy(headPos()); scene.add(fmesh);
 						const sid = (typeof netGetOtherPlayerSocketId === 'function') ? netGetOtherPlayerSocketId(entry) : null;
 						player.fireballs.push({ mesh: fmesh, target: null, pvpEntry: entry, pvpSid: sid, startPos: headPos(), endPos: targetPos, t: 0, damage: dmg });
@@ -4730,6 +4970,20 @@
 						const sid = (typeof netGetOtherPlayerSocketId === 'function') ? netGetOtherPlayerSocketId(entry) : null;
 						player.iceLances.push({ mesh: imesh, target: null, pvpEntry: entry, pvpSid: sid, startPos: headPos(), endPos: targetPos, t: 0, damage: dmg });
 						log('🧊 Ice Lance launched at ' + entry.username + '!', 'craft');
+						return;
+					}
+					if (player.iceGlacialBoltMode) {
+						player.iceGlacialBoltMode = false;
+						const rank = talentRank('ice_glacial_bolt');
+						const dmg = Math.ceil(playerAtk() * ([0, 1.1, 1.9, 2.9, 4.1, 5.6][rank]));
+						const geo = new THREE.CylinderGeometry(0.06, 0.18, 0.9, 6);
+						const mat = new THREE.MeshBasicMaterial({ color: 0x1959bf });
+						const imesh = new THREE.Mesh(geo, mat);
+						const il = new THREE.PointLight(0xaaeeff, 1.2, 4); imesh.add(il);
+						imesh.position.copy(headPos()); scene.add(imesh);
+						const sid = (typeof netGetOtherPlayerSocketId === 'function') ? netGetOtherPlayerSocketId(entry) : null;
+						player.iceGlacialBolts.push({ mesh: imesh, target: null, pvpEntry: entry, pvpSid: sid, startPos: headPos(), endPos: targetPos, t: 0, damage: dmg });
+						log('🧊 Glacial Bolt launched at ' + entry.username + '!', 'craft');
 						return;
 					}
 					if (player.lightningStrikeMode) {
@@ -4982,7 +5236,7 @@
 		hoverRay.setFromCamera(hoverPtr, camera);
 		const hits = hoverRay.intersectObjects(clickables, true);
 		let cur = CURSORS.walk;
-		const inSpellMode = player.fireballMode || player.iceLanceMode || player.lightningStrikeMode;
+		const inSpellMode = player.fireballMode || player.pyroblastMode || player.iceLanceMode || player.iceGlacialBoltMode || player.lightningStrikeMode;
 		if (hits.length) {
 			let o = hits[0].object;
 			while (o && !o.userData.interact) o = o.parent;
@@ -5603,7 +5857,10 @@
 
 		if (started) {
 			updatePlayer(dt);
-			for (const c of creatures) updateCreature(c, dt);
+			for (const c of creatures) {
+				updateCreature(c, dt);
+				if (c.name === 'Frostborn Warlord') updateFrostbornWarlord(c, dt);
+			}
 			netTick();
 		}
 
@@ -5671,6 +5928,7 @@
 		}
 
 		updateFireballs(dt);
+		updateBossIceLances(dt);
 		updateBuffAuras(dt);
 		updateStatusSprites();
 		updateFloaters(dt);
@@ -5734,6 +5992,211 @@
 		}
 	}
 
+	// ---- Frostborn Warlord boss spell AI ----
+	const bossIceLances = []; // { mesh, light, startPos, endPos, t, damage }
+	function updateFrostbornWarlord(c, dt) {
+		if (c.state === 'dead') return;
+
+		// Initialise boss-specific timers on first call
+		if (c._bossInit === undefined) {
+			c._bossInit       = true;
+			c._imbueCd        = 0;
+			c._imbueTimer     = 0;   // seconds remaining on ice imbue
+			c._healCd         = 20;  // don't heal immediately on aggro
+			c._lanceCd        = 4;   // first lance after 4s
+			c._meleeCd        = 2.0; // local melee timer
+			c._enrage50       = false;
+			c._enrage25       = false;
+			c._enrageTimer    = 0;
+			c._baseDmg        = c.def.dmg;
+		}
+
+		// Only act when in combat, player alive, and player is near the island (not teleported away)
+		if (player.dead) return;
+		const distToPlayer = c.group.position.distanceTo(player.group.position);
+		if (c.state !== 'combat' || distToPlayer > 60) return;
+
+		// Always face player when in combat
+		const dx = player.group.position.x - c.group.position.x;
+		const dz = player.group.position.z - c.group.position.z;
+		c.group.userData._angle = Math.atan2(dx, dz);
+
+		// ---- Enrage phases (permanent once triggered) ----
+		if (!c._enrage50 && c.hp <= c.maxhp * 0.5) {
+			c._enrage50 = true;
+			c._enrageTimer = 10;
+			c.def.dmg = Math.round(c._baseDmg * 1.25);
+			// turn body red
+			const g = c.group;
+			g.traverse(m => {
+				if (m.isMesh && m.material && m.material.color) {
+					m.material = m.material.clone();
+					m.material.emissive = new THREE.Color(0xcc0000);
+					m.material.emissiveIntensity = 0.7;
+				}
+			});
+			floatText('💢 ENRAGE!', c.group.position.clone().add(new THREE.Vector3(0, 8.0, 0)), '#ef4444', 1.4);
+			log('The Frostborn Warlord enrages at half health! (+25% damage)', 'dmgIn');
+			spawnSparkBurst(c.group.position.clone().add(new THREE.Vector3(0, 2, 0)), 0xff2200, 20, 2.5, 3.0);
+		}
+		if (!c._enrage25 && c.hp <= c.maxhp * 0.25) {
+			c._enrage25 = true;
+			c._enrageTimer = 10;
+			c.def.dmg = Math.round(c._baseDmg * 1.50);
+			// intensify red
+			const g = c.group;
+			g.traverse(m => {
+				if (m.isMesh && m.material && m.material.emissive) {
+					m.material.emissive = new THREE.Color(0xff0000);
+					m.material.emissiveIntensity = 1.4;
+				}
+			});
+			floatText('💢 BERSERK!', c.group.position.clone().add(new THREE.Vector3(0, 8.5, 0)), '#ff0000', 1.6);
+			log('The Frostborn Warlord BERSERKS at quarter health! (+50% total damage)', 'dmgIn');
+			spawnSparkBurst(c.group.position.clone().add(new THREE.Vector3(0, 2, 0)), 0xff0000, 28, 3.0, 3.5);
+		}
+
+		// ---- Ice imbue tick ----
+		if (c._imbueTimer > 0) {
+			c._imbueTimer -= dt;
+			if (c._imbueTimer <= 0) {
+				c._imbueTimer = 0;
+				// remove blue glow from sword
+				if (c.group.userData._swordGroup) {
+					c.group.userData._swordGroup.traverse(m => {
+						if (m.isMesh && m.material) {
+							m.material = m.material.clone();
+							m.material.emissive = new THREE.Color(0x000000);
+							m.material.emissiveIntensity = 0;
+						}
+					});
+				}
+				if (c._imbueLight) {
+					c.group.remove(c._imbueLight);
+					c._imbueLight = null;
+				}
+				log('The Frostborn Warlord\'s ice imbue fades.', 'sys');
+			}
+		}
+
+		// ---- Melee attack (local, every 2s when in range) ----
+		c._meleeCd = Math.max(0, c._meleeCd - dt);
+		if (c._meleeCd <= 0 && distToPlayer < 4.5) {
+			c._meleeCd = 2.0;
+			creatureHit(c);
+		}
+
+		// ---- Spell cooldown ticks ----
+		c._imbueCd = Math.max(0, c._imbueCd - dt);
+		c._healCd  = Math.max(0, c._healCd  - dt);
+		c._lanceCd = Math.max(0, c._lanceCd - dt);
+
+		// ---- Cast: Ice Imbue (every 30s, lasts 12s) ----
+		if (c._imbueCd <= 0 && c._imbueTimer <= 0) {
+			c._imbueCd   = 30;
+			c._imbueTimer = 12;
+			// glow sword blue
+			if (c.group.userData._swordGroup) {
+				c.group.userData._swordGroup.traverse(m => {
+					if (m.isMesh && m.material) {
+						m.material = m.material.clone();
+						m.material.emissive = new THREE.Color(0x00aaff);
+						m.material.emissiveIntensity = 1.2;
+					}
+				});
+			}
+			if (!c._imbueLight) {
+				const imbLight = new THREE.PointLight(0x00ccff, 2.0, 5.0);
+				imbLight.position.set(0.72, 1.5, 0.08);
+				c.group.add(imbLight);
+				c._imbueLight = imbLight;
+			} else {
+				c._imbueLight.color.setHex(0x00ccff);
+			}
+			floatText('❄️ Ice Imbue!', c.group.position.clone().add(new THREE.Vector3(0, 8.0, 0)), '#7dd3fc', 1.2);
+			log('The Frostborn Warlord imbues his blade with ice!', 'dmgIn');
+			spawnSparkBurst(c.group.position.clone().add(new THREE.Vector3(0, 1.5, 0)), 0x00ccff, 14, 1.8, 2.5);
+		}
+
+		// ---- Cast: Heal (every 45s, heals 18% max HP, not when above 80%) ----
+		if (c._healCd <= 0 && c.hp < c.maxhp * 0.80) {
+			c._healCd = 45;
+			const healAmt = Math.round(c.maxhp * 0.18);
+			c.hp = Math.min(c.maxhp, c.hp + healAmt);
+			setBar(c.bar, c.hp / c.maxhp, c.hp, c.maxhp);
+			floatText('❄️ +' + healAmt, c.group.position.clone().add(new THREE.Vector3(0, 7.0, 0)), '#7dd3fc', 1.1);
+			log('The Frostborn Warlord channels frost energy and heals himself!', 'dmgIn');
+			spawnSparkBurst(c.group.position.clone().add(new THREE.Vector3(0, 2, 0)), 0x00ccff, 16, 2.0, 2.0);
+		}
+
+		// ---- Cast: Ice Lance (every 10s) ----
+		if (c._lanceCd <= 0) {
+			c._lanceCd = 10;
+			const lanceDmg = Math.round(c._baseDmg * 0.55);
+			// spawn the ice lance projectile
+			const lanceMat = new THREE.MeshBasicMaterial({ color: 0x7dd3fc });
+			const lanceMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.8, 6), lanceMat);
+			const lanceLight = new THREE.PointLight(0x00ccff, 2.0, 4);
+			lanceMesh.add(lanceLight);
+			const startPos = c.group.position.clone().add(new THREE.Vector3(0, 4.5, 0));
+			const endPos   = player.group.position.clone().add(new THREE.Vector3(0, 1.0, 0));
+			lanceMesh.position.copy(startPos);
+			scene.add(lanceMesh);
+			bossIceLances.push({ mesh: lanceMesh, startPos, endPos, t: 0, damage: lanceDmg, source: c });
+			floatText('❄️', c.group.position.clone().add(new THREE.Vector3(0, 7.5, 0)), '#7dd3fc', 0.8);
+			log('The Frostborn Warlord hurls an ice lance!', 'dmgIn');
+		}
+	}
+
+	function updateBossIceLances(dt) {
+		// cull all lances if player is dead or far from boss island
+		if (player.dead || (bossIceLances.length > 0 && bossIceLances[0].source.group.position.distanceTo(player.group.position) > 60)) {
+			for (const fb of bossIceLances) scene.remove(fb.mesh);
+			bossIceLances.length = 0;
+			return;
+		}
+		for (let i = bossIceLances.length - 1; i >= 0; i--) {
+			const fb = bossIceLances[i];
+			fb.t += dt / 1.1;
+			if (fb.t >= 1) {
+				scene.remove(fb.mesh);
+				bossIceLances.splice(i, 1);
+				if (!player.dead) {
+					// ice lance is magical — only 30% of defense applies
+					let dmg = Math.max(1, fb.damage - Math.floor(playerDef() * 0.3));
+					const fortRank = talentRank('spirit_fortitude');
+					if (fortRank > 0) dmg = Math.max(1, Math.floor(dmg * (1 - [0,0.02,0.04,0.05,0.06,0.08][fortRank])));
+					if (player.consumableDmgReduceTimer > 0 && player.consumableDmgReduce) dmg = Math.max(1, Math.floor(dmg * (1 - player.consumableDmgReduce)));
+					if (player.aegisAbsorb > 0) {
+						const abs = Math.min(player.aegisAbsorb, dmg); player.aegisAbsorb -= abs; dmg -= abs;
+						if (player.aegisAbsorb <= 0) { player.aegisAbsorb = 0; player.aegisTimer = 0; log('🔮 Aegis shattered.', 'sys'); }
+					}
+					if (dmg > 0) {
+						if (player.spiritWalkTimer > 0) {
+							floatText('👻 Ethereal!', headPos(), '#e9d5ff', 0.8);
+						} else {
+							floatText('❄️ -' + dmg, headPos(), '#7dd3fc', 1.0);
+							log('The Frostborn Warlord\'s ice lance hits you for ' + dmg + '!', 'dmgIn');
+							player.hp -= dmg;
+							player.lastHurt = elapsed;
+							setBar(player.bar, player.hp / player.maxhp, player.hp, player.maxhp);
+							refreshHpUI();
+							if (player.hp <= 0) playerDeath();
+							else grantXp('def', Math.max(1, dmg * 0.5 * challengeFactor(65)));
+						}
+					}
+				}
+				continue;
+			}
+			const p = fb.startPos.clone().lerp(fb.endPos, fb.t);
+			p.y += Math.sin(fb.t * Math.PI) * 1.8;
+			fb.mesh.position.copy(p);
+			// orient lance toward travel direction
+			const dir = fb.endPos.clone().sub(fb.startPos).normalize();
+			fb.mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+		}
+	}
+
 	// ---- Fireball projectile update ----
 	const dragonFireballs = []; // { mesh, light, startPos, endPos, t, damage }
 	function spawnDragonFireball(dragon, damage, overrideTarget) {
@@ -5766,6 +6229,54 @@
 		if (!overrideTarget) log(msg, 'dmgIn');
 	}
 	function updateFireballs(dt) {
+		// glacial bolts
+		for (let i = player.iceGlacialBolts.length - 1; i >= 0; i--) {
+			const fb = player.iceGlacialBolts[i];
+			fb.t += dt / 0.7; // faster than fireball
+			if (fb.t >= 1) {
+				scene.remove(fb.mesh);
+				player.iceGlacialBolts.splice(i, 1);
+				if (fb.pvpSid) {
+					// PvP ice lance
+					let lcDmg = fb.damage;
+					if (Math.random() < playerCritChance('ice')) lcDmg = Math.floor(lcDmg * 1.75);
+					netAttackPlayer(fb.pvpSid, lcDmg);
+					floatText('🧊 ' + lcDmg, fb.endPos, '#7dd3fc', 1.1);
+					log('🧊 Glacial bolt hits ' + fb.pvpEntry.username + ' for ' + lcDmg + '!', 'dmgOut');
+				} else if (fb.target && fb.target.state !== 'dead') {
+					let lcDmg = fb.damage;
+					let lcCrit = false;
+					if (Math.random() < playerCritChance('ice')) { lcDmg = Math.floor(lcDmg * 1.75); lcCrit = true; }
+					creatureTakeDamage(fb.target, lcDmg);
+					if (lcCrit) {
+						floatText('CRIT! ❄️ ' + lcDmg, fb.target.group.position.clone().add(new THREE.Vector3(0, 2.2, 0)), '#38bdf8', 1.3);
+						log('CRITICAL! ❄️ Glacial Bolt critically hit ' + fb.target.name + ' for ' + lcDmg + '!', 'dmgOut');
+					}
+					spawnSparkBurst(fb.target.group.position.clone(), 0xaaddff, 12, 2.0, 2.5);
+					const existingFreeze = player.iceFreeze.find(f => f.creature === fb.target);
+					if (existingFreeze) { existingFreeze.turnsLeft = Math.max(existingFreeze.turnsLeft, 3); }
+					else { player.iceFreeze.push({ creature: fb.target, turnsLeft: 3 }); }
+					applyPassiveOnHit(fb.target);
+					const pfRadius = [0, 5, 6, 6, 7, 7][pfRank];
+					const pfDur = [0, 8, 10, 10, 12, 15][pfRank];
+					const pfDps = [0, 0, 0, 5, 9, 14][pfRank];
+					const patchGeo = new THREE.CylinderGeometry(pfRadius, pfRadius, 0.05, 16);
+					const patchMat = new THREE.MeshBasicMaterial({ color: 0xbae6fd, transparent: true, opacity: 0.35 });
+					const patchMesh = new THREE.Mesh(patchGeo, patchMat);
+					patchMesh.position.copy(f.creature.group.position);
+					scene.add(patchMesh);
+					player.permafrostPatches.push({ mesh: patchMesh, timer: pfDur, radius: pfRadius, dps: pfDps });
+				}
+				continue;
+			}
+			// flat arc (lances fly straight with slight upward arc)
+			const p = fb.startPos.clone().lerp(fb.endPos, fb.t);
+			p.y += Math.sin(fb.t * Math.PI) * 1.2;
+			fb.mesh.position.copy(p);
+			// rotate lance to face direction of travel
+			const dir = fb.endPos.clone().sub(fb.startPos).normalize();
+			fb.mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+		}
 		// ice lances
 		for (let i = player.iceLances.length - 1; i >= 0; i--) {
 			const fb = player.iceLances[i];
@@ -5815,8 +6326,12 @@
 			if (fb.t >= 1) {
 				scene.remove(fb.mesh);
 				player.fireballs.splice(i, 1);
+				// Impact burst
+				const impactPos = fb.target ? fb.target.group.position.clone().add(new THREE.Vector3(0, 1, 0)) : fb.endPos.clone();
+				spawnElementBurst(impactPos, 'fire', 28, 3.0, 3.5);
+				spawnSparkBurst(impactPos, 0xff6600, 16, 2.5, 2.5);
+				spawnGroundRing(impactPos, 0xff4400, 0.3, 2.0, 0.7, 0.15);
 				if (fb.pvpSid) {
-					// PvP fireball
 					let fbDmg = fb.damage;
 					if (Math.random() < playerCritChance('fire')) fbDmg = Math.floor(fbDmg * 1.75);
 					netAttackPlayer(fb.pvpSid, fbDmg);
@@ -5840,6 +6355,106 @@
 			const p = fb.startPos.clone().lerp(fb.endPos, fb.t);
 			p.y += Math.sin(fb.t * Math.PI) * 2.5;
 			fb.mesh.position.copy(p);
+			// Pulsing glow
+			const pulse = 0.7 + 0.3 * Math.sin(elapsed * 18);
+			if (fb.mesh.userData._fireLight) fb.mesh.userData._fireLight.intensity = 1.8 * pulse;
+			if (fb.mesh.userData._shellMat) fb.mesh.userData._shellMat.opacity = 0.25 + 0.15 * pulse;
+			// Fire trail sparks every ~80ms
+			if (!fb._trailTimer) fb._trailTimer = 0;
+			fb._trailTimer += dt;
+			if (fb._trailTimer > 0.08) {
+				fb._trailTimer = 0;
+				spawnSparkBurst(p.clone(), 0xff6600, 4, 1.0, 1.2);
+			}
+		}
+		// pyroblast cast tick
+		if (player.pyroblastCast) {
+			const pc = player.pyroblastCast;
+			pc.timer += dt;
+			const pct = Math.min(pc.timer / pc.duration, 1);
+			if (ui.castBarFill) ui.castBarFill.style.width = (pct * 100).toFixed(1) + '%';
+			if (pc.timer >= pc.duration) {
+				// Cast complete — launch projectile
+				if (ui.castBar) ui.castBar.classList.add('hidden');
+				const mesh = makeFireballMesh(0.62, 0xff3300, 0xff7700, 4.0, 10);
+				const startPos = headPos();
+				const endPos = pc.target ? pc.target.group.position.clone().add(new THREE.Vector3(0, 1, 0)) : startPos.clone().add(new THREE.Vector3(0, 0, -5));
+				mesh.position.copy(startPos);
+				scene.add(mesh);
+				player.pyroblasts.push({ mesh, target: pc.target, startPos, endPos, t: 0, damage: pc.damage });
+				log('☄️ Pyroblast fired!', 'craft');
+				spawnElementBurst(startPos, 'fire', 20, 2.5, 3.0);
+				player.pyroblastCast = null;
+			}
+		}
+
+		if (player.glacialBoltCast) {
+			const pc = player.glacialBoltCast;
+			pc.timer += dt;
+			const pct = Math.min(pc.timer / pc.duration, 1);
+			if (ui.castBarFill) ui.castBarFill.style.width = (pct * 100).toFixed(1) + '%';
+			if (pc.timer >= pc.duration) {
+				// Cast complete — launch projectile
+				if (ui.castBar) ui.castBar.classList.add('hidden');
+				const geo = new THREE.CylinderGeometry(0.09, 0.27, 1.35, 6);
+				const mat = new THREE.MeshBasicMaterial({ color: 0x1959bf });
+				const mesh = new THREE.Mesh(geo, mat);
+				const light = new THREE.PointLight(0xaaeeff, 1.2, 5);
+				mesh.add(light);
+				const startPos = headPos();
+				const endPos = pc.target ? pc.target.group.position.clone().add(new THREE.Vector3(0, 1, 0)) : startPos.clone().add(new THREE.Vector3(0, 0, -5));
+				mesh.position.copy(startPos);
+				scene.add(mesh);
+				player.iceGlacialBolts.push({ mesh, target: pc.target, startPos, endPos, t: 0, damage: pc.damage });
+
+				log('☄️ Glacial Blast fired!', 'craft');
+				spawnElementBurst(startPos, 'ice', 20, 2.5, 3.0);
+				player.glacialBoltCast = null;
+			}
+		}
+		// pyroblast projectiles
+		for (let i = player.pyroblasts.length - 1; i >= 0; i--) {
+			const pb = player.pyroblasts[i];
+			pb.t += dt / 1.8;
+			if (pb.t >= 1) {
+				scene.remove(pb.mesh);
+				player.pyroblasts.splice(i, 1);
+				const impactPos = pb.target ? pb.target.group.position.clone().add(new THREE.Vector3(0, 1, 0)) : pb.endPos.clone();
+				spawnElementBurst(impactPos, 'fire', 55, 4.0, 5.0);
+				spawnSparkBurst(impactPos, 0xff4400, 30, 3.5, 4.0);
+				spawnGroundRing(impactPos, 0xff2200, 0.4, 4.0, 1.0, 0.2);
+				spawnGroundRing(impactPos, 0xff8800, 0.3, 2.5, 0.7, 0.15);
+				if (typeof screenShake === 'function') screenShake(0.25, 0.35);
+				if (pb.target && pb.target.state !== 'dead') {
+					let dmg = pb.damage;
+					let crit = false;
+					if (Math.random() < playerCritChance('fire')) { dmg = Math.floor(dmg * 1.75); crit = true; }
+					creatureTakeDamage(pb.target, dmg);
+					if (crit) {
+						floatText('CRIT! ☄️ ' + dmg, pb.target.group.position.clone().add(new THREE.Vector3(0, 2.5, 0)), '#f97316', 1.5);
+						log('CRITICAL! ☄️ Pyroblast critically blasted ' + pb.target.name + ' for ' + dmg + '!', 'dmgOut');
+					} else {
+						floatText('☄️ ' + dmg, pb.target.group.position.clone().add(new THREE.Vector3(0, 2.5, 0)), '#ff6b35', 1.2);
+						log('☄️ Pyroblast hit ' + pb.target.name + ' for ' + dmg + '!', 'dmgOut');
+					}
+					applyPassiveOnHit(pb.target);
+				}
+				continue;
+			}
+			const p = pb.startPos.clone().lerp(pb.endPos, pb.t);
+			p.y += Math.sin(pb.t * Math.PI) * 3.5;
+			pb.mesh.position.copy(p);
+			// Intense pulsing glow
+			const pulse = 0.6 + 0.4 * Math.sin(elapsed * 14);
+			if (pb.mesh.userData._fireLight) pb.mesh.userData._fireLight.intensity = 4.0 * pulse;
+			if (pb.mesh.userData._shellMat) pb.mesh.userData._shellMat.opacity = 0.3 + 0.2 * pulse;
+			// Dense trail
+			if (!pb._trailTimer) pb._trailTimer = 0;
+			pb._trailTimer += dt;
+			if (pb._trailTimer > 0.05) {
+				pb._trailTimer = 0;
+				spawnSparkBurst(p.clone(), 0xff4400, 6, 1.5, 1.8);
+			}
 		}
 		// dragon fireballs
 		for (let i = dragonFireballs.length - 1; i >= 0; i--) {
@@ -5950,9 +6565,10 @@
 		if (player.flameWallTimer > 0) playerIcons.push('🔥');
 		if (player.hotTimer > 0) playerIcons.push('💚');
 		if (player.staticAuraTimer > 0) playerIcons.push('🌩️');
-		if (player.nextAttackFireBonus > 0) playerIcons.push('🔸');
-		if (player.nextAttackLightningBonus > 0) playerIcons.push('⚡');
-		if (player.nextAttackIceBonus > 0) playerIcons.push('❄️');
+		if (player.imbueFire && player.imbueFire.timer > 0) playerIcons.push('🔥');
+		if (player.imbueLightning && player.imbueLightning.timer > 0) playerIcons.push('⚡');
+		if (player.imbueIce && player.imbueIce.timer > 0) playerIcons.push('❄️');
+		if (player.imbueEarth && player.imbueEarth.timer > 0) playerIcons.push('🪨');
 		if (talentRank('spirit_passive') > 0) playerIcons.push('🌿');
 		const playerSprite = getOrCreateStatusSprite(player, player._statusYOff || 4.2);
 		if (playerIcons.length > 0) {

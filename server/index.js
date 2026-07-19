@@ -538,6 +538,7 @@ io.on('connection', (socket) => {
         lightning_overload:5, lightning_ball:5,
         ice_active:8, ice_passive:8, ice_shield:8, ice_brittle:5,
         ice_shatter:5, ice_lance:5, ice_blizzard:5, ice_frost_nova:5,
+        ice_glacial_bolt: 5,
         ice_glacial_armor:5, ice_cold_snap:5, ice_permafrost:5,
         spirit_active:8, spirit_passive:8, spirit_hot:8, spirit_siphon:5,
         spirit_fortitude:5, spirit_healing_surge:5, spirit_soul_leech:5,

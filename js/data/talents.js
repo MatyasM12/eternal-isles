@@ -12,7 +12,7 @@ const TALENT_TIERS = {
 	fire_active: 1, fire_passive: 1,
 	fire_backdraft: 2, fire_wildfire: 2, fire_pyroclasm: 2, fire_crit: 2,
 	fire_fireball: 2, fire_cremation: 2,
-	fire_inferno: 3, fire_flame_wall: 3, fire_magma_shell: 3, fire_phoenix_mark: 3,
+	fire_inferno: 3, fire_flame_wall: 3, fire_magma_shell: 3, fire_phoenix_mark: 3, fire_pyroblast: 3,
 	fire_phoenix_ascendant: 4,
 
 	// Lightning
@@ -26,8 +26,8 @@ const TALENT_TIERS = {
 	// Ice
 	ice_active: 1, ice_passive: 1,
 	ice_shield: 2, ice_brittle: 2, ice_cold_snap: 2, ice_crit: 2,
-	ice_shatter: 2, ice_permafrost: 2,
-	ice_lance: 3, ice_blizzard: 3, ice_frost_nova: 3, ice_glacial_armor: 3,
+	ice_shatter: 2, ice_permafrost: 2, ice_lance: 2,
+	ice_glacial_bolt: 3, ice_blizzard: 3, ice_frost_nova: 3, ice_glacial_armor: 3,
 	ice_glacial_dominion: 4,
 
 	// Spirit
@@ -62,14 +62,14 @@ const TALENT_PATHS = [
 			{ id: 'fire_active', name: 'Flame Strike', type: 'active', icon: '🔥', maxRank: 8,
 				cooldowns: [0, 14, 13, 12, 11, 10, 9, 8, 7],
 				rankDescs: ['',
-					'Next attack +12 fire damage.',
-					'Next attack +24 fire damage.',
-					'Next attack +42 fire damage.',
-					'Next attack +63 fire damage — weapon glows white-hot.',
-					'Next attack +90 fire damage — a column of fire erupts.',
-					'Next attack +123 fire damage — the ground scorches.',
-					'Next attack +162 fire damage — incandescent inferno.',
-					'Next attack +210 fire damage — LEGENDARY: the sky itself ignites!'] },
+					'Imbue weapon with fire for 10s — +fire damage on every hit.',
+					'Imbue weapon with fire for 11s — +fire damage on every hit. Weapon glows orange.',
+					'Imbue weapon with fire for 12s — greater fire damage per hit.',
+					'Imbue weapon with fire for 13s — the blade blazes white-hot.',
+					'Imbue weapon with fire for 14s — a column of fire erupts on cast.',
+					'Imbue weapon with fire for 15s — the ground scorches underfoot.',
+					'Imbue weapon with fire for 17s — incandescent inferno on each strike.',
+					'Imbue weapon with fire for 20s — LEGENDARY: the sky itself ignites on every blow!'] },
 			{ id: 'fire_passive', name: 'Ember Touch', type: 'passive', icon: '✨', maxRank: 8,
 				rankDescs: ['',
 					'20% chance to Burn (4 dmg/s for 4s).',
@@ -160,6 +160,14 @@ const TALENT_PATHS = [
 					'Heal 70 HP at 25% HP threshold.',
 					'Heal 100 HP at 25% HP threshold.',
 					'Heal 140 HP at 30% HP threshold — the phoenix rises!'] },
+			{ id: 'fire_pyroblast', name: 'Pyroblast', type: 'active', icon: '☄️', maxRank: 5,
+				cooldowns: [0, 30, 27, 24, 21, 18],
+				rankDescs: ['',
+					'Channel for 4.5s, then unleash a colossal fireball — deals 140 fire damage to your target.',
+					'Pyroblast deals 240 fire damage.',
+					'Pyroblast deals 360 fire damage — the sky burns.',
+					'Pyroblast deals 520 fire damage — annihilation.',
+					'Pyroblast deals 710 fire damage — LEGENDARY: you unmake them with fire!'] },
 
 			// ──── Tier 4 — Capstone ───────────────────────────────────────────────
 			{ id: 'fire_phoenix_ascendant', name: 'Phoenix Ascendant', type: 'active', icon: '🔱', maxRank: 3,
@@ -179,14 +187,14 @@ const TALENT_PATHS = [
 			{ id: 'lightning_active', name: 'Static Charge', type: 'active', icon: '⚡', maxRank: 8,
 				cooldowns: [0, 14, 13, 12, 11, 10, 9, 8, 7],
 				rankDescs: ['',
-					'Next attack +10 lightning damage.',
-					'Next attack +20 lightning damage.',
-					'Next attack +34 lightning damage.',
-					'Next attack +52 lightning damage — thunder booms.',
-					'Next attack +74 lightning damage — lightning arc leaps.',
-					'Next attack +100 lightning damage — storm answers your call.',
-					'Next attack +132 lightning damage — sky-shattering bolt.',
-					'Next attack +170 lightning damage — LEGENDARY: a storm god strikes through you!'] },
+					'Imbue weapon with lightning for 10s — +lightning damage on every hit.',
+					'Imbue weapon with lightning for 11s — +lightning damage on every hit. Arcs crackle.',
+					'Imbue weapon with lightning for 12s — greater lightning damage per hit.',
+					'Imbue weapon with lightning for 13s — thunder booms on cast.',
+					'Imbue weapon with lightning for 14s — lightning arcs leap on each strike.',
+					'Imbue weapon with lightning for 15s — the storm answers your call.',
+					'Imbue weapon with lightning for 17s — sky-shattering bolts with every blow.',
+					'Imbue weapon with lightning for 20s — LEGENDARY: a storm god strikes through you!'] },
 			{ id: 'lightning_passive', name: 'Shock', type: 'passive', icon: '💫', maxRank: 8,
 				rankDescs: ['',
 					'1% chance on hit: +6 bonus dmg, stun 1 cycle.',
@@ -298,14 +306,14 @@ const TALENT_PATHS = [
 			{ id: 'ice_active', name: 'Frost Edge', type: 'active', icon: '❄️', maxRank: 8,
 				cooldowns: [0, 14, 13, 12, 11, 10, 9, 8, 7],
 				rankDescs: ['',
-					'Next attack +10 ice damage.',
-					'Next attack +20 ice damage.',
-					'Next attack +34 ice damage.',
-					'Next attack +52 ice damage — weapon radiates cold.',
-					'Next attack +74 ice damage — frost shards explode.',
-					'Next attack +100 ice damage — glacial devastation.',
-					'Next attack +132 ice damage — absolute zero strike.',
-					'Next attack +170 ice damage — LEGENDARY: an ice age in a single blow!'] },
+					'Imbue weapon with frost for 10s — +ice damage on every hit.',
+					'Imbue weapon with frost for 11s — +ice damage on every hit. Blade radiates cold.',
+					'Imbue weapon with frost for 12s — greater ice damage per hit.',
+					'Imbue weapon with frost for 13s — weapon radiates biting cold.',
+					'Imbue weapon with frost for 14s — frost shards explode on each strike.',
+					'Imbue weapon with frost for 15s — glacial devastation with every blow.',
+					'Imbue weapon with frost for 17s — absolute zero courses through the blade.',
+					'Imbue weapon with frost for 20s — LEGENDARY: an ice age in every strike!'] },
 			{ id: 'ice_passive', name: 'Chill', type: 'passive', icon: '🌨️', maxRank: 8,
 				rankDescs: ['',
 					'1% chance on hit: Freeze for 1 turn.',
@@ -365,8 +373,6 @@ const TALENT_PATHS = [
 					'+11% critical strike chance for ice attacks and spells.',
 					'+15% critical strike chance for ice attacks and spells.',
 					'+20% critical strike chance for ice attacks and spells — LEGENDARY: ice pierces any defence!'] },
-
-			// ──── Tier 3 ─────────────────────────────────────────────────────────
 			{ id: 'ice_lance', name: 'Ice Lance', type: 'active', icon: '🧊', maxRank: 5,
 				cooldowns: [0, 18, 16, 14, 12, 10],
 				rankDescs: ['',
@@ -375,6 +381,15 @@ const TALENT_PATHS = [
 					'Ice Lance deals 70 ice damage.',
 					'Ice Lance deals 100 ice damage.',
 					'Ice Lance deals 140 ice damage — LEGENDARY: absolute zero on impact!'] },
+			// ──── Tier 3 ─────────────────────────────────────────────────────────
+			{ id: 'ice_glacial_bolt', name: 'Glacial Bolt', type: 'active', icon: '💎', maxRank: 5,
+				cooldowns: [0, 25, 23, 21, 16, 12],
+				rankDescs: ['',
+					'Channel for 3s and hurl a massive glacial bolt at a creature for 50 ice damage, leaving an ice path at target area. Click a creature to aim.',
+					'Glacial Bolt deals 88 ice damage.',
+					'Glacial Bolt deals 140 ice damage.',
+					'Glacial Bolt deals 190 ice damage.',
+					'Glacial Bolt deals 230 ice damage — LEGENDARY: absolute zero on impact!'] },
 			{ id: 'ice_blizzard', name: 'Blizzard', type: 'active', icon: '🌨️', maxRank: 5,
 				cooldowns: [0, 48, 42, 36, 30, 24],
 				exclusive: true,
@@ -534,14 +549,14 @@ const TALENT_PATHS = [
 			{ id: 'earth_stone_fist', name: 'Stone Fist', type: 'active', icon: '👊', maxRank: 8,
 				cooldowns: [0, 12, 11, 10, 9, 8, 7, 6, 5],
 				rankDescs: ['',
-					'Your next attack deals +14 earth damage and knocks back the target 1 unit.',
-					'Next attack +28 earth damage, knockback 1.5 units.',
-					'Next attack +46 earth damage, knockback 2 units.',
-					'Next attack +68 earth damage, knockback 2.5 units — the ground quakes.',
-					'Next attack +96 earth damage, knockback 3 units — stone splits their armor.',
-					'Next attack +130 earth damage, knockback 3 units, 15% stun 1 cycle.',
-					'Next attack +170 earth damage, 25% stun 1 cycle — rock crushes all.',
-					'Next attack +220 earth damage, 35% stun 2 cycles — LEGENDARY: one blow ends worlds!'] },
+					'Imbue weapon with stone for 10s — +earth damage on every hit.',
+					'Imbue weapon with stone for 11s — +earth damage on every hit. Weapon feels heavy as rock.',
+					'Imbue weapon with stone for 12s — greater earth damage per hit.',
+					'Imbue weapon with stone for 13s — the ground quakes underfoot.',
+					'Imbue weapon with stone for 14s — stone cracks their armor on each strike.',
+					'Imbue weapon with stone for 15s — rocky shards erupt with every blow.',
+					'Imbue weapon with stone for 17s — the earth itself answers each strike.',
+					'Imbue weapon with stone for 20s — LEGENDARY: one imbued blow reshapes the world!'] },
 			{ id: 'earth_thorns', name: 'Thorns', type: 'passive', icon: '🌿', maxRank: 8,
 				rankDescs: ['',
 					'Reflect 5% of melee damage taken back to the attacker.',
@@ -648,103 +663,53 @@ const TALENT_PATHS = [
 
 // Prerequisite chain: talent N requires rank >= TALENT_PREREQ_RANK[N] in TALENT_PREREQS[N].
 const TALENT_PREREQS = {
-	// ── Fire ──
-	fire_passive:            'fire_active',
-	fire_backdraft:          'fire_passive',
-	fire_wildfire:           'fire_backdraft',
-	fire_cremation:          'fire_passive',
-	fire_pyroclasm:          'fire_backdraft',
-	fire_crit:               'fire_passive',
-	fire_fireball:           'fire_cremation',
-	fire_inferno:            'fire_fireball',
-	fire_flame_wall:         'fire_fireball',
-	fire_magma_shell:        'fire_fireball',
-	fire_phoenix_mark:       'fire_fireball',
-	fire_phoenix_ascendant:  'fire_inferno',      // capstone via offense line
+	// ── Fire — only burn-mechanic chains ──
+	// Backdraft/Wildfire/Cremation/Pyroclasm all modify the Burn status from Ember Touch
+	fire_backdraft:          'fire_passive',   // extends burn ticks — needs Ember Touch
+	fire_wildfire:           'fire_passive',   // spreads burn — needs Ember Touch
+	fire_cremation:          'fire_passive',   // burning enemies explode — needs Ember Touch
+	fire_pyroclasm:          'fire_passive',   // burn ticks crit — needs Ember Touch
 
-	// ── Lightning ──
-	lightning_passive:       'lightning_active',
-	lightning_conductor:     'lightning_passive',
-	lightning_aftershock:    'lightning_conductor',
-	lightning_static_aura:   'lightning_conductor',
-	lightning_overload:      'lightning_conductor',
-	lightning_crit:          'lightning_passive',
-	lightning_strike:        'lightning_aftershock',
-	lightning_storm:         'lightning_strike',
-	lightning_chain:         'lightning_strike',
-	lightning_discharge:     'lightning_chain',
-	lightning_ball:          'lightning_static_aura',
-	lightning_storm_sovereign: 'lightning_storm', // capstone via storm line
+	// ── Lightning — shock/stun mechanic chains ──
+	// Conductor/Aftershock/Overload all modify Shock status from the passive
+	lightning_conductor:     'lightning_passive',  // buffs shocked enemies — needs Shock
+	lightning_aftershock:    'lightning_passive',  // fires when stun expires — needs Shock
+	lightning_overload:      'lightning_passive',  // shocked-enemy burst — needs Shock
 
-	// ── Ice ──
-	ice_passive:             'ice_active',
-	ice_shield:              'ice_passive',
-	ice_brittle:             'ice_shield',
-	ice_cold_snap:           'ice_passive',
-	ice_shatter:             'ice_brittle',
-	ice_permafrost:          'ice_brittle',
-	ice_crit:                'ice_passive',
-	ice_lance:               'ice_shatter',
-	ice_blizzard:            'ice_lance',
-	ice_frost_nova:          'ice_lance',
-	ice_glacial_armor:       'ice_frost_nova',
-	ice_glacial_dominion:    'ice_blizzard',      // capstone via blizzard line
+	// ── Ice — freeze mechanic chains ──
+	// Brittle/Cold Snap/Shatter/Permafrost all modify Freeze status from Chill passive
+	ice_brittle:             'ice_passive',    // frozen enemies take more damage — needs Chill
+	ice_cold_snap:           'ice_passive',    // every 3rd attack chills/freezes — needs Chill
+	ice_shatter:             'ice_brittle',    // shatters frozen enemies — works better with Brittle
+	ice_permafrost:          'ice_passive',    // frozen enemies leave patches — needs Chill
 
-	// ── Spirit ──
-	spirit_passive:          'spirit_active',
-	spirit_hot:              'spirit_passive',
-	spirit_siphon:           'spirit_hot',
-	spirit_fortitude:        'spirit_passive',
-	spirit_resurrection_mark:'spirit_hot',
-	spirit_crit:             'spirit_passive',
-	spirit_healing_surge:    'spirit_siphon',
-	spirit_soul_leech:       'spirit_healing_surge',
-	spirit_spirit_walk:      'spirit_soul_leech',
-	spirit_aegis:            'spirit_fortitude',
-	spirit_undying_will:     'spirit_spirit_walk', // capstone via leech line (alt: aegis)
+	// ── Spirit — Mend auto-cast chain ──
+	spirit_resurrection_mark:'spirit_active',  // auto-casts Mend — needs Mend to be levelled
 
-	// ── Earth ──
-	earth_thorns:            'earth_stone_fist',
-	earth_entangle:          'earth_stone_fist',
-	earth_stone_skin:        'earth_thorns',
-	earth_seismic_slam:      'earth_stone_fist',
-	earth_poison_spores:     'earth_thorns',
-	earth_overgrowth:        'earth_entangle',
-	earth_tremor:            'earth_seismic_slam',
-	earth_petrify:           'earth_entangle',
-	earth_natures_wrath:     'earth_petrify',
-	earth_earthen_wall:      'earth_stone_skin',
-	earth_crystal_spikes:    'earth_seismic_slam',
-	earth_living_mountain:   'earth_tremor',      // capstone via seismic line
+	// ── Earth — CC mechanic chains ──
+	earth_tremor:            'earth_seismic_slam',  // aftershock from Seismic Slam — needs it
+	earth_overgrowth:        'earth_entangle',      // bonus root duration from Entangle — needs it
+	earth_natures_wrath:     'earth_petrify',       // buffs rooted/petrified enemies — needs Petrify
+	earth_living_mountain:   'earth_seismic_slam',  // capstone references Seismic Slam
 };
 
 // Minimum rank required in the prerequisite talent before this talent unlocks.
 const TALENT_PREREQ_RANK = {
-	// fire
+	// fire — burn chain requires Ember Touch rank 2 (burn already procs decently)
 	fire_backdraft: 2, fire_wildfire: 2, fire_cremation: 2, fire_pyroclasm: 2,
-	fire_fireball: 3, fire_inferno: 3, fire_flame_wall: 3, fire_magma_shell: 3, fire_phoenix_mark: 3,
-	fire_phoenix_ascendant: 3,
 
-	// lightning
-	lightning_conductor: 2, lightning_aftershock: 2, lightning_static_aura: 2, lightning_overload: 2,
-	lightning_strike: 3, lightning_storm: 3, lightning_chain: 3,
-	lightning_discharge: 3, lightning_ball: 3,
-	lightning_storm_sovereign: 3,
+	// lightning — shock chain requires Shock rank 2
+	lightning_conductor: 2, lightning_aftershock: 2, lightning_overload: 2,
 
-	// ice
-	ice_shield: 2, ice_brittle: 2, ice_shatter: 2, ice_permafrost: 2, ice_cold_snap: 2,
-	ice_lance: 3, ice_blizzard: 3, ice_frost_nova: 3, ice_glacial_armor: 3,
-	ice_glacial_dominion: 3,
+	// ice — freeze chain requires Chill rank 2; Shatter requires Brittle rank 2
+	ice_brittle: 2, ice_cold_snap: 2, ice_permafrost: 2,
+	ice_shatter: 2,
 
-	// spirit
-	spirit_hot: 2, spirit_siphon: 2, spirit_fortitude: 2, spirit_resurrection_mark: 2,
-	spirit_healing_surge: 3, spirit_soul_leech: 3, spirit_spirit_walk: 3, spirit_aegis: 3,
-	spirit_undying_will: 3,
+	// spirit — auto-mend requires Mend rank 2
+	spirit_resurrection_mark: 2,
 
-	// earth
-	earth_thorns: 2, earth_entangle: 2, earth_stone_skin: 2, earth_seismic_slam: 2, earth_poison_spores: 2,
-	earth_overgrowth: 3, earth_tremor: 3, earth_petrify: 3, earth_natures_wrath: 3,
-	earth_earthen_wall: 3, earth_crystal_spikes: 3,
+	// earth — mechanic chains require rank 2 in their source
+	earth_tremor: 2, earth_overgrowth: 2, earth_natures_wrath: 2,
 	earth_living_mountain: 3,
 };
 

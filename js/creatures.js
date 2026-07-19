@@ -965,7 +965,7 @@ const CREATURE_DEFS = {
     },
     // ---- Icereach Peaks tier-9 creatures ----
     'Arctic Hare': {
-        count: 8, hp: 55, dmg: 4, speed: 3.8, hopper: true, aggro: 0, barW: 0.9, barY: 0.95, hitY: 0.6, level: 30, xp: 160, tiers: [9],
+        count: 2, hp: 55, dmg: 4, speed: 3.8, hopper: true, aggro: 0, barW: 0.9, barY: 0.95, hitY: 0.6, level: 30, xp: 160, tiers: [9],
         drops: [{item: 'Arctic Hare Pelt', p: 1}, {item: 'Raw Meat', p: 0.65}, {item: 'Bones', p: 0.4}],
         build() {
             const g = new THREE.Group();
@@ -990,7 +990,7 @@ const CREATURE_DEFS = {
         },
     },
     'Frost Elk': {
-        count: 5, hp: 320, dmg: 20, speed: 3.2, hopper: false, aggro: 0, barW: 1.4, barY: 1.8, hitY: 1.2, level: 38, xp: 260, tiers: [9],
+        count: 1, hp: 320, dmg: 20, speed: 3.2, hopper: false, aggro: 0, barW: 1.4, barY: 1.8, hitY: 1.2, level: 38, xp: 260, tiers: [9],
         drops: [{item: 'Frost Elk Hide', p: 1}, {item: 'Frost Elk Antler', p: 0.75}, {item: 'Raw Meat', p: 0.8}, {item: 'Bones', p: 0.5}],
         build() {
             const g = new THREE.Group();
@@ -1022,7 +1022,7 @@ const CREATURE_DEFS = {
         },
     },
     'Arctic Wolf': {
-        count: 6, hp: 420, dmg: 28, speed: 3.8, hopper: false, aggro: 10, barW: 1.2, barY: 1.3, hitY: 0.9, level: 44, xp: 330, tiers: [9],
+        count: 2, hp: 420, dmg: 28, speed: 3.8, hopper: false, aggro: 10, barW: 1.2, barY: 1.3, hitY: 0.9, level: 44, xp: 330, tiers: [9],
         drops: [{item: 'Arctic Wolf Fur', p: 1}, {item: 'Glacial Fang', p: 0.6}, {item: 'Raw Meat', p: 0.7}, {item: 'Bones', p: 0.5}],
         build() {
             const g = new THREE.Group();
@@ -1055,7 +1055,7 @@ const CREATURE_DEFS = {
         },
     },
     'Snow Leopard': {
-        count: 4, hp: 780, dmg: 50, speed: 4.4, hopper: false, aggro: 16, barW: 1.4, barY: 1.4, hitY: 1.0, level: 52, xp: 480, tiers: [9],
+        count: 1, hp: 780, dmg: 50, speed: 4.4, hopper: false, aggro: 16, barW: 1.4, barY: 1.4, hitY: 1.0, level: 52, xp: 480, tiers: [9],
         drops: [{item: 'Snow Leopard Pelt', p: 1}, {item: 'Snow Leopard Claw', p: 0.65}, {item: 'Raw Meat', p: 0.7}, {item: 'Glacial Crystal', p: 0.3}],
         build() {
             const g = new THREE.Group();
@@ -1092,7 +1092,7 @@ const CREATURE_DEFS = {
         },
     },
     'Glacial Mammoth': {
-        count: 2, hp: 3800, dmg: 95, speed: 2.0, hopper: false, aggro: 12, barW: 2.8, barY: 4.0, hitY: 2.2, level: 62, xp: 680, tiers: [9],
+        count: 1, hp: 3800, dmg: 95, speed: 2.0, hopper: false, aggro: 12, barW: 2.8, barY: 4.0, hitY: 2.2, level: 62, xp: 680, tiers: [9],
         drops: [
             {item: 'Mammoth Tusk', p: 1.00},
             {item: 'Mammoth Hide', p: 1.00},
@@ -1138,6 +1138,117 @@ const CREATURE_DEFS = {
                     g.add(leg);
                 }
             }
+            return g;
+        },
+    },
+    'Frostborn Warlord': {
+        count: 1, hp: 45000, dmg: 180, speed: 0.8, hopper: false, aggro: 20, barW: 4.2, barY: 6.2, hitY: 3.8, level: 75, xp: 12000, tiers: [9],
+        spawnZone: { x: 88, z: -90, r: 3 },
+        drops: [
+            { item: 'Glacial Crystal', p: 1.00 },
+            { item: 'Frost Elk Hide',  p: 1.00 },
+            { item: 'Snow Leopard Claw', p: 0.80 },
+            { item: 'Mammoth Tusk',    p: 0.60 },
+            { item: 'Gold Coin',       p: 1.00 },
+            { item: 'Raw Meat',        p: 1.00 },
+        ],
+        build() {
+            const g = new THREE.Group();
+            const armorM  = new THREE.MeshStandardMaterial({ color: 0x4a6fa5, flatShading: true, roughness: 0.5, metalness: 0.7 });
+            const darkM   = new THREE.MeshStandardMaterial({ color: 0x1e3a5f, flatShading: true, roughness: 0.6, metalness: 0.6 });
+            const skinM   = new THREE.MeshStandardMaterial({ color: 0xc8d8e8, flatShading: true, roughness: 0.8 });
+            const eyeM    = new THREE.MeshStandardMaterial({ color: 0x00ccff, emissive: 0x00aaff, emissiveIntensity: 2.5 });
+            const bladeM  = new THREE.MeshStandardMaterial({ color: 0xb0d4f1, flatShading: true, roughness: 0.3, metalness: 0.9 });
+            const hiltM   = new THREE.MeshStandardMaterial({ color: 0x2a2a3a, flatShading: true, roughness: 0.5, metalness: 0.8 });
+
+            // torso
+            const torso = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.88, 0.46), armorM);
+            torso.position.set(0, 1.52, 0); torso.castShadow = true;
+            g.add(torso);
+            // pauldrons (shoulder pads)
+            for (const s of [-1, 1]) {
+                const pauM = new THREE.Mesh(new THREE.SphereGeometry(0.26, 8, 7), armorM);
+                pauM.scale.set(1, 0.75, 1); pauM.position.set(0.52 * s, 1.88, 0);
+                g.add(pauM);
+            }
+            // waist/belt
+            const belt = new THREE.Mesh(new THREE.BoxGeometry(0.74, 0.2, 0.48), darkM);
+            belt.position.set(0, 1.1, 0);
+            g.add(belt);
+            // hips
+            const hips = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.36, 0.44), armorM);
+            hips.position.set(0, 0.88, 0);
+            g.add(hips);
+            // head
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 8), skinM);
+            head.position.set(0, 2.2, 0); head.castShadow = true;
+            g.add(head);
+            // helmet
+            const helm = new THREE.Mesh(new THREE.SphereGeometry(0.33, 10, 7), armorM);
+            helm.position.set(0, 2.3, 0); helm.scale.set(1, 0.78, 1);
+            g.add(helm);
+            // horned helmet spikes
+            for (const s of [-1, 1]) {
+                const spike = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.42, 5), darkM);
+                spike.position.set(0.22 * s, 2.68, 0.04); spike.rotation.z = 0.35 * s;
+                g.add(spike);
+            }
+            // eyes
+            for (const s of [-1, 1]) {
+                const eye = new THREE.Mesh(new THREE.SphereGeometry(0.055, 6, 6), eyeM);
+                eye.position.set(0.1 * s, 2.2, 0.28);
+                g.add(eye);
+            }
+            // arms
+            for (const s of [-1, 1]) {
+                const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.11, 0.55, 7), armorM);
+                upper.position.set(0.58 * s, 1.52, 0); upper.rotation.z = 0.2 * s;
+                upper.castShadow = true; g.add(upper);
+                const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.09, 0.52, 7), armorM);
+                lower.position.set(0.7 * s, 1.12, 0);
+                lower.castShadow = true; g.add(lower);
+            }
+            // legs
+            for (const s of [-1, 1]) {
+                const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.155, 0.13, 0.62, 7), armorM);
+                thigh.position.set(0.2 * s, 0.56, 0); thigh.castShadow = true;
+                g.add(thigh);
+                const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.1, 0.55, 7), darkM);
+                shin.position.set(0.2 * s, 0.08, 0);
+                shin.castShadow = true; g.add(shin);
+            }
+
+            // --- big greatsword (held in right hand, angled up) ---
+            const swordGroup = new THREE.Group();
+            swordGroup.position.set(0.72, 1.05, 0.08);
+            swordGroup.rotation.z = -0.22;
+            swordGroup.rotation.x = 0.15;
+            g.add(swordGroup);
+            g.userData._swordGroup = swordGroup;
+
+            // pommel
+            const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.095, 7, 6), hiltM);
+            pommel.position.set(0, -1.35, 0); swordGroup.add(pommel);
+            // grip
+            const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.05, 0.65, 7), hiltM);
+            grip.position.set(0, -0.98, 0); swordGroup.add(grip);
+            // crossguard
+            const guard = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.1, 0.1), hiltM);
+            guard.position.set(0, -0.62, 0); swordGroup.add(guard);
+            // blade
+            const blade = new THREE.Mesh(new THREE.BoxGeometry(0.18, 2.1, 0.06), bladeM);
+            blade.position.set(0, 0.42, 0); swordGroup.add(blade);
+            // blade tip
+            const tip = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.42, 5), bladeM);
+            tip.position.set(0, 1.54, 0); swordGroup.add(tip);
+            // fuller (blade groove)
+            const fuller = new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.8, 0.065), bladeM);
+            fuller.position.set(0, 0.44, 0); swordGroup.add(fuller);
+
+            g.userData._bossArmorM = armorM;
+            g.userData._bossBladeM = bladeM;
+            g.userData._bossEyeM   = eyeM;
+            g.scale.set(2, 2, 2);
             return g;
         },
     },

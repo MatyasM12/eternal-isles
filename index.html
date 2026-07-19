@@ -269,6 +269,16 @@
     </div>
 </div>
 
+<!-- ==================== CAST BAR ==================== -->
+<div id="castBar" class="pointer-events-none fixed left-1/2 -translate-x-1/2 hidden" style="width:260px;bottom:6rem;z-index:20">
+    <div style="border-radius:.75rem;border:1px solid rgba(249,115,22,.4);background:rgba(0,0,0,.75);padding:.5rem 1rem;text-align:center;box-shadow:0 25px 50px -12px rgba(0,0,0,.5);backdrop-filter:blur(12px)">
+        <div id="castBarLabel" style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#fdba74;margin-bottom:.375rem">Casting...</div>
+        <div style="height:.75rem;width:100%;border-radius:9999px;background:rgba(255,255,255,.1);overflow:hidden">
+            <div id="castBarFill" style="height:100%;border-radius:9999px;background:linear-gradient(to right,#f97316,#fde047);width:0%"></div>
+        </div>
+    </div>
+</div>
+
 <!-- ==================== SKILL HOTBAR ==================== -->
 <div id="hotbar" class="pointer-events-auto fixed bottom-4 left-1/2 -translate-x-1/2 hidden z-20">
     <div class="flex gap-2 rounded-2xl border border-white/10 bg-black/50 px-4 py-2.5 shadow-2xl backdrop-blur-md panel-in">
@@ -344,7 +354,7 @@
 <script src="js/persistence.js?v=1"></script>
 <script src="js/creatures.js?v=9"></script>
 <script src="js/network.js?v=17"></script>
-<script src="js/data/talents.js?v=1"></script>
-<script src="js/game.js?v=62"></script>
+<script src="js/data/talents.js?v=3"></script>
+<script src="js/game.js?v=65"></script>
 </body>
 </html>
